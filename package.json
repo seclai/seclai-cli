@@ -1,0 +1,39 @@
+{
+  "name": "@seclai/cli",
+  "version": "0.0.0",
+  "description": "Seclai Command Line Interface",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "seclai": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "repository": "github:seclai/seclai-cli",
+  "scripts": {
+    "version:apply": "node scripts/set-version.mjs apply && node scripts/set-readme-version.mjs apply",
+    "version:restore": "node scripts/set-readme-version.mjs restore && node scripts/set-version.mjs restore",
+    "build": "tsup",
+    "dev": "tsx src/cli.ts",
+    "docs": "npm run build && node scripts/generate-docs.mjs",
+    "build:versioned": "npm run version:apply && npm run build && npm run version:restore",
+    "publish:ci": "npm run version:apply && npm run build && npm publish --provenance --access public --ignore-scripts && npm run version:restore",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@seclai/sdk": "^1.0.0",
+    "commander": "^13.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.0",
+    "tsup": "^8.5.0",
+    "tsx": "^4.19.2",
+    "vitest": "^2.1.9",
+    "typescript": "^5.7.3"
+  }
+}
