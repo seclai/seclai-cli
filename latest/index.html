@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Seclai CLI Docs (v0.0.0)</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { max-width: 960px; margin: 0 auto; padding: 24px; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+    h1 { margin: 0 0 12px; }
+    h2 { margin: 28px 0 10px; }
+    pre { padding: 12px; overflow: auto; border: 1px solid rgba(127,127,127,0.35); border-radius: 8px; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .meta { opacity: 0.8; margin: 0 0 18px; }
+  </style>
+</head>
+<body>
+  <h1>Seclai CLI</h1>
+  <p class="meta">Version: <code>0.0.0</code></p>
+  <p class="meta">Generated command reference (from <code>--help</code> output).</p>
+  
+<section>
+<h2>Overview</h2>
+<pre><code>Usage: seclai [options] [command]
+
+Seclai Command Line Interface (v0.0.0)
+
+Options:
+  -V, --version    output the version
+  --api-key &lt;key&gt;  API key (defaults to SECLAI_API_KEY)
+  -h, --help       display help for command
+
+Commands:
+  sources          Manage sources
+  agents           Run agents and manage runs
+  contents         Inspect content and embeddings
+  help [command]   display help for command
+</code></pre>
+</section>
+
+<section>
+<h2>sources</h2>
+<pre><code>Usage: seclai sources [options] [command]
+
+Manage sources
+
+Options:
+  -h, --help                             display help for command
+
+Commands:
+  list [options]                         List sources
+  upload [options] &lt;sourceConnectionId&gt;  Upload a file to a source connection
+  help [command]                         display help for command
+</code></pre>
+</section>
+
+<section>
+<h2>sources list</h2>
+<pre><code>Usage: seclai sources list [options]
+
+List sources
+
+Options:
+  --page &lt;n&gt;          Page number
+  --limit &lt;n&gt;         Page size
+  --sort &lt;field&gt;      Sort field
+  --order &lt;asc|desc&gt;  Sort order
+  --account-id &lt;id&gt;   Filter by account id
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section>
+<h2>sources upload</h2>
+<pre><code>Usage: seclai sources upload [options] &lt;sourceConnectionId&gt;
+
+Upload a file to a source connection
+
+Arguments:
+  sourceConnectionId  Source connection id
+
+Options:
+  --file &lt;path&gt;       Path to local file
+  --title &lt;title&gt;     Optional title
+  --file-name &lt;name&gt;  Filename to send (defaults to basename)
+  --mime-type &lt;type&gt;  MIME type
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section>
+<h2>agents</h2>
+<pre><code>Usage: seclai agents [options] [command]
+
+Run agents and manage runs
+
+Options:
+  -h, --help               display help for command
+
+Commands:
+  run [options] &lt;agentId&gt;  Run an agent
+  runs                     Manage agent runs
+  help [command]           display help for command
+</code></pre>
+</section>
+
+<section>
+<h2>agents run</h2>
+<pre><code>Usage: seclai agents run [options] &lt;agentId&gt;
+
+Run an agent
+
+Arguments:
+  agentId             Agent id
+
+Options:
+  --json &lt;json&gt;       Request body JSON (string or &#39;-&#39;)
+  --json-file &lt;path&gt;  Request body JSON file path (or &#39;-&#39;)
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section>
+<h2>agents runs</h2>
+<pre><code>Usage: seclai agents runs [options] [command]
+
+Manage agent runs
+
+Options:
+  -h, --help                display help for command
+
+Commands:
+  list [options] &lt;agentId&gt;  List runs for an agent
+  get &lt;agentId&gt; &lt;runId&gt;     Get a specific agent run
+  delete &lt;agentId&gt; &lt;runId&gt;  Cancel/delete a specific agent run
+  help [command]            display help for command
+</code></pre>
+</section>
+
+<section>
+<h2>agents runs list</h2>
+<pre><code>Usage: seclai agents runs list [options] &lt;agentId&gt;
+
+List runs for an agent
+
+Arguments:
+  agentId      Agent id
+
+Options:
+  --page &lt;n&gt;   Page number
+  --limit &lt;n&gt;  Page size
+  -h, --help   display help for command
+</code></pre>
+</section>
+
+<section>
+<h2>agents runs get</h2>
+<pre><code>Usage: seclai agents runs get [options] &lt;agentId&gt; &lt;runId&gt;
+
+Get a specific agent run
+
+Arguments:
+  agentId     Agent id
+  runId       Run id
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section>
+<h2>agents runs delete</h2>
+<pre><code>Usage: seclai agents runs delete [options] &lt;agentId&gt; &lt;runId&gt;
+
+Cancel/delete a specific agent run
+
+Arguments:
+  agentId     Agent id
+  runId       Run id
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section>
+<h2>contents</h2>
+<pre><code>Usage: seclai contents [options] [command]
+
+Inspect content and embeddings
+
+Options:
+  -h, --help                                             display help for command
+
+Commands:
+  get [options] &lt;sourceConnectionContentVersion&gt;         Get content detail
+  delete &lt;sourceConnectionContentVersion&gt;                Delete a content version
+  embeddings [options] &lt;sourceConnectionContentVersion&gt;  List embeddings for a content version
+  help [command]                                         display help for command
+</code></pre>
+</section>
+
+<section>
+<h2>contents get</h2>
+<pre><code>Usage: seclai contents get [options] &lt;sourceConnectionContentVersion&gt;
+
+Get content detail
+
+Arguments:
+  sourceConnectionContentVersion  Content version id
+
+Options:
+  --start &lt;n&gt;                     Start offset
+  --end &lt;n&gt;                       End offset
+  -h, --help                      display help for command
+</code></pre>
+</section>
+
+<section>
+<h2>contents delete</h2>
+<pre><code>Usage: seclai contents delete [options] &lt;sourceConnectionContentVersion&gt;
+
+Delete a content version
+
+Arguments:
+  sourceConnectionContentVersion  Content version id
+
+Options:
+  -h, --help                      display help for command
+</code></pre>
+</section>
+
+<section>
+<h2>contents embeddings</h2>
+<pre><code>Usage: seclai contents embeddings [options] &lt;sourceConnectionContentVersion&gt;
+
+List embeddings for a content version
+
+Arguments:
+  sourceConnectionContentVersion  Content version id
+
+Options:
+  --page &lt;n&gt;                      Page number
+  --limit &lt;n&gt;                     Page size
+  -h, --help                      display help for command
+</code></pre>
+</section>
+</body>
+</html>
