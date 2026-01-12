@@ -100,13 +100,20 @@ jobs:
         run: |
           set -euo pipefail
 
+          VERSION="${{ needs.npm.outputs.version }}"
+          export VERSION
+
+          # Stamp package.json version so the generated --help output and docs header show the release version.
+          # (Repo package.json keeps 0.0.0; we only rewrite it during CI steps.)
+          trap 'node scripts/set-version.mjs restore' EXIT
+          node scripts/set-version.mjs apply
+
           npm run docs
 
           # Stage into versioned folders + latest
           rm -rf build/docs_tmp
           mv build/docs build/docs_tmp
 
-          VERSION="${{ needs.npm.outputs.version }}"
           mkdir -p "build/docs/${VERSION}" "build/docs/latest"
           cp -R build/docs_tmp/* "build/docs/${VERSION}/"
           cp -R build/docs_tmp/* build/docs/latest/
