@@ -112,6 +112,10 @@ export SECLAI_API_URL="https://example.invalid"
 
 Or pass it per-invocation:
 
+```bash
+SECLAI_API_URL="https://example.invalid" seclai sources list
+```
+
 This is intentionally environment-variable-only (there is no CLI flag for it).
 
 ### Install dependencies

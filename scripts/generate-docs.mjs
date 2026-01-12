@@ -2,13 +2,16 @@ import { execFile } from "node:child_process";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 function execFileAsync(cmd, args, opts = {}) {
   return new Promise((resolve, reject) => {
     execFile(cmd, args, { ...opts, maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
       if (err) {
+        const cmdLine = [cmd, ...(args ?? [])].join(" ");
         err.stdout = stdout;
         err.stderr = stderr;
+        err.message = `Failed to execute "${cmdLine}": ${err.message}`;
         reject(err);
         return;
       }
@@ -26,7 +29,7 @@ function escapeHtml(s) {
     .replaceAll("'", "&#39;");
 }
 
-const repoRoot = path.resolve(new URL("..", import.meta.url).pathname);
+const repoRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const distCli = path.join(repoRoot, "dist", "cli.js");
 const outDir = path.join(repoRoot, "build", "docs");
 

@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const mode = process.argv[2];
 if (mode !== "apply" && mode !== "restore") {
@@ -7,7 +8,7 @@ if (mode !== "apply" && mode !== "restore") {
   process.exit(2);
 }
 
-const repoRoot = path.resolve(new URL("..", import.meta.url).pathname);
+const repoRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const packageJsonPath = path.join(repoRoot, "package.json");
 const backupPath = path.join(repoRoot, ".package.json.bak");
 

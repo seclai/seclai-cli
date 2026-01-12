@@ -328,7 +328,6 @@ describe("seclai CLI", () => {
 
   test("API status errors are printed with status and url", async () => {
     const { runCli } = await importCli();
-    const io = makeRuntime();
 
     const sdk = await import("@seclai/sdk");
     mockState.nextListSourcesError = new (sdk as any).SeclaiAPIStatusError({

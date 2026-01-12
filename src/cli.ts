@@ -142,8 +142,7 @@ export function createProgram(rt: CliRuntime = defaultRuntime()): Command {
     .name("seclai")
     .description(`Seclai Command Line Interface (v${cliVersion})`)
     .version(cliVersion, "-V, --version", "output the version")
-    .option("--api-key <key>", "API key (defaults to SECLAI_API_KEY)")
-    ;
+    .option("--api-key <key>", "API key (defaults to SECLAI_API_KEY)");
 
   program.configureOutput({
     writeOut: (str) => rt.writeOut(str),
@@ -152,7 +151,7 @@ export function createProgram(rt: CliRuntime = defaultRuntime()): Command {
   // Prevent commander from calling process.exit() (needed for testability)
   program.exitOverride();
 
-// sources
+  // sources
   const sources = program.command("sources").description("Manage sources");
 
 sources
