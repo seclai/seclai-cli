@@ -216,13 +216,29 @@ agents
   .argument("<agentId>", "Agent id")
   .option("--json <json>", "Request body JSON (string or '-')")
   .option("--json-file <path>", "Request body JSON file path (or '-')")
+  .option("--stream", "Use streaming SSE endpoint and wait for completion")
+  .option("--timeout-ms <n>", "Client-side timeout in milliseconds", (v) => Number(v))
   .action(async (agentId: string, opts) => {
     await run(rt, async () => {
       const global = program.opts<GlobalOptions>();
       const client = createClient(global);
 
       const body = await readJsonInput(rt, { json: opts.json, jsonFile: opts.jsonFile });
-      const res = await client.runAgent(agentId, body as any);
+
+      let res: unknown;
+      if (opts.stream) {
+        const streamFn = (client as any).runStreamingAgentAndWait as
+          | undefined
+          | ((agentId: string, body: unknown, opts?: { timeoutMs?: number }) => Promise<unknown>);
+        if (!streamFn) {
+          throw new Error(
+            "This version of @seclai/sdk does not support streaming agent runs yet. Upgrade @seclai/sdk to a version that includes runStreamingAgentAndWait."
+          );
+        }
+        res = await streamFn(agentId, body, opts.timeoutMs !== undefined ? { timeoutMs: opts.timeoutMs } : undefined);
+      } else {
+        res = await client.runAgent(agentId, body as any);
+      }
       printJson(rt, res);
     });
   });

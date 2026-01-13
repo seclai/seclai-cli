@@ -91,6 +91,7 @@ vi.mock("@seclai/sdk", () => {
     uploadFileToSource = vi.fn(async (_id: string, _opts: any) => ({ ok: true }));
 
     runAgent = vi.fn(async (_agentId: string, _body: any) => ({ ok: true }));
+    runStreamingAgentAndWait = vi.fn(async (_agentId: string, _body: any, _opts?: any) => ({ ok: true }));
     listAgentRuns = vi.fn(async (_agentId: string, _opts?: any) => ({ ok: true }));
     getAgentRun = vi.fn(async (_agentId: string, _runId: string) => ({ ok: true }));
     deleteAgentRun = vi.fn(async (_agentId: string, _runId: string) => ({ ok: true }));
@@ -264,6 +265,36 @@ describe("seclai CLI", () => {
     expect(client.runAgent).toHaveBeenCalledWith(
       "6b9e2a1c-4d5f-4a7b-9c0d-1e2f3a4b5c6d",
       { input: "hi" }
+    );
+  });
+
+  test("agents run --stream uses streaming endpoint and waits", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await runCli(
+      [
+        "node",
+        "seclai",
+        "--api-key",
+        "k",
+        "agents",
+        "run",
+        "6b9e2a1c-4d5f-4a7b-9c0d-1e2f3a4b5c6d",
+        "--stream",
+        "--timeout-ms",
+        "1234",
+        "--json",
+        '{"input":"hello","metadata":{}}',
+      ],
+      io.rt
+    );
+
+    const client = mockState.instances[0];
+    expect(client.runStreamingAgentAndWait).toHaveBeenCalledWith(
+      "6b9e2a1c-4d5f-4a7b-9c0d-1e2f3a4b5c6d",
+      { input: "hello", metadata: {} },
+      { timeoutMs: 1234 }
     );
   });
 
