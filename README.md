@@ -57,6 +57,17 @@ seclai agents run 6b9e2a1c-4d5f-4a7b-9c0d-1e2f3a4b5c6d --json-file ./run.json
 cat ./run.json | seclai agents run 6b9e2a1c-4d5f-4a7b-9c0d-1e2f3a4b5c6d --json-file -
 ```
 
+Run an agent via SSE streaming (waits until the final result or timeout):
+
+This command exits successfully when the stream emits the final `done` event; it fails if the stream ends early or the timeout is reached.
+
+```bash
+seclai agents run 6b9e2a1c-4d5f-4a7b-9c0d-1e2f3a4b5c6d \
+	--json '{"input":"Hello from streaming"}' \
+	--stream \
+	--timeout-ms 60000
+```
+
 List runs:
 
 ```bash
