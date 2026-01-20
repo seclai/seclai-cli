@@ -212,6 +212,18 @@ describe("seclai CLI", () => {
     });
   });
 
+  test("source list is an alias for sources list", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await runCli(["node", "seclai", "--api-key", "k", "source", "list"], io.rt);
+
+    expect(io.exitCode).toBe(0);
+    expect(mockState.instances).toHaveLength(1);
+    const client = mockState.instances[0];
+    expect(client.listSources).toHaveBeenCalled();
+  });
+
   test("agents run parses JSON input", async () => {
     const { runCli } = await importCli();
     const io = makeRuntime();

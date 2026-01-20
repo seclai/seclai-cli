@@ -1,8 +1,8 @@
 import { Command } from "commander";
 import { readFile } from "node:fs/promises";
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import process from "node:process";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
   Seclai,
@@ -84,8 +84,13 @@ function getCliVersion(): string {
 }
 
 function createClient(opts: GlobalOptions): Seclai {
-  const seclaiOpts: { apiKey?: string } = {};
+  const seclaiOpts: { apiKey?: string; baseUrl?: string } = {};
   if (opts.apiKey !== undefined) seclaiOpts.apiKey = opts.apiKey;
+
+  // Be explicit about the default API host. (The SDK also supports SECLAI_API_URL.)
+  const envUrl = process.env.SECLAI_API_URL;
+  seclaiOpts.baseUrl = envUrl && envUrl.length > 0 ? envUrl : "https://api.seclai.com";
+
   return new Seclai(seclaiOpts);
 }
 
@@ -152,7 +157,10 @@ export function createProgram(rt: CliRuntime = defaultRuntime()): Command {
   program.exitOverride();
 
   // sources
-  const sources = program.command("sources").description("Manage sources");
+  const sources = program
+    .command("sources")
+    .alias("source")
+    .description("Manage sources");
 
 sources
   .command("list")
@@ -376,8 +384,19 @@ export async function runCli(argv: string[], rt: CliRuntime = defaultRuntime()):
 
 // Only run when executed as an entrypoint, not when imported (e.g. during tests).
 if (process.argv[1]) {
-  const entryHref = pathToFileURL(process.argv[1]).href;
-  if (import.meta.url === entryHref) {
-    await runCli(process.argv);
+  // `process.argv[1]` can be a symlink (common with npm global installs).
+  // Compare realpaths so the guard works reliably.
+  try {
+    const entryReal = realpathSync(process.argv[1]);
+    const selfReal = realpathSync(fileURLToPath(import.meta.url));
+    if (entryReal === selfReal) {
+      await runCli(process.argv);
+    }
+  } catch {
+    // Fall back to a URL comparison (best-effort).
+    const entryHref = pathToFileURL(process.argv[1]).href;
+    if (import.meta.url === entryHref) {
+      await runCli(process.argv);
+    }
   }
 }
