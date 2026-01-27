@@ -93,8 +93,8 @@ vi.mock("@seclai/sdk", () => {
     runAgent = vi.fn(async (_agentId: string, _body: any) => ({ ok: true }));
     runStreamingAgentAndWait = vi.fn(async (_agentId: string, _body: any, _opts?: any) => ({ ok: true }));
     listAgentRuns = vi.fn(async (_agentId: string, _opts?: any) => ({ ok: true }));
-    getAgentRun = vi.fn(async (_agentId: string, _runId: string) => ({ ok: true }));
-    deleteAgentRun = vi.fn(async (_agentId: string, _runId: string) => ({ ok: true }));
+    getAgentRun = vi.fn(async (..._args: any[]) => ({ ok: true }));
+    deleteAgentRun = vi.fn(async (..._args: any[]) => ({ ok: true }));
 
     getContentDetail = vi.fn(async (_id: string, _opts?: any) => ({ ok: true }));
     deleteContent = vi.fn(async (_id: string) => undefined);
@@ -308,6 +308,42 @@ describe("seclai CLI", () => {
       { input: "hello", metadata: {} },
       { timeoutMs: 1234 }
     );
+  });
+
+  test("runs get calls SDK with run id", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await runCli(["node", "seclai", "--api-key", "k", "runs", "get", "run_1"], io.rt);
+
+    expect(io.exitCode).toBe(0);
+    const client = mockState.instances[0];
+    expect(client.getAgentRun).toHaveBeenCalledWith("run_1", undefined);
+  });
+
+  test("runs get --include-step-outputs passes option", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await runCli(
+      ["node", "seclai", "--api-key", "k", "runs", "get", "run_1", "--include-step-outputs"],
+      io.rt
+    );
+
+    expect(io.exitCode).toBe(0);
+    const client = mockState.instances[0];
+    expect(client.getAgentRun).toHaveBeenCalledWith("run_1", { includeStepOutputs: true });
+  });
+
+  test("runs delete cancels by run id", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await runCli(["node", "seclai", "--api-key", "k", "runs", "delete", "run_1"], io.rt);
+
+    expect(io.exitCode).toBe(0);
+    const client = mockState.instances[0];
+    expect(client.deleteAgentRun).toHaveBeenCalledWith("run_1");
   });
 
   test("sources upload reads file and passes bytes", async () => {

@@ -78,13 +78,14 @@ seclai agents runs list 6b9e2a1c-4d5f-4a7b-9c0d-1e2f3a4b5c6d --page 1 --limit 50
 Get a run:
 
 ```bash
-seclai agents runs get 6b9e2a1c-4d5f-4a7b-9c0d-1e2f3a4b5c6d 3f1a2b4c-5d6e-4f70-8a9b-1c2d3e4f5a6b
+seclai runs get 3f1a2b4c-5d6e-4f70-8a9b-1c2d3e4f5a6b
+seclai runs get 3f1a2b4c-5d6e-4f70-8a9b-1c2d3e4f5a6b --include-step-outputs
 ```
 
 Cancel/delete a run:
 
 ```bash
-seclai agents runs delete 6b9e2a1c-4d5f-4a7b-9c0d-1e2f3a4b5c6d 3f1a2b4c-5d6e-4f70-8a9b-1c2d3e4f5a6b
+seclai runs delete 3f1a2b4c-5d6e-4f70-8a9b-1c2d3e4f5a6b
 ```
 
 ### Contents

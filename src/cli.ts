@@ -273,11 +273,13 @@ agentRuns
   .description("Get a specific agent run")
   .argument("<agentId>", "Agent id")
   .argument("<runId>", "Run id")
-  .action(async (agentId: string, runId: string) => {
+  .option("--include-step-outputs", "Include step outputs (may be omitted by default)")
+  .action(async (agentId: string, runId: string, opts) => {
     await run(rt, async () => {
       const global = program.opts<GlobalOptions>();
       const client = createClient(global);
-      const res = await client.getAgentRun(agentId, runId);
+      // Backward-compatible CLI: agentId is accepted but no longer required by the API.
+      const res = await client.getAgentRun(runId, opts.includeStepOutputs ? { includeStepOutputs: true } : undefined);
       printJson(rt, res);
     });
   });
@@ -291,7 +293,41 @@ agentRuns
     await run(rt, async () => {
       const global = program.opts<GlobalOptions>();
       const client = createClient(global);
-      const res = await client.deleteAgentRun(agentId, runId);
+      // Backward-compatible CLI: agentId is accepted but no longer required by the API.
+      const res = await client.deleteAgentRun(runId);
+      printJson(rt, res);
+    });
+  });
+
+// runs (run id is globally unique)
+const runs = program
+  .command("runs")
+  .alias("agent-runs")
+  .description("Manage agent runs by run id");
+
+runs
+  .command("get")
+  .description("Get a specific agent run by run id")
+  .argument("<runId>", "Run id")
+  .option("--include-step-outputs", "Include step outputs (may be omitted by default)")
+  .action(async (runId: string, opts) => {
+    await run(rt, async () => {
+      const global = program.opts<GlobalOptions>();
+      const client = createClient(global);
+      const res = await client.getAgentRun(runId, opts.includeStepOutputs ? { includeStepOutputs: true } : undefined);
+      printJson(rt, res);
+    });
+  });
+
+runs
+  .command("delete")
+  .description("Cancel/delete a specific agent run by run id")
+  .argument("<runId>", "Run id")
+  .action(async (runId: string) => {
+    await run(rt, async () => {
+      const global = program.opts<GlobalOptions>();
+      const client = createClient(global);
+      const res = await client.deleteAgentRun(runId);
       printJson(rt, res);
     });
   });

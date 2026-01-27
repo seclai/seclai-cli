@@ -26,7 +26,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@seclai/sdk": "^1.0.3",
+    "@seclai/sdk": "^1.0.6",
     "commander": "^13.1.0"
   },
   "devDependencies": {
