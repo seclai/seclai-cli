@@ -328,10 +328,6 @@ agentRuns
     "Fetch a specific agent run and print it as JSON.\n\n" +
       "Use this to inspect status, timestamps, and outputs. Optionally include step outputs for deeper debugging (may be large)."
   )
-  .argument(
-    "<agentId>",
-    "Agent ID (accepted for backward compatibility; the API identifies runs globally by runId)."
-  )
   .argument("<runId>", "Run ID to retrieve.")
   .option(
     "--include-step-outputs",
@@ -341,7 +337,6 @@ agentRuns
     await run(rt, async () => {
       const global = program.opts<GlobalOptions>();
       const client = createClient(global);
-      // Backward-compatible CLI: agentId is accepted but no longer required by the API.
       const res = await client.getAgentRun(runId, opts.includeStepOutputs ? { includeStepOutputs: true } : undefined);
       printJson(rt, res);
     });
@@ -353,16 +348,11 @@ agentRuns
     "Cancel or delete a specific agent run by ID.\n\n" +
       "If a run is still in progress, this requests cancellation. If it has already completed, behavior depends on the API (it may delete or mark the run)."
   )
-  .argument(
-    "<agentId>",
-    "Agent ID (accepted for backward compatibility; the API identifies runs globally by runId)."
-  )
   .argument("<runId>", "Run ID to cancel/delete.")
-  .action(async (agentId: string, runId: string) => {
+  .action(async (runId: string) => {
     await run(rt, async () => {
       const global = program.opts<GlobalOptions>();
       const client = createClient(global);
-      // Backward-compatible CLI: agentId is accepted but no longer required by the API.
       const res = await client.deleteAgentRun(runId);
       printJson(rt, res);
     });
@@ -373,8 +363,7 @@ const runs = program
   .command("runs")
   .alias("agent-runs")
   .description(
-    "Manage agent runs by run ID (globally unique).\n\n" +
-      "Use this when you already have a runId (for example from `agents runs list`) and don't want to supply an agentId."
+    "Manage agent runs by run ID (globally unique)."
   );
 
 runs
