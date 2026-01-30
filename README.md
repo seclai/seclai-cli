@@ -45,6 +45,7 @@ Upload a file to a source connection:
 ```bash
 seclai sources upload 2b1f0f3a-1d2c-4b5a-8e9f-0a1b2c3d4e5f --file ./mydoc.pdf
 seclai sources upload 2b1f0f3a-1d2c-4b5a-8e9f-0a1b2c3d4e5f --file ./notes.txt --title "Notes" --mime-type text/plain
+seclai sources upload 2b1f0f3a-1d2c-4b5a-8e9f-0a1b2c3d4e5f --file ./mydoc.pdf --metadata '{"category":"docs","author":"Ada"}'
 ```
 
 ### Agents
@@ -108,6 +109,14 @@ List embeddings:
 ```bash
 seclai contents embeddings a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
 seclai contents embeddings a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d --page 1 --limit 20
+```
+
+Replace a content version by uploading a new file (keeps the same content version ID):
+
+```bash
+seclai contents upload a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d --file ./updated.pdf
+seclai contents upload a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d --file ./updated.pdf --metadata '{"revision":2}'
+seclai contents replace a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d --file ./updated.pdf  # alias
 ```
 
 ## Development

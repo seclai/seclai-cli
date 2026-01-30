@@ -72,6 +72,20 @@ async function readJsonInput(
   throw new Error("Missing JSON input. Provide --json or --json-file.");
 }
 
+async function readJsonObjectInput(
+  rt: CliRuntime,
+  opts: {
+    json?: string;
+    jsonFile?: string;
+  }
+): Promise<Record<string, unknown>> {
+  const value = await readJsonInput(rt, opts);
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error("Expected a JSON object.");
+  }
+  return value as Record<string, unknown>;
+}
+
 function getCliVersion(): string {
   try {
     const packageJsonPath = new URL("../package.json", import.meta.url);
@@ -163,7 +177,8 @@ export function createProgram(rt: CliRuntime = defaultRuntime()): Command {
       `  SECLAI_API_URL   Override API base URL (default: https://api.seclai.com). Intended for dev/staging.\n\n` +
       `Examples:\n` +
       `  seclai sources list\n` +
-      `  seclai sources upload <sourceConnectionId> --file ./document.pdf\n` +
+      `  seclai sources upload <sourceConnectionId> --file ./document.pdf --metadata '{"category":"docs"}'\n` +
+      `  seclai contents upload <sourceConnectionContentVersionId> --file ./updated.pdf\n` +
       `  seclai agents run <agentId> --json '{"input":"Hello"}'\n` +
       `  seclai agents run <agentId> --json-file - --stream --timeout-ms 60000 < run.json\n`
   );
@@ -224,6 +239,14 @@ sources
   .requiredOption("--file <path>", "Path to a local file to upload.")
   .option("--title <title>", "Optional human-readable title to associate with the uploaded content.")
   .option(
+    "--metadata <json>",
+    "Optional metadata JSON object to attach to the upload (e.g. '{\"category\":\"docs\"}'). Use '-' to read JSON from stdin."
+  )
+  .option(
+    "--metadata-file <path>",
+    "Path to a JSON file containing a metadata object. Use '-' to read JSON from stdin."
+  )
+  .option(
     "--file-name <name>",
     "Override the filename sent to the API (defaults to the basename of --file). Useful when uploading from temp paths."
   )
@@ -238,10 +261,14 @@ sources
       const uploadOpts: {
         file: Uint8Array;
         title?: string;
+        metadata?: Record<string, unknown>;
         fileName?: string;
         mimeType?: string;
       } = { file: bytes };
       if (opts.title !== undefined) uploadOpts.title = opts.title;
+      if (opts.metadata !== undefined || opts.metadataFile !== undefined) {
+        uploadOpts.metadata = await readJsonObjectInput(rt, { json: opts.metadata, jsonFile: opts.metadataFile });
+      }
       if (opts.fileName !== undefined) uploadOpts.fileName = opts.fileName;
       if (opts.mimeType !== undefined) uploadOpts.mimeType = opts.mimeType;
 
@@ -286,15 +313,11 @@ agents
 
       let res: unknown;
       if (opts.stream) {
-        const streamFn = (client as any).runStreamingAgentAndWait as
-          | undefined
-          | ((agentId: string, body: unknown, opts?: { timeoutMs?: number }) => Promise<unknown>);
-        if (!streamFn) {
-          throw new Error(
-            "This version of @seclai/sdk does not support streaming agent runs yet. Upgrade @seclai/sdk to a version that includes runStreamingAgentAndWait."
-          );
-        }
-        res = await streamFn(agentId, body, opts.timeoutMs !== undefined ? { timeoutMs: opts.timeoutMs } : undefined);
+        res = await client.runStreamingAgentAndWait(
+          agentId,
+          body as any,
+          opts.timeoutMs !== undefined ? { timeoutMs: opts.timeoutMs } : undefined
+        );
       } else {
         res = await client.runAgent(agentId, body as any);
       }
@@ -409,6 +432,60 @@ const contents = program
     "Inspect indexed content and embeddings.\n\n" +
       "When Seclai ingests data from sources into a knowledge base, it creates content versions and generates vector embeddings for retrieval. These commands help you debug what was indexed and what embeddings were produced."
   );
+
+contents
+  .command("upload")
+  .alias("replace")
+  .description(
+    "Upload a local file to replace the underlying data for an existing content version.\n\n" +
+      "This calls the content replace upload endpoint (/contents/{source_connection_content_version}/upload).\n\n" +
+      "Use this when you want to keep the same content version ID but update the file contents (e.g., new revision of a PDF)."
+  )
+  .argument(
+    "<sourceConnectionContentVersion>",
+    "Content version ID to replace (from Seclai dashboard or API responses)."
+  )
+  .requiredOption("--file <path>", "Path to a local file to upload.")
+  .option("--title <title>", "Optional title to associate with the uploaded content.")
+  .option(
+    "--metadata <json>",
+    "Optional metadata JSON object to attach to the upload (e.g. '{\"revision\":2}'). Use '-' to read JSON from stdin."
+  )
+  .option(
+    "--metadata-file <path>",
+    "Path to a JSON file containing a metadata object. Use '-' to read JSON from stdin."
+  )
+  .option(
+    "--file-name <name>",
+    "Override the filename sent to the API (defaults to the basename of --file). Useful when uploading from temp paths."
+  )
+  .option("--mime-type <type>", "Explicit MIME type (e.g., application/pdf, text/plain).")
+  .action(async (sourceConnectionContentVersion: string, opts) => {
+    await run(rt, async () => {
+      const global = program.opts<GlobalOptions>();
+      const client = createClient(global);
+
+      const bytes = new Uint8Array(await readFile(opts.file));
+
+      const uploadOpts: {
+        file: Uint8Array;
+        title?: string;
+        metadata?: Record<string, unknown>;
+        fileName?: string;
+        mimeType?: string;
+      } = { file: bytes };
+
+      if (opts.title !== undefined) uploadOpts.title = opts.title;
+      if (opts.metadata !== undefined || opts.metadataFile !== undefined) {
+        uploadOpts.metadata = await readJsonObjectInput(rt, { json: opts.metadata, jsonFile: opts.metadataFile });
+      }
+      if (opts.fileName !== undefined) uploadOpts.fileName = opts.fileName;
+      if (opts.mimeType !== undefined) uploadOpts.mimeType = opts.mimeType;
+
+      const res = await client.uploadFileToContent(sourceConnectionContentVersion, uploadOpts);
+      printJson(rt, res);
+    });
+  });
 
 contents
   .command("get")

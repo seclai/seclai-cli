@@ -4,11 +4,28 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+type SeclaiMock = {
+  opts: unknown;
+  listSources: ReturnType<typeof vi.fn>;
+  uploadFileToSource: ReturnType<typeof vi.fn>;
+  uploadFileToContent: ReturnType<typeof vi.fn>;
+
+  runAgent: ReturnType<typeof vi.fn>;
+  runStreamingAgentAndWait: ReturnType<typeof vi.fn>;
+  listAgentRuns: ReturnType<typeof vi.fn>;
+  getAgentRun: ReturnType<typeof vi.fn>;
+  deleteAgentRun: ReturnType<typeof vi.fn>;
+
+  getContentDetail: ReturnType<typeof vi.fn>;
+  deleteContent: ReturnType<typeof vi.fn>;
+  listContentEmbeddings: ReturnType<typeof vi.fn>;
+};
+
 const mockState = vi.hoisted(() => {
   return {
-    instances: [] as any[],
-    lastCtorArgs: undefined as any,
-    nextListSourcesError: undefined as any,
+    instances: [] as SeclaiMock[],
+    lastCtorArgs: undefined as unknown,
+    nextListSourcesError: undefined as unknown,
   };
 });
 
@@ -66,11 +83,11 @@ vi.mock("@seclai/sdk", () => {
   }
 
   class Seclai {
-    public readonly opts: any;
+    public readonly opts: unknown;
 
     constructor(opts: any = {}) {
       mockState.lastCtorArgs = opts;
-      mockState.instances.push(this);
+      mockState.instances.push(this as unknown as SeclaiMock);
 
       const envKey = (globalThis as any).process?.env?.SECLAI_API_KEY;
       if (!opts.apiKey && !envKey) {
@@ -80,7 +97,7 @@ vi.mock("@seclai/sdk", () => {
       this.opts = opts;
     }
 
-    listSources = vi.fn(async (_opts?: any) => {
+    listSources = vi.fn<[any?], Promise<any>>(async (_opts?: any) => {
       if (mockState.nextListSourcesError) {
         const err = mockState.nextListSourcesError;
         mockState.nextListSourcesError = undefined;
@@ -88,17 +105,20 @@ vi.mock("@seclai/sdk", () => {
       }
       return { data: [], pagination: { page: 1, limit: 20, total: 0 } };
     });
-    uploadFileToSource = vi.fn(async (_id: string, _opts: any) => ({ ok: true }));
+    uploadFileToSource = vi.fn<[string, any], Promise<any>>(async (_id: string, _opts: any) => ({ ok: true }));
+    uploadFileToContent = vi.fn<[string, any], Promise<any>>(async (_id: string, _opts: any) => ({ ok: true }));
 
-    runAgent = vi.fn(async (_agentId: string, _body: any) => ({ ok: true }));
-    runStreamingAgentAndWait = vi.fn(async (_agentId: string, _body: any, _opts?: any) => ({ ok: true }));
-    listAgentRuns = vi.fn(async (_agentId: string, _opts?: any) => ({ ok: true }));
-    getAgentRun = vi.fn(async (..._args: any[]) => ({ ok: true }));
-    deleteAgentRun = vi.fn(async (..._args: any[]) => ({ ok: true }));
+    runAgent = vi.fn<[string, any], Promise<any>>(async (_agentId: string, _body: any) => ({ ok: true }));
+    runStreamingAgentAndWait = vi.fn<[string, any, any?], Promise<any>>(
+      async (_agentId: string, _body: any, _opts?: any) => ({ ok: true })
+    );
+    listAgentRuns = vi.fn<[string, any?], Promise<any>>(async (_agentId: string, _opts?: any) => ({ ok: true }));
+    getAgentRun = vi.fn<any[], Promise<any>>(async (..._args: any[]) => ({ ok: true }));
+    deleteAgentRun = vi.fn<any[], Promise<any>>(async (..._args: any[]) => ({ ok: true }));
 
-    getContentDetail = vi.fn(async (_id: string, _opts?: any) => ({ ok: true }));
-    deleteContent = vi.fn(async (_id: string) => undefined);
-    listContentEmbeddings = vi.fn(async (_id: string, _opts?: any) => ({ ok: true }));
+    getContentDetail = vi.fn<[string, any?], Promise<any>>(async (_id: string, _opts?: any) => ({ ok: true }));
+    deleteContent = vi.fn<[string], Promise<void>>(async (_id: string) => undefined);
+    listContentEmbeddings = vi.fn<[string, any?], Promise<any>>(async (_id: string, _opts?: any) => ({ ok: true }));
   }
 
   return {
@@ -367,6 +387,8 @@ describe("seclai CLI", () => {
         filePath,
         "--title",
         "Notes",
+        "--metadata",
+        '{"category":"docs","author":"Ada"}',
         "--file-name",
         "hello.txt",
         "--mime-type",
@@ -380,8 +402,49 @@ describe("seclai CLI", () => {
     const [id, opts] = client.uploadFileToSource.mock.calls[0];
     expect(id).toBe("2b1f0f3a-1d2c-4b5a-8e9f-0a1b2c3d4e5f");
     expect(opts.title).toBe("Notes");
+    expect(opts.metadata).toEqual({ category: "docs", author: "Ada" });
     expect(opts.fileName).toBe("hello.txt");
     expect(opts.mimeType).toBe("text/plain");
+    expect(opts.file).toBeInstanceOf(Uint8Array);
+    expect((opts.file as Uint8Array).length).toBeGreaterThan(0);
+  });
+
+  test("contents upload reads file and calls uploadFileToContent", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), "seclai-cli-"));
+    const filePath = path.join(tmpDir, "updated.pdf");
+    await writeFile(filePath, "%PDF-1.4", "utf8");
+
+    await runCli(
+      [
+        "node",
+        "seclai",
+        "--api-key",
+        "k",
+        "contents",
+        "upload",
+        "sc_cv_123",
+        "--file",
+        filePath,
+        "--metadata",
+        '{"revision":2}',
+        "--file-name",
+        "updated.pdf",
+        "--mime-type",
+        "application/pdf",
+      ],
+      io.rt
+    );
+
+    const client = mockState.instances[0];
+    expect(client.uploadFileToContent).toHaveBeenCalled();
+    const [id, opts] = client.uploadFileToContent.mock.calls[0];
+    expect(id).toBe("sc_cv_123");
+    expect(opts.metadata).toEqual({ revision: 2 });
+    expect(opts.fileName).toBe("updated.pdf");
+    expect(opts.mimeType).toBe("application/pdf");
     expect(opts.file).toBeInstanceOf(Uint8Array);
     expect((opts.file as Uint8Array).length).toBeGreaterThan(0);
   });
