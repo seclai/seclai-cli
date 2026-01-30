@@ -29,6 +29,14 @@ function escapeHtml(s) {
     .replaceAll("'", "&#39;");
 }
 
+function slugify(input) {
+  return String(input)
+    .trim()
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/g, "-")
+    .replaceAll(/(^-|-$)/g, "");
+}
+
 const repoRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const distCli = path.join(repoRoot, "dist", "cli.js");
 const outDir = path.join(repoRoot, "build", "docs");
@@ -70,13 +78,24 @@ for (const s of sections) {
   const { stdout } = await execFileAsync(process.execPath, [distCli, ...s.args], {
     env: { ...process.env },
   });
-  rendered.push({ title: s.title, output: stdout });
+  rendered.push({ id: slugify(s.title), title: s.title, output: stdout });
 }
+
+const toc = rendered
+  .map(
+    (s) =>
+      `<a class="toc-item" href="#${escapeHtml(s.id)}"><span class="toc-title">${escapeHtml(
+        s.title
+      )}</span></a>`
+  )
+  .join("\n");
 
 const body = rendered
   .map(
     (s) =>
-      `\n<section>\n<h2>${escapeHtml(s.title)}</h2>\n<pre><code>${escapeHtml(
+      `\n<section class="section" id="${escapeHtml(s.id)}">\n<h2 class="section-title"><a class="anchor" href="#${escapeHtml(
+        s.id
+      )}">${escapeHtml(s.title)}</a></h2>\n<pre class="code"><code>${escapeHtml(
         s.output
       )}</code></pre>\n</section>`
   )
@@ -89,20 +108,111 @@ const html = `<!doctype html>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Seclai CLI Docs (v${escapeHtml(docsVersion)})</title>
   <style>
-    :root { color-scheme: light dark; }
-    body { max-width: 960px; margin: 0 auto; padding: 24px; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
-    h1 { margin: 0 0 12px; }
-    h2 { margin: 28px 0 10px; }
-    pre { padding: 12px; overflow: auto; border: 1px solid rgba(127,127,127,0.35); border-radius: 8px; }
-    code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    .meta { opacity: 0.8; margin: 0 0 18px; }
+    :root {
+      color-scheme: light dark;
+      --border: rgba(127,127,127,0.35);
+      --muted: rgba(127,127,127,0.85);
+      --bg: color-mix(in srgb, Canvas 92%, transparent);
+      --card: color-mix(in srgb, Canvas 98%, transparent);
+      --link: LinkText;
+    }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.45;
+    }
+    .wrap {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    header {
+      padding: 16px 0 18px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 18px;
+    }
+    h1 { margin: 0 0 6px; font-size: 28px; }
+    .meta { margin: 0; color: var(--muted); }
+    .layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+    nav {
+      position: sticky;
+      top: 18px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--card);
+      padding: 12px;
+      max-height: calc(100vh - 48px);
+      overflow: auto;
+    }
+    .toc-title-h {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin: 0 0 10px;
+    }
+    .toc-item {
+      display: block;
+      padding: 6px 8px;
+      border-radius: 8px;
+      text-decoration: none;
+      color: inherit;
+    }
+    .toc-item:hover { background: var(--bg); }
+    .toc-title { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 13px; }
+    main { min-width: 0; }
+    .section {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      background: var(--card);
+      margin: 0 0 14px;
+    }
+    .section-title {
+      margin: 0 0 10px;
+      font-size: 16px;
+      font-weight: 650;
+    }
+    .anchor { color: inherit; text-decoration: none; }
+    .anchor:hover { color: var(--link); text-decoration: underline; }
+    .code {
+      margin: 0;
+      padding: 12px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12.5px;
+    }
+    @media (max-width: 920px) {
+      .layout { grid-template-columns: 1fr; }
+      nav { position: relative; top: 0; max-height: none; }
+    }
   </style>
 </head>
 <body>
-  <h1>Seclai CLI</h1>
-  <p class="meta">Version: <code>${escapeHtml(docsVersion)}</code></p>
-  <p class="meta">Generated command reference (from <code>--help</code> output).</p>
-  ${body}
+  <div class="wrap">
+    <header>
+      <h1>Seclai CLI</h1>
+      <p class="meta">Version: <code>${escapeHtml(docsVersion)}</code> · Generated command reference from <code>--help</code> output</p>
+    </header>
+    <div class="layout">
+      <nav aria-label="Table of contents">
+        <p class="toc-title-h">Contents</p>
+        ${toc}
+      </nav>
+      <main>
+        ${body}
+      </main>
+    </div>
+  </div>
 </body>
 </html>
 `;
