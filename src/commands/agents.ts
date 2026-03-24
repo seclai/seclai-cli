@@ -6,11 +6,7 @@ import {
   printJson,
   readJsonInput,
   readAiInput,
-  withJsonInputOptions,
   withAiInputOptions,
-  withListOptions,
-  withFileUploadOptions,
-  buildUploadOpts,
   listOpts,
 } from "../helpers.js";
 
@@ -121,12 +117,12 @@ export function register(program: Command, rt: CliRuntime): void {
             if (filterSet && !filterSet.has((event as any).type ?? "")) continue;
 
             if (opts.output === "data") {
-              printJson(rt, (event as any).data ?? event);
+              rt.writeOut(JSON.stringify((event as any).data ?? event) + "\n");
             } else if (opts.output === "status") {
               const e = event as any;
               rt.writeOut(`${e.type ?? "event"}: ${e.status ?? JSON.stringify(e.data ?? e)}\n`);
             } else {
-              printJson(rt, event);
+              rt.writeOut(JSON.stringify(event) + "\n");
             }
           }
           return;

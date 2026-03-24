@@ -83,19 +83,23 @@ export function register(program: Command, rt: CliRuntime): void {
     .option("--sources <json>", "Link sources (JSON body).")
     .action(async (solutionId: string, opts) => {
       await run(rt, async () => {
+        if (!opts.agents && !opts.kb && !opts.sources) {
+          rt.writeErr("Provide at least one of --agents, --kb, or --sources.\n");
+          rt.setExitCode(1);
+          return;
+        }
         const client = createClient(program.opts<GlobalOptions>());
+        const results: Record<string, unknown> = {};
         if (opts.agents) {
-          const body = JSON.parse(opts.agents);
-          printJson(rt, await client.linkAgentsToSolution(solutionId, body));
+          results.agents = await client.linkAgentsToSolution(solutionId, JSON.parse(opts.agents));
         }
         if (opts.kb) {
-          const body = JSON.parse(opts.kb);
-          printJson(rt, await client.linkKnowledgeBasesToSolution(solutionId, body));
+          results.knowledgeBases = await client.linkKnowledgeBasesToSolution(solutionId, JSON.parse(opts.kb));
         }
         if (opts.sources) {
-          const body = JSON.parse(opts.sources);
-          printJson(rt, await client.linkSourceConnectionsToSolution(solutionId, body));
+          results.sources = await client.linkSourceConnectionsToSolution(solutionId, JSON.parse(opts.sources));
         }
+        printJson(rt, results);
       });
     });
 
@@ -108,19 +112,23 @@ export function register(program: Command, rt: CliRuntime): void {
     .option("--sources <json>", "Unlink sources (JSON body).")
     .action(async (solutionId: string, opts) => {
       await run(rt, async () => {
+        if (!opts.agents && !opts.kb && !opts.sources) {
+          rt.writeErr("Provide at least one of --agents, --kb, or --sources.\n");
+          rt.setExitCode(1);
+          return;
+        }
         const client = createClient(program.opts<GlobalOptions>());
+        const results: Record<string, unknown> = {};
         if (opts.agents) {
-          const body = JSON.parse(opts.agents);
-          printJson(rt, await client.unlinkAgentsFromSolution(solutionId, body));
+          results.agents = await client.unlinkAgentsFromSolution(solutionId, JSON.parse(opts.agents));
         }
         if (opts.kb) {
-          const body = JSON.parse(opts.kb);
-          printJson(rt, await client.unlinkKnowledgeBasesFromSolution(solutionId, body));
+          results.knowledgeBases = await client.unlinkKnowledgeBasesFromSolution(solutionId, JSON.parse(opts.kb));
         }
         if (opts.sources) {
-          const body = JSON.parse(opts.sources);
-          printJson(rt, await client.unlinkSourceConnectionsFromSolution(solutionId, body));
+          results.sources = await client.unlinkSourceConnectionsFromSolution(solutionId, JSON.parse(opts.sources));
         }
+        printJson(rt, results);
       });
     });
 

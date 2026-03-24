@@ -76,7 +76,7 @@ export function createProgram(rt: CliRuntime = defaultRuntime()): Command {
   // Propagate global flags to runtime before any command action
   program.hook("preAction", (thisCommand) => {
     const globalOpts = thisCommand.opts<GlobalOptions>();
-    if (globalOpts.compact) rt.compact = true;
+    rt.compact = Boolean(globalOpts.compact);
   });
 
   // Register all command modules

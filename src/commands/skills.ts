@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { CliRuntime } from "../helpers.js";
@@ -401,14 +401,14 @@ function getToolConfig(tool: string, destDir: string): ToolConfig {
 function detectTools(destDir: string): string[] {
   const detected: string[] = [];
 
-  if (existsSync(join(destDir, ".github"))) detected.push("copilot");
+  if (existsSync(join(destDir, ".github", "copilot"))) detected.push("copilot");
   if (existsSync(join(destDir, ".claude")) || existsSync(join(destDir, "CLAUDE.md")))
     detected.push("claude");
   if (existsSync(join(destDir, ".cursor"))) detected.push("cursor");
   if (existsSync(join(destDir, ".windsurf"))) detected.push("windsurf");
   if (existsSync(join(destDir, ".codex"))) detected.push("codex");
   if (existsSync(join(destDir, ".kiro"))) detected.push("kiro");
-  if (existsSync(join(destDir, ".clinerules"))) detected.push("cline");
+  if (existsSync(join(destDir, ".clinerules")) && statSync(join(destDir, ".clinerules")).isDirectory()) detected.push("cline");
   if (existsSync(join(destDir, ".roo"))) detected.push("roo");
   if (existsSync(join(destDir, ".gemini")) || existsSync(join(destDir, "GEMINI.md")))
     detected.push("gemini");

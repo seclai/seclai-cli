@@ -104,7 +104,7 @@ seclai agents def update <agentId> --json '{"steps":[...]}'
 #### Agent Input Upload
 
 ```bash
-seclai agents upload-input <agentId> --file ./data.csv [--title "Data"] [--metadata '{}']
+seclai agents upload-input <agentId> --file ./data.csv [--file-name data.csv] [--mime-type text/csv]
 seclai agents input-status <agentId> <uploadId>
 ```
 
@@ -257,7 +257,7 @@ seclai solutions unlink <solutionId> --agents '["id1"]'
 #### Conversations
 
 ```bash
-seclai solutions convos list <solutionId> [--page N] [--limit N]
+seclai solutions convos list <solutionId>
 seclai solutions convos add <solutionId> --json '{"user_input":"Add a source"}'
 seclai solutions convos mark <solutionId> <conversationId> --json '{"accepted":true}'
 ```
@@ -276,7 +276,7 @@ seclai solutions ai decline <solutionId> <conversationId>
 
 ```bash
 seclai governance ai generate --user-input "Create a content safety policy"
-seclai governance ai list [--page N] [--limit N]
+seclai governance ai list
 seclai governance ai accept <conversationId>
 seclai governance ai decline <conversationId>
 ```
