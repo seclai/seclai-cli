@@ -23,6 +23,7 @@ import { register as registerModels } from "./commands/models.js";
 import { register as registerSearch } from "./commands/search.js";
 import { register as registerAi } from "./commands/ai.js";
 import { register as registerSkills } from "./commands/skills.js";
+import { register as registerMcp } from "./commands/mcp.js";
 import { register as registerCompletion } from "./commands/completion.js";
 
 export type { CliRuntime, GlobalOptions };
@@ -93,6 +94,7 @@ export function createProgram(rt: CliRuntime = defaultRuntime()): Command {
   registerSearch(program, rt);
   registerAi(program, rt);
   registerSkills(program, rt);
+  registerMcp(program, rt);
   registerCompletion(program, rt);
 
   return program;
