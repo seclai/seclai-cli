@@ -11,7 +11,7 @@ _seclai_completions() {
   prev="\${COMP_WORDS[COMP_CWORD-1]}"
 
   # Top-level commands
-  commands="agents sources contents kb memory evals solutions governance alerts models search ai skills completion help"
+  commands="agents sources contents kb memory evals solutions governance alerts models search ai skills mcp completion help"
 
   case "\${COMP_WORDS[1]}" in
     agents)
@@ -64,6 +64,7 @@ _seclai_completions() {
       esac ;;
     ai) COMPREPLY=( $(compgen -W "feedback kb source solution memory memory-history accept decline memory-accept" -- "$cur") ); return ;;
     skills) COMPREPLY=( $(compgen -W "install" -- "$cur") ); return ;;
+    mcp) COMPREPLY=( $(compgen -W "configure show" -- "$cur") ); return ;;
     completion) COMPREPLY=( $(compgen -W "bash zsh fish" -- "$cur") ); return ;;
   esac
 
@@ -93,6 +94,7 @@ _seclai() {
     'search:Search across Seclai resources'
     'ai:Top-level AI assistant'
     'skills:Install skill files for AI coding tools'
+    'mcp:Configure the Seclai MCP server'
     'completion:Generate shell completion scripts'
     'help:Display help for command'
   )
@@ -145,6 +147,9 @@ _seclai() {
         skills)
           local -a sub=(install)
           _describe 'subcommand' sub ;;
+        mcp)
+          local -a sub=(configure show)
+          _describe 'subcommand' sub ;;
         completion)
           local -a sub=(bash zsh fish)
           _describe 'shell' sub ;;
@@ -158,7 +163,7 @@ _seclai "$@"
 const FISH = `# seclai fish completion — save to ~/.config/fish/completions/seclai.fish
 #   seclai completion fish > ~/.config/fish/completions/seclai.fish
 
-set -l top agents sources contents kb memory evals solutions governance alerts models search ai skills completion help
+set -l top agents sources contents kb memory evals solutions governance alerts models search ai skills mcp completion help
 
 # Top-level
 complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "agents" -d "Manage agents"
@@ -174,6 +179,7 @@ complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "models" -d "
 complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "search" -d "Search resources"
 complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "ai" -d "AI assistant"
 complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "skills" -d "Skill files"
+complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "mcp" -d "MCP server config"
 complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "completion" -d "Shell completions"
 
 # agents
@@ -211,6 +217,9 @@ complete -c seclai -n "__fish_seen_subcommand_from ai; and not __fish_seen_subco
 
 # skills
 complete -c seclai -n "__fish_seen_subcommand_from skills; and not __fish_seen_subcommand_from install" -f -a "install"
+
+# mcp
+complete -c seclai -n "__fish_seen_subcommand_from mcp; and not __fish_seen_subcommand_from configure show" -f -a "configure show"
 
 # completion
 complete -c seclai -n "__fish_seen_subcommand_from completion; and not __fish_seen_subcommand_from bash zsh fish" -f -a "bash zsh fish"

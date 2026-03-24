@@ -17,6 +17,29 @@ Or run directly via npx (no install needed):
 npx @seclai/cli agents list
 ```
 
+### Setup Skills and MCP
+
+If you are using an AI coding agent like Claude Code, you can also install the skill individually with:
+
+```sh
+seclai setup skills
+```
+
+This installs skills globally across all detected coding editors by default. Use --agent <agent> to scope it to one editor.
+
+To install the Seclai MCP server into your editors (Cursor, Claude Code, VS Code, etc.):
+
+```sh
+seclai mcp configure
+```
+
+Or directly via npx:
+
+```sh
+npx skills add seclai/seclai-cli --full-depth --global --all
+npx add-mcp npx add-mcp https://api.seclai.com/mcp --header "X-API-Key: $SECLAI_API_KEY" --name Seclai
+```
+
 ## Documentation
 
 Command reference (latest): https://seclai.github.io/seclai-cli/latest/
@@ -387,6 +410,43 @@ Skills follow the [Agent Skills specification](https://agentskills.io/specificat
 | Roo Code | `.roo/rules/seclai-cli/` |
 | Gemini | `.gemini/seclai-cli/` |
 | Antigravity | `.antigravity/seclai-cli/` |
+
+You can also install skills using the [skills CLI](https://github.com/vercel-labs/skills):
+
+```bash
+npx skills add seclai/seclai-cli
+```
+
+### MCP Server
+
+Configure the [Seclai MCP server](https://github.com/seclai/seclai-mcp) for AI coding tools:
+
+```bash
+# Auto-detect tools and write MCP config
+seclai mcp configure --key YOUR_API_KEY
+
+# Target a specific tool
+seclai mcp configure --key YOUR_API_KEY --target claude-code
+seclai mcp configure --key YOUR_API_KEY --target cursor
+seclai mcp configure --key YOUR_API_KEY --target claude-desktop
+seclai mcp configure --key YOUR_API_KEY --target windsurf
+
+# Configure all known targets
+seclai mcp configure --key YOUR_API_KEY --target all
+
+# Show the MCP config snippet (for manual setup)
+seclai mcp show
+seclai mcp show --key YOUR_API_KEY
+```
+
+| Target | Config File | Scope |
+|---|---|---|
+| claude-code | `.mcp.json` | Project |
+| cursor | `.cursor/mcp.json` | Project |
+| claude-desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` | Global |
+| windsurf | `~/.codeium/windsurf/mcp_config.json` | Global |
+
+The command merges into existing config files — it won't overwrite other MCP servers.
 
 ### Shell Completion
 

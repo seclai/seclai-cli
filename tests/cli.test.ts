@@ -1,6 +1,6 @@
 import { describe, expect, test, vi, beforeEach } from "vitest";
 import { PassThrough } from "node:stream";
-import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, writeFile, rm, readFile, mkdir } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -1103,6 +1103,66 @@ describe("seclai CLI", () => {
 
     // Clean up
     await rm(tmpDir, { recursive: true });
+  });
+
+  test("mcp configure writes MCP config", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), "seclai-cli-mcp-"));
+
+    await runCli(
+      ["node", "seclai", "mcp", "configure", "--key", "test-key", "--target", "claude-code", "--dir", tmpDir],
+      io.rt
+    );
+
+    expect(io.exitCode).toBe(0);
+    const parsed = JSON.parse(io.stdout);
+    expect(parsed.ok).toBe(true);
+    expect(parsed.targets).toEqual(["claude-code"]);
+
+    // Verify config was written
+    const config = JSON.parse(await readFile(path.join(tmpDir, ".mcp.json"), "utf8"));
+    expect(config.mcpServers.seclai.url).toBe("https://api.seclai.com/mcp");
+    expect(config.mcpServers.seclai.headers["X-API-Key"]).toBe("test-key");
+
+    await rm(tmpDir, { recursive: true });
+  });
+
+  test("mcp configure merges into existing config", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), "seclai-cli-mcp-"));
+    // Write an existing config with another MCP server
+    await writeFile(path.join(tmpDir, ".mcp.json"), JSON.stringify({
+      mcpServers: { other: { type: "stdio", command: "echo" } }
+    }), "utf8");
+
+    await runCli(
+      ["node", "seclai", "mcp", "configure", "--key", "k2", "--target", "claude-code", "--dir", tmpDir],
+      io.rt
+    );
+
+    expect(io.exitCode).toBe(0);
+    const config = JSON.parse(await readFile(path.join(tmpDir, ".mcp.json"), "utf8"));
+    expect(config.mcpServers.other).toEqual({ type: "stdio", command: "echo" });
+    expect(config.mcpServers.seclai.headers["X-API-Key"]).toBe("k2");
+
+    await rm(tmpDir, { recursive: true });
+  });
+
+  test("mcp show outputs config snippet", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await runCli(["node", "seclai", "mcp", "show"], io.rt);
+
+    expect(io.exitCode).toBe(0);
+    const parsed = JSON.parse(io.stdout);
+    expect(parsed.mcpServers.seclai.type).toBe("streamable-http");
+    expect(parsed.mcpServers.seclai.url).toBe("https://api.seclai.com/mcp");
+    expect(parsed.mcpServers.seclai.headers["X-API-Key"]).toBe("YOUR_API_KEY");
   });
 
   test("missing api key hint suggests SECLAI_API_KEY", async () => {
