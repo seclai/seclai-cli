@@ -1,7 +1,7 @@
 {
   "name": "@seclai/cli",
   "version": "0.0.0",
-  "description": "Seclai Command Line Interface",
+  "description": "Seclai Command Line Interface — manage agents, knowledge bases, sources, memory banks, and more from the terminal.",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -12,7 +12,25 @@
     "LICENSE",
     "README.md"
   ],
+  "engines": {
+    "node": ">=18"
+  },
+  "author": "Seclai, Inc. <support@seclai.com>",
+  "keywords": [
+    "seclai",
+    "cli",
+    "ai",
+    "agent",
+    "knowledge-base",
+    "vector",
+    "rag",
+    "memory-bank",
+    "evaluation",
+    "governance"
+  ],
   "repository": "github:seclai/seclai-cli",
+  "homepage": "https://github.com/seclai/seclai-cli#readme",
+  "bugs": "https://github.com/seclai/seclai-cli/issues",
   "scripts": {
     "version:apply": "node scripts/set-version.mjs apply && node scripts/set-readme-version.mjs apply",
     "version:restore": "node scripts/set-readme-version.mjs restore && node scripts/set-version.mjs restore",
@@ -20,20 +38,21 @@
     "dev": "tsx src/cli.ts",
     "docs": "npm run build && node scripts/generate-docs.mjs",
     "build:versioned": "npm run version:apply && npm run build && npm run version:restore",
+    "prepublishOnly": "npm run build",
     "publish:ci": "npm run version:apply && npm run build && npm publish --provenance --access public --ignore-scripts && npm run version:restore",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@seclai/sdk": "^1.0.7",
+    "@seclai/sdk": "^1.1.0",
     "commander": "^13.1.0"
   },
   "devDependencies": {
     "@types/node": "^20.19.0",
     "tsup": "^8.5.0",
     "tsx": "^4.19.2",
-    "vitest": "^2.1.9",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.9"
   }
 }
