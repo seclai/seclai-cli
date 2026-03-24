@@ -1,6 +1,6 @@
 import { describe, expect, test, vi, beforeEach } from "vitest";
 import { PassThrough } from "node:stream";
-import { mkdtemp, writeFile, rm, readFile, mkdir } from "node:fs/promises";
+import { mkdtemp, writeFile, rm, readFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -1094,12 +1094,12 @@ describe("seclai CLI", () => {
     const parsed = JSON.parse(io.stdout);
     expect(parsed.ok).toBe(true);
     expect(parsed.tools).toEqual(["copilot"]);
-    expect(parsed.filesWritten).toBe(6);
+    expect(parsed.filesWritten).toBe(4);
 
     // Verify files were written
     const { existsSync } = await import("node:fs");
     expect(existsSync(path.join(tmpDir, ".github", "copilot", "seclai-cli", "SKILL.md"))).toBe(true);
-    expect(existsSync(path.join(tmpDir, ".github", "copilot", "seclai-cli", "references", "agents.md"))).toBe(true);
+    expect(existsSync(path.join(tmpDir, ".github", "copilot", "seclai-cli", "references", "streaming.md"))).toBe(true);
 
     // Clean up
     await rm(tmpDir, { recursive: true });

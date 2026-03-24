@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { homedir, platform } from "node:os";
@@ -26,29 +26,42 @@ function getTargets(destDir: string): McpTarget[] {
   const home = homedir();
   const os = platform();
 
-  return [
+  const targets: McpTarget[] = [
     // Project-scoped configs
     { name: "claude-code", path: join(destDir, ".mcp.json"), scope: "project" },
     { name: "cursor", path: join(destDir, ".cursor", "mcp.json"), scope: "project" },
-    // Global configs
-    { name: "claude-desktop", path: os === "win32"
-        ? join(process.env["APPDATA"] ?? join(home, "AppData", "Roaming"), "Claude", "claude_desktop_config.json")
-        : join(home, "Library", "Application Support", "Claude", "claude_desktop_config.json"),
-      scope: "global" },
-    { name: "windsurf", path: join(home, ".codeium", "windsurf", "mcp_config.json"), scope: "global" },
   ];
+  // Global configs — claude-desktop path varies by platform
+  if (os === "win32") {
+    targets.push({
+      name: "claude-desktop",
+      path: join(process.env["APPDATA"] ?? join(home, "AppData", "Roaming"), "Claude", "claude_desktop_config.json"),
+      scope: "global",
+    });
+  } else if (os === "darwin") {
+    targets.push({
+      name: "claude-desktop",
+      path: join(home, "Library", "Application Support", "Claude", "claude_desktop_config.json"),
+      scope: "global",
+    });
+  }
+  targets.push({ name: "windsurf", path: join(home, ".codeium", "windsurf", "mcp_config.json"), scope: "global" });
+  return targets;
 }
 
 async function mergeConfig(filePath: string, apiKey: string): Promise<boolean> {
   let existing: Record<string, unknown> = {};
   if (existsSync(filePath)) {
     try {
-      existing = JSON.parse(await readFile(filePath, "utf8")) as Record<string, unknown>;
+      const parsed: unknown = JSON.parse(await readFile(filePath, "utf8"));
+      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return false;
+      existing = parsed as Record<string, unknown>;
     } catch {
       return false;
     }
   }
-  const servers = (existing["mcpServers"] ?? {}) as Record<string, unknown>;
+  const raw = existing["mcpServers"];
+  const servers = (typeof raw === "object" && raw !== null && !Array.isArray(raw) ? raw : {}) as Record<string, unknown>;
   servers["seclai"] = buildMcpEntry(apiKey);
   existing["mcpServers"] = servers;
   await mkdir(dirname(filePath), { recursive: true });
@@ -107,17 +120,21 @@ export function register(program: Command, rt: CliRuntime): void {
         }
 
         let configured = 0;
+        const failures: string[] = [];
         for (const target of targets) {
           const ok = await mergeConfig(target.path, apiKey);
           if (ok) {
             configured++;
             rt.writeErr(`Configured seclai MCP for ${target.name} → ${target.path}\n`);
           } else {
+            failures.push(target.name);
             rt.writeErr(`Failed to parse existing config at ${target.path}, skipping.\n`);
           }
         }
 
-        printJson(rt, { ok: true, targets: targets.map((t) => t.name), filesWritten: configured });
+        const allOk = failures.length === 0;
+        printJson(rt, { ok: allOk, targets: targets.map((t) => t.name), filesWritten: configured, ...(failures.length > 0 ? { failures } : {}) });
+        if (!allOk) rt.setExitCode(1);
       });
     });
 

@@ -22,22 +22,22 @@ npx @seclai/cli agents list
 If you are using an AI coding agent like Claude Code, you can also install the skill individually with:
 
 ```sh
-seclai setup skills
+seclai skills install
 ```
 
-This installs skills globally across all detected coding editors by default. Use --agent <agent> to scope it to one editor.
+This installs skills into all detected coding editors by default. Use `--tool <tool>` to scope it to one editor.
 
 To install the Seclai MCP server into your editors (Cursor, Claude Code, VS Code, etc.):
 
 ```sh
-seclai mcp configure
+seclai mcp configure --key "$SECLAI_API_KEY"
 ```
 
 Or directly via npx:
 
 ```sh
 npx skills add seclai/seclai-cli --full-depth --global --all
-npx add-mcp npx add-mcp https://api.seclai.com/mcp --header "X-API-Key: $SECLAI_API_KEY" --name Seclai
+npx add-mcp https://api.seclai.com/mcp --header "X-API-Key: $SECLAI_API_KEY" --name Seclai
 ```
 
 ## Documentation
