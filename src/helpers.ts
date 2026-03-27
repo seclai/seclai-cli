@@ -10,10 +10,13 @@ import {
   SeclaiConfigurationError,
 } from "@seclai/sdk";
 
-/** Global CLI options parsed from top-level flags (--api-key, --compact). */
+/** Global CLI options parsed from top-level flags (--api-key, --compact, --profile, --account-id, --config-dir). */
 export type GlobalOptions = {
   apiKey?: string;
   compact?: boolean;
+  profile?: string;
+  accountId?: string;
+  configDir?: string;
 };
 
 /** Runtime abstraction that decouples the CLI from Node globals, enabling testability. */
@@ -108,8 +111,18 @@ export function getCliVersion(): string {
 
 /** Create a {@link Seclai} SDK client from global CLI options and environment variables. */
 export function createClient(opts: GlobalOptions): Seclai {
-  const seclaiOpts: { apiKey?: string; baseUrl?: string } = {};
+  const seclaiOpts: {
+    apiKey?: string;
+    baseUrl?: string;
+    profile?: string;
+    configDir?: string;
+    accountId?: string;
+  } = {};
+
   if (opts.apiKey !== undefined) seclaiOpts.apiKey = opts.apiKey;
+  if (opts.profile !== undefined) seclaiOpts.profile = opts.profile;
+  if (opts.configDir !== undefined) seclaiOpts.configDir = opts.configDir;
+  if (opts.accountId !== undefined) seclaiOpts.accountId = opts.accountId;
 
   const envUrl = process.env.SECLAI_API_URL;
   seclaiOpts.baseUrl = envUrl && envUrl.length > 0 ? envUrl : "https://api.seclai.com";
