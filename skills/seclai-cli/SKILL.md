@@ -36,13 +36,20 @@ seclai agents runs list <agentId>
 
 ## Authentication
 
-Set `SECLAI_API_KEY` env var or pass `--api-key <key>`.
+Two modes:
+
+1. **API key** — set `SECLAI_API_KEY` env var or pass `--api-key <key>`.
+2. **SSO** — run `seclai auth login` for browser-based OAuth2/PKCE. Tokens are cached locally and auto-refreshed.
+
 Override the API URL with `SECLAI_API_URL` (default: https://api.seclai.com).
 
 ## Global options
 
 ```bash
 --api-key <key>    # Seclai API key (or set SECLAI_API_KEY)
+--profile <name>   # SSO profile name (or set SECLAI_PROFILE, default: 'default')
+--account-id <id>  # Account ID for multi-org targeting (X-Account-Id header)
+--config-dir <path> # Config directory (or set SECLAI_CONFIG_DIR, default: ~/.seclai)
 --compact          # Output compact single-line JSON
 -V, --version      # Print version
 ```
@@ -297,6 +304,32 @@ seclai alerts prefs list
 seclai alerts prefs update <organizationId> <alertType> --json '{"enabled":true}'
 ```
 
+### SSO authentication
+
+```bash
+# interactive browser login (OAuth2 + PKCE)
+seclai auth login [--port <port>] [--no-browser]
+
+# show current auth status for the active profile
+seclai auth status
+
+# manually refresh the SSO token
+seclai auth refresh
+
+# remove cached SSO tokens
+seclai auth logout
+```
+
+### Configuration
+
+```bash
+# interactive SSO profile setup (prompts for domain, client ID, region, account ID)
+seclai configure sso [--profile-name <name>]
+
+# list all configured profiles
+seclai configure list
+```
+
 ### Governance AI
 
 ```bash
@@ -334,6 +367,15 @@ seclai ai memory-history
 seclai ai accept <conversationId> --json '{"accepted":true}'
 seclai ai decline <conversationId>
 seclai ai memory-accept <conversationId> --json '{"accepted":true}'
+```
+
+### Shell completion
+
+```bash
+# generate shell completion scripts
+seclai completion bash   # eval "$(seclai completion bash)" in ~/.bashrc
+seclai completion zsh    # eval "$(seclai completion zsh)" in ~/.zshrc
+seclai completion fish   # seclai completion fish > ~/.config/fish/completions/seclai.fish
 ```
 
 ### Skills

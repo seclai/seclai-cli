@@ -29,9 +29,11 @@ export function register(program: Command, rt: CliRuntime): void {
     .option("--account-id <id>", "Filter by account ID.")
     .action(async (opts) => {
       await run(rt, async () => {
-        const client = createClient(program.opts<GlobalOptions>());
+        const globalOpts = program.opts<GlobalOptions>();
+        const client = createClient(globalOpts);
         const o: Record<string, unknown> = listOpts(opts);
-        if (opts.accountId) o.accountId = opts.accountId;
+        const acctId = opts.accountId || globalOpts.accountId;
+        if (acctId) o.accountId = acctId;
         printJson(rt, await client.listSources(o));
       });
     });

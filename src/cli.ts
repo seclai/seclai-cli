@@ -25,6 +25,8 @@ import { register as registerAi } from "./commands/ai.js";
 import { register as registerSkills } from "./commands/skills.js";
 import { register as registerMcp } from "./commands/mcp.js";
 import { register as registerCompletion } from "./commands/completion.js";
+import { register as registerAuth } from "./commands/auth.js";
+import { register as registerConfigure } from "./commands/configure.js";
 
 export type { CliRuntime, GlobalOptions };
 
@@ -49,6 +51,18 @@ export function createProgram(rt: CliRuntime = defaultRuntime()): Command {
       "Seclai API key (defaults to SECLAI_API_KEY)."
     )
     .option(
+      "--profile <name>",
+      "SSO profile name (defaults to SECLAI_PROFILE, then 'default')."
+    )
+    .option(
+      "--account-id <id>",
+      "Account ID for multi-org targeting (X-Account-Id header)."
+    )
+    .option(
+      "--config-dir <path>",
+      "Config directory (defaults to SECLAI_CONFIG_DIR, then ~/.seclai)."
+    )
+    .option(
       "--compact",
       "Output compact JSON (no indentation)."
     );
@@ -56,15 +70,18 @@ export function createProgram(rt: CliRuntime = defaultRuntime()): Command {
   program.addHelpText(
     "after",
     `\nEnvironment:\n` +
-      `  SECLAI_API_KEY   Default API key (alternative to --api-key)\n` +
-      `  SECLAI_API_URL   Override API base URL (default: https://api.seclai.com)\n\n` +
+      `  SECLAI_API_KEY      Default API key (alternative to --api-key)\n` +
+      `  SECLAI_API_URL      Override API base URL (default: https://api.seclai.com)\n` +
+      `  SECLAI_PROFILE      Default SSO profile (alternative to --profile)\n` +
+      `  SECLAI_CONFIG_DIR   Config directory (alternative to --config-dir)\n\n` +
       `Examples:\n` +
       `  seclai agents list\n` +
       `  seclai agents run <agentId> --json '{"input":"Hello"}'\n` +
       `  seclai agents run <agentId> --json '{"input":"Hi"}' --events\n` +
-      `  seclai sources list\n` +
-      `  seclai kb list\n` +
-      `  seclai search --query "deployment guide"\n` +
+      `  seclai configure sso\n` +
+      `  seclai auth login\n` +
+      `  seclai auth status\n` +
+      `  seclai sources list --profile dev\n` +
       `  npx @seclai/cli agents list\n`
   );
 
@@ -96,6 +113,8 @@ export function createProgram(rt: CliRuntime = defaultRuntime()): Command {
   registerSkills(program, rt);
   registerMcp(program, rt);
   registerCompletion(program, rt);
+  registerAuth(program, rt);
+  registerConfigure(program, rt);
 
   return program;
 }

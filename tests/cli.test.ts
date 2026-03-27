@@ -149,6 +149,16 @@ type SeclaiMock = {
   acceptAiMemoryBankSuggestion: ReturnType<typeof vi.fn>;
 };
 
+const mockSsoFns = vi.hoisted(() => {
+  return {
+    loadSsoProfile: undefined as unknown as ReturnType<typeof vi.fn>,
+    readSsoCache: undefined as unknown as ReturnType<typeof vi.fn>,
+    writeSsoCache: undefined as unknown as ReturnType<typeof vi.fn>,
+    deleteSsoCache: undefined as unknown as ReturnType<typeof vi.fn>,
+    isTokenValid: undefined as unknown as ReturnType<typeof vi.fn>,
+  };
+});
+
 const mockState = vi.hoisted(() => {
   return {
     instances: [] as SeclaiMock[],
@@ -392,6 +402,19 @@ vi.mock("@seclai/sdk", () => {
     SeclaiConfigurationError,
     SeclaiAPIStatusError,
     SeclaiAPIValidationError,
+    loadSsoProfile: mockSsoFns.loadSsoProfile = vi.fn(async () => ({
+      ssoDomain: "auth.seclai.com",
+      ssoClientId: "test-client-id",
+      ssoRegion: "us-west-2",
+      ssoAccountId: undefined,
+    })),
+    readSsoCache: mockSsoFns.readSsoCache = vi.fn(async () => null),
+    writeSsoCache: mockSsoFns.writeSsoCache = vi.fn(async () => undefined),
+    deleteSsoCache: mockSsoFns.deleteSsoCache = vi.fn(async () => undefined),
+    isTokenValid: mockSsoFns.isTokenValid = vi.fn(() => false),
+    DEFAULT_SSO_DOMAIN: "auth.seclai.com",
+    DEFAULT_SSO_CLIENT_ID: "test-client-id",
+    DEFAULT_SSO_REGION: "us-west-2",
   };
 });
 
@@ -1253,5 +1276,130 @@ describe("seclai CLI", () => {
 
     expect(io.exitCode).toBe(1);
     expect(io.stderr).toContain("Unknown shell");
+  });
+
+  // ── auth ────────────────────────────────────────────────────────────────
+
+  test("auth status shows not_authenticated when no cached token", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    mockSsoFns.readSsoCache.mockResolvedValueOnce(null);
+
+    await runCli(["node", "seclai", "auth", "status"], io.rt);
+
+    expect(io.exitCode).toBe(0);
+    const result = JSON.parse(io.stdout);
+    expect(result.status).toBe("not_authenticated");
+    expect(result.profile).toBe("default");
+  });
+
+  test("auth status shows authenticated when valid cached token", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    mockSsoFns.readSsoCache.mockResolvedValueOnce({
+      accessToken: "tok",
+      expiresAt: new Date(Date.now() + 3600_000).toISOString(),
+      clientId: "cid",
+      region: "us-west-2",
+      cognitoDomain: "auth.seclai.com",
+    });
+    mockSsoFns.isTokenValid.mockReturnValueOnce(true);
+
+    await runCli(["node", "seclai", "auth", "status"], io.rt);
+
+    expect(io.exitCode).toBe(0);
+    const result = JSON.parse(io.stdout);
+    expect(result.status).toBe("authenticated");
+    expect(result.hasRefreshToken).toBe(false);
+  });
+
+  test("auth status shows expired when token is expired", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    mockSsoFns.readSsoCache.mockResolvedValueOnce({
+      accessToken: "tok",
+      expiresAt: new Date(Date.now() - 1000).toISOString(),
+      clientId: "cid",
+      region: "us-west-2",
+      cognitoDomain: "auth.seclai.com",
+    });
+    mockSsoFns.isTokenValid.mockReturnValueOnce(false);
+
+    await runCli(["node", "seclai", "auth", "status"], io.rt);
+
+    expect(io.exitCode).toBe(0);
+    const result = JSON.parse(io.stdout);
+    expect(result.status).toBe("expired");
+  });
+
+  test("auth logout deletes cached tokens", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await runCli(["node", "seclai", "auth", "logout"], io.rt);
+
+    expect(io.exitCode).toBe(0);
+    const result = JSON.parse(io.stdout);
+    expect(result.status).toBe("logged_out");
+    expect(result.profile).toBe("default");
+    expect(mockSsoFns.deleteSsoCache).toHaveBeenCalled();
+  });
+
+  test("auth login rejects invalid port", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await runCli(["node", "seclai", "auth", "login", "--port", "abc", "--no-browser"], io.rt);
+
+    expect(io.exitCode).toBe(1);
+    expect(io.stderr).toContain("Invalid port");
+  });
+
+  test("auth login rejects out-of-range port", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await runCli(["node", "seclai", "auth", "login", "--port", "99999", "--no-browser"], io.rt);
+
+    expect(io.exitCode).toBe(1);
+    expect(io.stderr).toContain("Invalid port");
+  });
+
+  // ── configure ───────────────────────────────────────────────────────────
+
+  test("configure list outputs empty profiles when no config file", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await runCli(["node", "seclai", "configure", "list", "--config-dir", "/tmp/nonexistent-seclai-dir"], io.rt);
+
+    expect(io.exitCode).toBe(0);
+    const result = JSON.parse(io.stdout);
+    expect(result.profiles).toEqual([]);
+    expect(result.configFile).toContain("config");
+  });
+
+  test("configure list parses profiles from config file", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), "seclai-test-"));
+    try {
+      await writeFile(
+        path.join(tmpDir, "config"),
+        "[default]\nsso_domain = auth.seclai.com\n\n[profile staging]\nsso_domain = staging.seclai.com\n"
+      );
+
+      await runCli(["node", "seclai", "configure", "list", "--config-dir", tmpDir], io.rt);
+
+      expect(io.exitCode).toBe(0);
+      const result = JSON.parse(io.stdout);
+      expect(result.profiles).toEqual(["default", "staging"]);
+    } finally {
+      await rm(tmpDir, { recursive: true });
+    }
   });
 });

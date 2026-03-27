@@ -46,6 +46,10 @@ Command reference (latest): https://seclai.github.io/seclai-cli/latest/
 
 ## Authentication
 
+The CLI supports two authentication methods:
+
+### API Key
+
 Set the `SECLAI_API_KEY` environment variable, or pass `--api-key` per-command:
 
 ```bash
@@ -55,18 +59,61 @@ export SECLAI_API_KEY="sk-..."
 seclai --api-key "$SECLAI_API_KEY" agents list
 ```
 
+### SSO (OAuth2 Bearer Token)
+
+SSO works out of the box with built-in production defaults — no configuration needed:
+
+```bash
+# Authenticate via browser (Authorization Code + PKCE)
+seclai auth login
+
+# Check authentication status
+seclai auth status
+
+# Refresh tokens manually
+seclai auth refresh
+
+# Log out (clears cached tokens)
+seclai auth logout
+```
+
+For custom SSO settings (e.g. staging environment), use `seclai configure sso`
+or set environment variables:
+
+| Variable | Description | Default |
+|---|---|---|
+| `SECLAI_SSO_DOMAIN` | Cognito domain | `auth.seclai.com` |
+| `SECLAI_SSO_CLIENT_ID` | Cognito app client ID | `4bgf8v9qmc5puivbaqon9n5lmr` |
+| `SECLAI_SSO_REGION` | AWS region | `us-west-2` |
+
+Use a named profile with `--profile`:
+
+```bash
+seclai --profile staging agents list
+```
+
+Tokens are cached in `~/.seclai/sso/cache/` and auto-refreshed when expired.
+
 ## Environment Variables
 
 | Variable | Description |
 |---|---|
 | `SECLAI_API_KEY` | Default API key (alternative to `--api-key`) |
 | `SECLAI_API_URL` | Override API base URL (default: `https://api.seclai.com`) |
+| `SECLAI_PROFILE` | Default SSO profile name (default: `default`) |
+| `SECLAI_CONFIG_DIR` | Config directory path (default: `~/.seclai`) |
+| `SECLAI_SSO_DOMAIN` | Override SSO domain (default: `auth.seclai.com`) |
+| `SECLAI_SSO_CLIENT_ID` | Override SSO client ID (default: `4bgf8v9qmc5puivbaqon9n5lmr`) |
+| `SECLAI_SSO_REGION` | Override SSO region (default: `us-west-2`) |
 
 ## Global Options
 
 | Flag | Description |
 |---|---|
 | `--api-key <key>` | Seclai API key |
+| `--profile <name>` | SSO profile name |
+| `--account-id <id>` | Account ID (`X-Account-Id` header) |
+| `--config-dir <path>` | Config directory path |
 | `--compact` | Output compact (single-line) JSON |
 | `-V, --version` | Print version |
 
