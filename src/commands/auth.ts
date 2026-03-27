@@ -140,15 +140,16 @@ async function exchangeCodeForTokens(
 
   const expiresAt = new Date(Date.now() + data.expires_in * 1000).toISOString();
 
-  return {
+  const entry: SsoCacheEntry = {
     accessToken: data.access_token,
-    refreshToken: data.refresh_token,
-    idToken: data.id_token,
     expiresAt,
     clientId: profile.ssoClientId,
     region: profile.ssoRegion,
     cognitoDomain: profile.ssoDomain,
   };
+  if (data.refresh_token) entry.refreshToken = data.refresh_token;
+  if (data.id_token) entry.idToken = data.id_token;
+  return entry;
 }
 
 const DEFAULT_CALLBACK_PORT = 9876;
@@ -441,12 +442,12 @@ export function register(program: Command, rt: CliRuntime): void {
         const refreshed: SsoCacheEntry = {
           accessToken: data.access_token,
           refreshToken: data.refresh_token ?? cached.refreshToken,
-          idToken: data.id_token,
           expiresAt: new Date(Date.now() + data.expires_in * 1000).toISOString(),
           clientId: profile.ssoClientId,
           region: profile.ssoRegion,
           cognitoDomain: profile.ssoDomain,
         };
+        if (data.id_token) refreshed.idToken = data.id_token;
 
         await writeSsoCache(configDir, profile, refreshed);
 
