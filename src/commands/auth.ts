@@ -92,9 +92,6 @@ function waitForAuthCode(port: number, state: string): Promise<{ code: string; c
 }
 
 /**
- * Exchange an authorization code for tokens via the Cognito token endpoint.
- */
-/**
  * Exchange an authorization code for SSO tokens via the Cognito token endpoint.
  *
  * @param profile - SSO profile with Cognito domain and client ID.
@@ -245,8 +242,12 @@ function resolveProfile(opts: GlobalOptions): { profileName: string; configDir: 
   const profileName = opts.profile || process.env.SECLAI_PROFILE || "default";
   let configDir = opts.configDir || process.env.SECLAI_CONFIG_DIR;
   if (!configDir) {
-    const home = process.env.HOME ?? process.env.USERPROFILE ?? "";
-    configDir = `${home}/.seclai`;
+    const home = process.env.HOME ?? process.env.USERPROFILE;
+    if (home && home.trim() !== "") {
+      configDir = join(home, ".seclai");
+    } else {
+      configDir = join(process.cwd(), ".seclai");
+    }
   }
   return { profileName, configDir };
 }
@@ -287,6 +288,9 @@ export function register(program: Command, rt: CliRuntime): void {
         const { profile, profileName, configDir } = await loadProfile(rt, globalOpts);
 
         const port = parseInt(opts.port ?? String(DEFAULT_CALLBACK_PORT), 10);
+        if (!Number.isInteger(port) || port < 1 || port > 65535) {
+          throw new Error(`Invalid port: ${opts.port}. Must be an integer between 1 and 65535.`);
+        }
         const redirectUri = `http://localhost:${port}/callback`;
 
         const codeVerifier = generateCodeVerifier();
@@ -325,11 +329,14 @@ export function register(program: Command, rt: CliRuntime): void {
 
         const { code, cleanup } = await codePromise;
 
-        rt.writeErr("Exchanging code for tokens...\n");
-        const tokens = await exchangeCodeForTokens(profile, code, codeVerifier, redirectUri);
-
-        await writeSsoCache(configDir, profile, tokens);
-        cleanup();
+        let tokens: Awaited<ReturnType<typeof exchangeCodeForTokens>>;
+        try {
+          rt.writeErr("Exchanging code for tokens...\n");
+          tokens = await exchangeCodeForTokens(profile, code, codeVerifier, redirectUri);
+          await writeSsoCache(configDir, profile, tokens);
+        } finally {
+          cleanup();
+        }
 
         // Resolve the account ID from /me and persist it in the config
         let accountId = profile.ssoAccountId;
@@ -407,7 +414,7 @@ export function register(program: Command, rt: CliRuntime): void {
     .action(async () => {
       await run(rt, async () => {
         const globalOpts = program.opts<GlobalOptions>();
-        const { profile, configDir } = await loadProfile(rt, globalOpts);
+        const { profile, profileName, configDir } = await loadProfile(rt, globalOpts);
 
         const cached = await readSsoCache(configDir, profile);
         if (!cached?.refreshToken) {
@@ -454,7 +461,7 @@ export function register(program: Command, rt: CliRuntime): void {
         rt.writeErr("Token refreshed successfully.\n");
         printJson(rt, {
           status: "refreshed",
-          profile: globalOpts.profile || "default",
+          profile: profileName,
           expiresAt: refreshed.expiresAt,
         });
       });
