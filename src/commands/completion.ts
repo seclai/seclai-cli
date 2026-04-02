@@ -19,7 +19,7 @@ _seclai_completions() {
         runs)   COMPREPLY=( $(compgen -W "list get delete cancel search eval-results" -- "$cur") ); return ;;
         def)    COMPREPLY=( $(compgen -W "get update" -- "$cur") ); return ;;
         ai)     COMPREPLY=( $(compgen -W "gen-steps step-config history mark" -- "$cur") ); return ;;
-        *)      COMPREPLY=( $(compgen -W "list create get update delete run runs def upload-input input-status ai" -- "$cur") ); return ;;
+        *)      COMPREPLY=( $(compgen -W "list create get update delete run runs def export upload-input input-status ai" -- "$cur") ); return ;;
       esac ;;
     sources|source)
       case "\${COMP_WORDS[2]}" in
@@ -112,7 +112,7 @@ _seclai() {
     args)
       case \${words[1]} in
         agents)
-          local -a sub=(list create get update delete run runs def upload-input input-status ai)
+          local -a sub=(list create get update delete run runs def export upload-input input-status ai)
           _describe 'subcommand' sub ;;
         sources|source)
           local -a sub=(list create get update delete upload upload-text exports migration)
@@ -183,7 +183,7 @@ complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "mcp" -d "MCP
 complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "completion" -d "Shell completions"
 
 # agents
-complete -c seclai -n "__fish_seen_subcommand_from agents; and not __fish_seen_subcommand_from list create get update delete run runs def upload-input input-status ai" -f -a "list create get update delete run runs def upload-input input-status ai"
+complete -c seclai -n "__fish_seen_subcommand_from agents; and not __fish_seen_subcommand_from list create get update delete run runs def export upload-input input-status ai" -f -a "list create get update delete run runs def export upload-input input-status ai"
 
 # sources
 complete -c seclai -n "__fish_seen_subcommand_from sources; and not __fish_seen_subcommand_from list create get update delete upload upload-text exports migration" -f -a "list create get update delete upload upload-text exports migration"
