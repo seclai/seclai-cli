@@ -10,11 +10,11 @@ import {
   listOpts,
 } from "../helpers.js";
 
-/** Register `agents` commands: CRUD, run (basic/stream/events/poll), runs, definition, input uploads, AI assistant. */
+/** Register `agents` commands: CRUD, run (basic/stream/events/poll), runs, definition, export, input uploads, AI assistant. */
 export function register(program: Command, rt: CliRuntime): void {
   const agents = program
     .command("agents")
-    .description("Manage agents, runs, definitions, and AI assistance.");
+    .description("Manage agents, runs, definitions, export, and AI assistance.");
 
   // --- CRUD ---
 
@@ -250,6 +250,20 @@ export function register(program: Command, rt: CliRuntime): void {
         const client = createClient(program.opts<GlobalOptions>());
         const body = await readJsonInput(rt, { json: opts.json, jsonFile: opts.jsonFile });
         printJson(rt, await client.updateAgentDefinition(agentId, body as any));
+      });
+    });
+
+  // --- Export ---
+
+  agents
+    .command("export")
+    .description("Export an agent definition as a portable JSON snapshot.")
+    .argument("<agentId>", "Agent ID.")
+    .option("--no-download", "Omit Content-Disposition header (inline response).")
+    .action(async (agentId: string, opts) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        printJson(rt, await client.exportAgent(agentId, opts.download as boolean));
       });
     });
 

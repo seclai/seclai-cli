@@ -278,6 +278,7 @@ vi.mock("@seclai/sdk", () => {
     searchAgentRuns = vi.fn(async () => ({ ok: true }));
     getAgentDefinition = vi.fn(async () => ({ ok: true }));
     updateAgentDefinition = vi.fn(async () => ({ ok: true }));
+    exportAgent = vi.fn(async () => ({ export_version: "2", agent: {} }));
     uploadAgentInput = vi.fn(async () => ({ ok: true }));
     getAgentInputUploadStatus = vi.fn(async () => ({ ok: true }));
     generateAgentSteps = vi.fn(async () => ({ ok: true }));
@@ -846,6 +847,28 @@ describe("seclai CLI", () => {
     expect(io.exitCode).toBe(0);
     const client = mockState.instances[0];
     expect(client.getAgentDefinition).toHaveBeenCalledWith("agent_1");
+  });
+
+  test("agents export calls exportAgent with download=true by default", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await runCli(["node", "seclai", "--api-key", "k", "agents", "export", "agent_1"], io.rt);
+
+    expect(io.exitCode).toBe(0);
+    const client = mockState.instances[0];
+    expect(client.exportAgent).toHaveBeenCalledWith("agent_1", true);
+  });
+
+  test("agents export --no-download passes download=false", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await runCli(["node", "seclai", "--api-key", "k", "agents", "export", "agent_1", "--no-download"], io.rt);
+
+    expect(io.exitCode).toBe(0);
+    const client = mockState.instances[0];
+    expect(client.exportAgent).toHaveBeenCalledWith("agent_1", false);
   });
 
   test("agents run --events streams SSE events as NDJSON", async () => {

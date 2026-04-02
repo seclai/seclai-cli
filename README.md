@@ -171,6 +171,13 @@ seclai agents def get <agentId>
 seclai agents def update <agentId> --json '{"steps":[...]}'
 ```
 
+#### Agent Export
+
+```bash
+seclai agents export <agentId>
+seclai agents export <agentId> --no-download
+```
+
 #### Agent Input Upload
 
 ```bash
