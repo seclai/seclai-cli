@@ -15,11 +15,11 @@ export function register(program: Command, rt: CliRuntime): void {
     .action(async (opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
-        printJson(rt, await client.listModels({
-          provider: opts.provider,
-          supportsToolUse: opts.supportsToolUse,
-          supportsThinking: opts.supportsThinking,
-        }));
+        const o: Parameters<typeof client.listModels>[0] = {};
+        if (opts.provider !== undefined) o.provider = opts.provider;
+        if (opts.supportsToolUse !== undefined) o.supportsToolUse = opts.supportsToolUse;
+        if (opts.supportsThinking !== undefined) o.supportsThinking = opts.supportsThinking;
+        printJson(rt, await client.listModels(o));
       });
     });
 
@@ -107,13 +107,13 @@ export function register(program: Command, rt: CliRuntime): void {
     .action(async (opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
-        printJson(rt, await client.listExperiments({
-          days: opts.days,
-          startDate: opts.startDate,
-          endDate: opts.endDate,
-          limit: opts.limit,
-          offset: opts.offset,
-        }));
+        const o: Parameters<typeof client.listExperiments>[0] = {};
+        if (opts.days !== undefined) o.days = opts.days;
+        if (opts.startDate !== undefined) o.startDate = opts.startDate;
+        if (opts.endDate !== undefined) o.endDate = opts.endDate;
+        if (opts.limit !== undefined) o.limit = opts.limit;
+        if (opts.offset !== undefined) o.offset = opts.offset;
+        printJson(rt, await client.listExperiments(o));
       });
     });
 
