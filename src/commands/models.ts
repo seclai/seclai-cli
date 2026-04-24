@@ -1,10 +1,38 @@
 import { Command } from "commander";
 import type { CliRuntime, GlobalOptions } from "../helpers.js";
-import { run, createClient, printJson, listOpts } from "../helpers.js";
+import { run, createClient, printJson, listOpts, withJsonInputOptions, readJsonInput } from "../helpers.js";
 
-/** Register `models` commands: model alerts (list, mark-read, unread-count), recommendations. */
+/** Register `models` commands: list, get, alerts, recommendations, playground experiments. */
 export function register(program: Command, rt: CliRuntime): void {
-  const models = program.command("models").description("Model alerts and recommendations.");
+  const models = program.command("models").description("Models, model alerts, recommendations, and playground experiments.");
+
+  models
+    .command("list")
+    .description("List models grouped by provider.")
+    .option("--provider <provider>", "Filter by provider name.")
+    .option("--supports-tool-use", "Only models that support tool use.")
+    .option("--supports-thinking", "Only models that support thinking.")
+    .action(async (opts) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        printJson(rt, await client.listModels({
+          provider: opts.provider,
+          supportsToolUse: opts.supportsToolUse,
+          supportsThinking: opts.supportsThinking,
+        }));
+      });
+    });
+
+  models
+    .command("get")
+    .description("Get full details for a specific model.")
+    .argument("<modelId>", "Model ID.")
+    .action(async (modelId: string) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        printJson(rt, await client.getModel(modelId));
+      });
+    });
 
   const alerts = models.command("alerts").description("Model alerts.");
 
@@ -61,6 +89,64 @@ export function register(program: Command, rt: CliRuntime): void {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
         printJson(rt, await client.getModelRecommendations(modelId));
+      });
+    });
+
+  // ── Playground Experiments ──────────────────────────────────────────────
+
+  const experiments = models.command("experiments").description("Model playground experiments.");
+
+  experiments
+    .command("list")
+    .description("List model playground experiments.")
+    .option("--days <n>", "Filter to last N days.", (v: string) => Number(v))
+    .option("--start-date <date>", "Start date (ISO 8601).")
+    .option("--end-date <date>", "End date (ISO 8601).")
+    .option("--limit <n>", "Page size.", (v: string) => Number(v))
+    .option("--offset <n>", "Offset.", (v: string) => Number(v))
+    .action(async (opts) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        printJson(rt, await client.listExperiments({
+          days: opts.days,
+          startDate: opts.startDate,
+          endDate: opts.endDate,
+          limit: opts.limit,
+          offset: opts.offset,
+        }));
+      });
+    });
+
+  withJsonInputOptions(experiments
+    .command("create")
+    .description("Create a model playground experiment."))
+    .action(async (opts) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        const body = await readJsonInput(rt, { json: opts.json, jsonFile: opts.jsonFile });
+        printJson(rt, await client.createExperiment(body as Parameters<typeof client.createExperiment>[0]));
+      });
+    });
+
+  experiments
+    .command("get")
+    .description("Get a model playground experiment by ID.")
+    .argument("<experimentId>", "Experiment ID.")
+    .action(async (experimentId: string) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        printJson(rt, await client.getExperiment(experimentId));
+      });
+    });
+
+  experiments
+    .command("cancel")
+    .description("Cancel a running model playground experiment.")
+    .argument("<experimentId>", "Experiment ID.")
+    .action(async (experimentId: string) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        printJson(rt, await client.cancelExperiment(experimentId));
       });
     });
 }

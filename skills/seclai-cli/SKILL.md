@@ -349,6 +349,22 @@ seclai models alerts unread-count
 seclai models recommendations <modelId>
 ```
 
+### Models
+
+```bash
+seclai models list [--provider <name>] [--supports-tool-use] [--supports-thinking]
+seclai models get <modelId>
+```
+
+### Model playground experiments
+
+```bash
+seclai models experiments list [--days N] [--start-date <date>] [--end-date <date>] [--limit N] [--offset N]
+seclai models experiments create --json '{"model_ids":["gpt-4o"],"prompt":"Compare responses"}'
+seclai models experiments get <experimentId>
+seclai models experiments cancel <experimentId>
+```
+
 ### Search
 
 ```bash

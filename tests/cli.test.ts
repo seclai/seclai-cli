@@ -130,11 +130,17 @@ type SeclaiMock = {
   listOrganizationAlertPreferences: ReturnType<typeof vi.fn>;
   updateOrganizationAlertPreference: ReturnType<typeof vi.fn>;
   // models
+  listModels: ReturnType<typeof vi.fn>;
+  getModel: ReturnType<typeof vi.fn>;
   listModelAlerts: ReturnType<typeof vi.fn>;
   markModelAlertRead: ReturnType<typeof vi.fn>;
   markAllModelAlertsRead: ReturnType<typeof vi.fn>;
   getUnreadModelAlertCount: ReturnType<typeof vi.fn>;
   getModelRecommendations: ReturnType<typeof vi.fn>;
+  listExperiments: ReturnType<typeof vi.fn>;
+  createExperiment: ReturnType<typeof vi.fn>;
+  getExperiment: ReturnType<typeof vi.fn>;
+  cancelExperiment: ReturnType<typeof vi.fn>;
   // search
   search: ReturnType<typeof vi.fn>;
   // ai
@@ -376,11 +382,17 @@ vi.mock("@seclai/sdk", () => {
     updateOrganizationAlertPreference = vi.fn(async () => ({ ok: true }));
 
     // models
+    listModels = vi.fn(async () => ({ ok: true }));
+    getModel = vi.fn(async () => ({ ok: true }));
     listModelAlerts = vi.fn(async () => ({ ok: true }));
     markModelAlertRead = vi.fn(async () => undefined);
     markAllModelAlertsRead = vi.fn(async () => undefined);
     getUnreadModelAlertCount = vi.fn(async () => ({ ok: true }));
     getModelRecommendations = vi.fn(async () => ({ ok: true }));
+    listExperiments = vi.fn(async () => ({ ok: true }));
+    createExperiment = vi.fn(async () => ({ ok: true }));
+    getExperiment = vi.fn(async () => ({ ok: true }));
+    cancelExperiment = vi.fn(async () => ({ ok: true }));
 
     // search
     search = vi.fn(async () => ({ ok: true }));
@@ -1053,6 +1065,72 @@ describe("seclai CLI", () => {
     expect(io.exitCode).toBe(0);
     const client = mockState.instances[0];
     expect(client.getModelRecommendations).toHaveBeenCalledWith("model_1");
+  });
+
+  test("models list calls listModels", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await runCli(["node", "seclai", "--api-key", "k", "models", "list", "--provider", "openai"], io.rt);
+
+    expect(io.exitCode).toBe(0);
+    const client = mockState.instances[0];
+    expect(client.listModels).toHaveBeenCalledWith({ provider: "openai" });
+  });
+
+  test("models get calls getModel", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await runCli(["node", "seclai", "--api-key", "k", "models", "get", "gpt-4o"], io.rt);
+
+    expect(io.exitCode).toBe(0);
+    const client = mockState.instances[0];
+    expect(client.getModel).toHaveBeenCalledWith("gpt-4o");
+  });
+
+  test("models experiments list calls listExperiments", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await runCli(["node", "seclai", "--api-key", "k", "models", "experiments", "list", "--days", "7"], io.rt);
+
+    expect(io.exitCode).toBe(0);
+    const client = mockState.instances[0];
+    expect(client.listExperiments).toHaveBeenCalledWith({ days: 7 });
+  });
+
+  test("models experiments create calls createExperiment", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await runCli(["node", "seclai", "--api-key", "k", "models", "experiments", "create", "--json", '{"model_ids":["gpt-4o"],"prompt":"Hello"}'], io.rt);
+
+    expect(io.exitCode).toBe(0);
+    const client = mockState.instances[0];
+    expect(client.createExperiment).toHaveBeenCalledWith({ model_ids: ["gpt-4o"], prompt: "Hello" });
+  });
+
+  test("models experiments get calls getExperiment", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await runCli(["node", "seclai", "--api-key", "k", "models", "experiments", "get", "exp_1"], io.rt);
+
+    expect(io.exitCode).toBe(0);
+    const client = mockState.instances[0];
+    expect(client.getExperiment).toHaveBeenCalledWith("exp_1");
+  });
+
+  test("models experiments cancel calls cancelExperiment", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await runCli(["node", "seclai", "--api-key", "k", "models", "experiments", "cancel", "exp_1"], io.rt);
+
+    expect(io.exitCode).toBe(0);
+    const client = mockState.instances[0];
+    expect(client.cancelExperiment).toHaveBeenCalledWith("exp_1");
   });
 
   test("search calls search with query", async () => {
