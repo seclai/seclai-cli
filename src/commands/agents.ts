@@ -253,7 +253,7 @@ export function register(program: Command, rt: CliRuntime): void {
       });
     });
 
-  // --- Export ---
+  // --- Export / Import ---
 
   agents
     .command("export")
@@ -264,6 +264,24 @@ export function register(program: Command, rt: CliRuntime): void {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
         printJson(rt, await client.exportAgent(agentId, opts.download as boolean));
+      });
+    });
+
+  agents
+    .command("preview-import")
+    .description(
+      "Validate an agent_definition payload without creating any agent. " +
+        "Reports step/schedule/alert/criteria/policy counts and any unresolved_refs " +
+        "(workflow refs to KBs, memory banks, source connections, or sub-agents " +
+        "that don't exist in this account).",
+    )
+    .option("--json <json>", "Inline JSON body ({ agent_definition: ... }). Use '-' for stdin.")
+    .option("--json-file <path>", "JSON file path. Use '-' for stdin.")
+    .action(async (opts) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        const body = await readJsonInput(rt, { json: opts.json, jsonFile: opts.jsonFile });
+        printJson(rt, await client.previewImportAgent(body as any));
       });
     });
 

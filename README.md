@@ -171,11 +171,20 @@ seclai agents def get <agentId>
 seclai agents def update <agentId> --json '{"steps":[...]}'
 ```
 
-#### Agent Export
+#### Agent Export / Import
 
 ```bash
 seclai agents export <agentId>
 seclai agents export <agentId> --no-download
+
+# Validate an agent_definition payload without creating an agent.
+# Reports counts and any unresolved_refs you'll need to map with entity_remap
+# when calling `agents create` or `agents update`.
+# The body shape is `{ "agent_definition": <export payload> }`.
+seclai agents preview-import --json-file ./preview-body.json
+seclai agents export <agentId> \
+  | jq '{agent_definition: .}' \
+  | seclai agents preview-import --json-file -
 ```
 
 #### Agent Input Upload

@@ -117,6 +117,26 @@ seclai agents def get <agentId>
 seclai agents def update <agentId> --json '{"steps":[{"step_type":"llm","config":{...}}]}'
 ```
 
+### Agent export / import
+
+```bash
+# Export an agent as a portable JSON snapshot.
+seclai agents export <agentId> [--no-download]
+
+# Validate an agent_definition payload before importing — no DB writes.
+# Reports counts and any unresolved_refs (KBs, memory banks, source connections,
+# or sub-agents that don't exist in this account). The body shape is
+# `{ "agent_definition": <export payload> }`.
+seclai agents export <agentId> \
+  | jq '{agent_definition: .}' \
+  | seclai agents preview-import --json-file -
+
+# Import via `agents create` (or `agents update`) with `agent_definition` set
+# to the export payload and `entity_remap` mapping unresolved source UUIDs to
+# target UUIDs from preview-import's `unresolved_refs[*].alternatives`.
+seclai agents create --json '{"name":"Imported","trigger_type":"dynamic_input","agent_definition":{...},"entity_remap":{}}'
+```
+
 ### Agent input uploads
 
 ```bash
