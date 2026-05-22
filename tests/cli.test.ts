@@ -285,6 +285,7 @@ vi.mock("@seclai/sdk", () => {
     getAgentDefinition = vi.fn(async () => ({ ok: true }));
     updateAgentDefinition = vi.fn(async () => ({ ok: true }));
     exportAgent = vi.fn(async () => ({ export_version: "2", agent: {} }));
+    previewImportAgent = vi.fn(async () => ({ ok: true, agent_name: "n", step_count: 0 }));
     uploadAgentInput = vi.fn(async () => ({ ok: true }));
     getAgentInputUploadStatus = vi.fn(async () => ({ ok: true }));
     generateAgentSteps = vi.fn(async () => ({ ok: true }));
@@ -881,6 +882,21 @@ describe("seclai CLI", () => {
     expect(io.exitCode).toBe(0);
     const client = mockState.instances[0];
     expect(client.exportAgent).toHaveBeenCalledWith("agent_1", false);
+  });
+
+  test("agents preview-import sends body to previewImportAgent", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+    const body = { agent_definition: { agent: { name: "n" } } };
+
+    await runCli(
+      ["node", "seclai", "--api-key", "k", "agents", "preview-import", "--json", JSON.stringify(body)],
+      io.rt,
+    );
+
+    expect(io.exitCode).toBe(0);
+    const client = mockState.instances[0];
+    expect(client.previewImportAgent).toHaveBeenCalledWith(body);
   });
 
   test("agents run --events streams SSE events as NDJSON", async () => {
