@@ -224,6 +224,49 @@ export function register(program: Command, rt: CliRuntime): void {
       });
     });
 
+  runs
+    .command("download-attachment")
+    .description(
+      "Download a file attachment emitted by a step in an agent run. " +
+        "The attachmentId is the URL-safe-base64 storage_key from run output manifests / webhooks.",
+    )
+    .argument("<runId>", "Run ID.")
+    .argument("<attachmentId>", "Attachment ID (storage_key).")
+    .option("--download-name <name>", "Filename hint for the download disposition.")
+    .option("--output <path>", "Write the attachment bytes to this file. If omitted, raw bytes are written to stdout.")
+    .action(async (runId: string, attachmentId: string, opts) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        const res = await client.downloadAgentRunAttachment(
+          runId,
+          attachmentId,
+          opts.downloadName ? { downloadName: opts.downloadName } : {},
+        );
+        if (opts.output) {
+          const { createWriteStream } = await import("node:fs");
+          const { stat } = await import("node:fs/promises");
+          if (res.body) {
+            // Stream the body straight to disk so large attachments never get
+            // buffered fully in memory.
+            const { Readable } = await import("node:stream");
+            const { pipeline } = await import("node:stream/promises");
+            await pipeline(
+              Readable.fromWeb(res.body as Parameters<typeof Readable.fromWeb>[0]),
+              createWriteStream(opts.output),
+            );
+          } else {
+            // Fallback for runtimes/mocks without a streamable body.
+            const { writeFile } = await import("node:fs/promises");
+            await writeFile(opts.output, Buffer.from(await res.arrayBuffer()));
+          }
+          const { size } = await stat(opts.output);
+          printJson(rt, { saved: opts.output, bytes: size });
+        } else {
+          rt.writeOutBytes(new Uint8Array(await res.arrayBuffer()));
+        }
+      });
+    });
+
   // --- Definition ---
 
   const def = agents.command("def").description("Agent definition (step workflow).");
@@ -315,6 +358,21 @@ export function register(program: Command, rt: CliRuntime): void {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
         printJson(rt, await client.getAgentInputUploadStatus(agentId, uploadId));
+      });
+    });
+
+  agents
+    .command("attachment-references")
+    .description(
+      "Show which files (if any) an agent's templates expect on a run. " +
+        "Call before staging uploads: requires_uploads reports whether the agent accepts files, " +
+        "and the agent block lists the exact names / indexes / patterns a run-time batch must satisfy.",
+    )
+    .argument("<agentId>", "Agent ID.")
+    .action(async (agentId: string) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        printJson(rt, await client.getAgentAttachmentReferences(agentId));
       });
     });
 

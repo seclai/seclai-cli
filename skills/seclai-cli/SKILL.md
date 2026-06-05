@@ -108,6 +108,8 @@ seclai agents runs delete <runId>
 seclai agents runs cancel <runId>
 seclai agents runs search --json '{"query":"..."}'
 seclai agents runs eval-results <agentId> <runId> [--page N] [--limit N]
+# Download a file attachment emitted by a run step (attachmentId = storage_key from run output manifests / webhooks).
+seclai agents runs download-attachment <runId> <attachmentId> [--download-name <name>] [--output <path>]
 ```
 
 ### Agent definitions
@@ -140,6 +142,10 @@ seclai agents create --json '{"name":"Imported","trigger_type":"dynamic_input","
 ### Agent input uploads
 
 ```bash
+# Discover what files (if any) an agent expects before staging uploads.
+# requires_uploads tells you whether the agent accepts files; the agent block
+# lists the exact names / indexes / patterns a run-time batch must satisfy.
+seclai agents attachment-references <agentId>
 seclai agents upload-input <agentId> --file ./input.pdf [--file-name name] [--mime-type type]
 seclai agents input-status <agentId> <uploadId>
 ```
@@ -383,6 +389,7 @@ seclai models experiments list [--days N] [--start-date <date>] [--end-date <dat
 seclai models experiments create --json '{"model_ids":["gpt-4o"],"prompt":"Compare responses"}'
 seclai models experiments get <experimentId>
 seclai models experiments cancel <experimentId>
+seclai models experiments delete <experimentId>  # soft-delete, preserves audit history
 ```
 
 ### Search

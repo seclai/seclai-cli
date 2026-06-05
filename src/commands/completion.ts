@@ -16,10 +16,10 @@ _seclai_completions() {
   case "\${COMP_WORDS[1]}" in
     agents)
       case "\${COMP_WORDS[2]}" in
-        runs)   COMPREPLY=( $(compgen -W "list get delete cancel search eval-results" -- "$cur") ); return ;;
+        runs)   COMPREPLY=( $(compgen -W "list get delete cancel search eval-results download-attachment" -- "$cur") ); return ;;
         def)    COMPREPLY=( $(compgen -W "get update" -- "$cur") ); return ;;
         ai)     COMPREPLY=( $(compgen -W "gen-steps step-config history mark" -- "$cur") ); return ;;
-        *)      COMPREPLY=( $(compgen -W "list create get update delete run runs def export upload-input input-status ai" -- "$cur") ); return ;;
+        *)      COMPREPLY=( $(compgen -W "list create get update delete run runs def export preview-import upload-input input-status attachment-references ai" -- "$cur") ); return ;;
       esac ;;
     sources|source)
       case "\${COMP_WORDS[2]}" in
@@ -59,8 +59,9 @@ _seclai_completions() {
       esac ;;
     models)
       case "\${COMP_WORDS[2]}" in
-        alerts) COMPREPLY=( $(compgen -W "list mark-read mark-all-read unread-count" -- "$cur") ); return ;;
-        *)      COMPREPLY=( $(compgen -W "alerts recommendations" -- "$cur") ); return ;;
+        alerts)      COMPREPLY=( $(compgen -W "list mark-read mark-all-read unread-count" -- "$cur") ); return ;;
+        experiments) COMPREPLY=( $(compgen -W "list create get cancel delete" -- "$cur") ); return ;;
+        *)           COMPREPLY=( $(compgen -W "alerts recommendations experiments" -- "$cur") ); return ;;
       esac ;;
     ai) COMPREPLY=( $(compgen -W "feedback kb source solution memory memory-history accept decline memory-accept" -- "$cur") ); return ;;
     skills) COMPREPLY=( $(compgen -W "install" -- "$cur") ); return ;;
@@ -112,7 +113,7 @@ _seclai() {
     args)
       case \${words[1]} in
         agents)
-          local -a sub=(list create get update delete run runs def export upload-input input-status ai)
+          local -a sub=(list create get update delete run runs def export preview-import upload-input input-status attachment-references ai)
           _describe 'subcommand' sub ;;
         sources|source)
           local -a sub=(list create get update delete upload upload-text exports migration)
@@ -139,7 +140,7 @@ _seclai() {
           local -a sub=(list get status comment subscribe unsubscribe configs prefs)
           _describe 'subcommand' sub ;;
         models)
-          local -a sub=(alerts recommendations)
+          local -a sub=(alerts recommendations experiments)
           _describe 'subcommand' sub ;;
         ai)
           local -a sub=(feedback kb source solution memory memory-history accept decline memory-accept)
@@ -183,7 +184,7 @@ complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "mcp" -d "MCP
 complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "completion" -d "Shell completions"
 
 # agents
-complete -c seclai -n "__fish_seen_subcommand_from agents; and not __fish_seen_subcommand_from list create get update delete run runs def export upload-input input-status ai" -f -a "list create get update delete run runs def export upload-input input-status ai"
+complete -c seclai -n "__fish_seen_subcommand_from agents; and not __fish_seen_subcommand_from list create get update delete run runs def export preview-import upload-input input-status attachment-references ai" -f -a "list create get update delete run runs def export preview-import upload-input input-status attachment-references ai"
 
 # sources
 complete -c seclai -n "__fish_seen_subcommand_from sources; and not __fish_seen_subcommand_from list create get update delete upload upload-text exports migration" -f -a "list create get update delete upload upload-text exports migration"
@@ -210,7 +211,7 @@ complete -c seclai -n "__fish_seen_subcommand_from governance; and not __fish_se
 complete -c seclai -n "__fish_seen_subcommand_from alerts; and not __fish_seen_subcommand_from list get status comment subscribe unsubscribe configs prefs" -f -a "list get status comment subscribe unsubscribe configs prefs"
 
 # models
-complete -c seclai -n "__fish_seen_subcommand_from models; and not __fish_seen_subcommand_from alerts recommendations" -f -a "alerts recommendations"
+complete -c seclai -n "__fish_seen_subcommand_from models; and not __fish_seen_subcommand_from alerts recommendations experiments" -f -a "alerts recommendations experiments"
 
 # ai
 complete -c seclai -n "__fish_seen_subcommand_from ai; and not __fish_seen_subcommand_from feedback kb source solution memory memory-history accept decline memory-accept" -f -a "feedback kb source solution memory memory-history accept decline memory-accept"

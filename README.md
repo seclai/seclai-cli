@@ -162,6 +162,9 @@ seclai agents runs delete <runId>
 seclai agents runs cancel <runId>
 seclai agents runs search [--page N] [--limit N] [--json '...']
 seclai agents runs eval-results <agentId> <runId> [--page N] [--limit N]
+# Download a file attachment emitted by a run step. attachmentId is the
+# URL-safe-base64 storage_key from run output manifests / webhooks.
+seclai agents runs download-attachment <runId> <attachmentId> [--download-name <name>] [--output <path>]
 ```
 
 #### Agent Definition
@@ -190,6 +193,8 @@ seclai agents export <agentId> \
 #### Agent Input Upload
 
 ```bash
+# Discover which files (if any) the agent expects before staging uploads.
+seclai agents attachment-references <agentId>
 seclai agents upload-input <agentId> --file ./data.csv [--file-name data.csv] [--mime-type text/csv]
 seclai agents input-status <agentId> <uploadId>
 ```
@@ -410,6 +415,16 @@ seclai models alerts unread-count
 
 ```bash
 seclai models recommendations <modelId>
+```
+
+#### Model Playground Experiments
+
+```bash
+seclai models experiments list [--days N] [--start-date <date>] [--end-date <date>] [--limit N] [--offset N]
+seclai models experiments create --json '{"model_ids":["gpt-4o"],"prompt":"Compare responses"}'
+seclai models experiments get <experimentId>
+seclai models experiments cancel <experimentId>
+seclai models experiments delete <experimentId>   # soft-delete, preserves audit history
 ```
 
 ### Search

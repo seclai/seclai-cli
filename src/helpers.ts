@@ -23,6 +23,8 @@ export type GlobalOptions = {
 export type CliRuntime = {
   stdin: NodeJS.ReadableStream;
   writeOut: (text: string) => void;
+  /** Write raw bytes to stdout (e.g. binary downloads). Routed through the runtime for testability. */
+  writeOutBytes: (bytes: Uint8Array) => void;
   writeErr: (text: string) => void;
   setExitCode: (code: number) => void;
   compact?: boolean;
@@ -34,6 +36,9 @@ export function defaultRuntime(): CliRuntime {
     stdin: process.stdin,
     writeOut: (text) => {
       process.stdout.write(text);
+    },
+    writeOutBytes: (bytes) => {
+      process.stdout.write(bytes);
     },
     writeErr: (text) => {
       process.stderr.write(text);
