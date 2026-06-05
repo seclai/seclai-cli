@@ -242,13 +242,27 @@ export function register(program: Command, rt: CliRuntime): void {
           attachmentId,
           opts.downloadName ? { downloadName: opts.downloadName } : {},
         );
-        const bytes = Buffer.from(await res.arrayBuffer());
         if (opts.output) {
-          const { writeFile } = await import("node:fs/promises");
-          await writeFile(opts.output, bytes);
-          printJson(rt, { saved: opts.output, bytes: bytes.length });
+          const { createWriteStream } = await import("node:fs");
+          const { stat } = await import("node:fs/promises");
+          if (res.body) {
+            // Stream the body straight to disk so large attachments never get
+            // buffered fully in memory.
+            const { Readable } = await import("node:stream");
+            const { pipeline } = await import("node:stream/promises");
+            await pipeline(
+              Readable.fromWeb(res.body as Parameters<typeof Readable.fromWeb>[0]),
+              createWriteStream(opts.output),
+            );
+          } else {
+            // Fallback for runtimes/mocks without a streamable body.
+            const { writeFile } = await import("node:fs/promises");
+            await writeFile(opts.output, Buffer.from(await res.arrayBuffer()));
+          }
+          const { size } = await stat(opts.output);
+          printJson(rt, { saved: opts.output, bytes: size });
         } else {
-          process.stdout.write(bytes);
+          rt.writeOutBytes(new Uint8Array(await res.arrayBuffer()));
         }
       });
     });

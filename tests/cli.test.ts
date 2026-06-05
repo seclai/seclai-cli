@@ -292,9 +292,9 @@ vi.mock("@seclai/sdk", () => {
     uploadAgentInput = vi.fn(async () => ({ ok: true }));
     getAgentInputUploadStatus = vi.fn(async () => ({ ok: true }));
     getAgentAttachmentReferences = vi.fn(async () => ({ requires_uploads: false }));
-    downloadAgentRunAttachment = vi.fn(async () => ({
-      arrayBuffer: async () => new TextEncoder().encode("file-bytes").buffer,
-    }));
+    // A real Response exposes both `.body` (a web ReadableStream — exercises the
+    // streaming --output path) and `.arrayBuffer()` (the stdout / fallback path).
+    downloadAgentRunAttachment = vi.fn(async () => new Response("file-bytes"));
     generateAgentSteps = vi.fn(async () => ({ ok: true }));
     generateStepConfig = vi.fn(async () => ({ ok: true }));
     getAgentAiConversationHistory = vi.fn(async () => ({ ok: true }));
@@ -448,6 +448,7 @@ async function importCli() {
 function makeRuntime() {
   const stdoutChunks: string[] = [];
   const stderrChunks: string[] = [];
+  const stdoutBytes: Uint8Array[] = [];
 
   const stdin = new PassThrough();
   stdin.end();
@@ -458,10 +459,14 @@ function makeRuntime() {
     rt: {
       stdin,
       writeOut: (t: string) => stdoutChunks.push(t),
+      writeOutBytes: (b: Uint8Array) => stdoutBytes.push(b),
       writeErr: (t: string) => stderrChunks.push(t),
       setExitCode: (c: number) => {
         exitCode = c;
       },
+    },
+    get stdoutBytes() {
+      return Buffer.concat(stdoutBytes.map((b) => Buffer.from(b)));
     },
     get stdout() {
       return stdoutChunks.join("");
@@ -723,6 +728,21 @@ describe("seclai CLI", () => {
     });
     expect(await readFile(outPath, "utf8")).toBe("file-bytes");
     await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  test("agents runs download-attachment writes raw bytes to stdout without --output", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await runCli(
+      ["node", "seclai", "--api-key", "k", "agents", "runs", "download-attachment", "run_1", "att_1"],
+      io.rt
+    );
+
+    expect(io.exitCode).toBe(0);
+    const client = mockState.instances[0];
+    expect(client.downloadAgentRunAttachment).toHaveBeenCalledWith("run_1", "att_1", {});
+    expect(io.stdoutBytes.toString("utf8")).toBe("file-bytes");
   });
 
   test("sources upload reads file and passes bytes", async () => {
