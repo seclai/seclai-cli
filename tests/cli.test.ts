@@ -43,6 +43,8 @@ type SeclaiMock = {
   updateAgentDefinition: ReturnType<typeof vi.fn>;
   uploadAgentInput: ReturnType<typeof vi.fn>;
   getAgentInputUploadStatus: ReturnType<typeof vi.fn>;
+  getAgentAttachmentReferences: ReturnType<typeof vi.fn>;
+  downloadAgentRunAttachment: ReturnType<typeof vi.fn>;
   generateAgentSteps: ReturnType<typeof vi.fn>;
   generateStepConfig: ReturnType<typeof vi.fn>;
   getAgentAiConversationHistory: ReturnType<typeof vi.fn>;
@@ -141,6 +143,7 @@ type SeclaiMock = {
   createExperiment: ReturnType<typeof vi.fn>;
   getExperiment: ReturnType<typeof vi.fn>;
   cancelExperiment: ReturnType<typeof vi.fn>;
+  deleteExperiment: ReturnType<typeof vi.fn>;
   // search
   search: ReturnType<typeof vi.fn>;
   // ai
@@ -288,6 +291,10 @@ vi.mock("@seclai/sdk", () => {
     previewImportAgent = vi.fn(async () => ({ ok: true, agent_name: "n", step_count: 0 }));
     uploadAgentInput = vi.fn(async () => ({ ok: true }));
     getAgentInputUploadStatus = vi.fn(async () => ({ ok: true }));
+    getAgentAttachmentReferences = vi.fn(async () => ({ requires_uploads: false }));
+    downloadAgentRunAttachment = vi.fn(async () => ({
+      arrayBuffer: async () => new TextEncoder().encode("file-bytes").buffer,
+    }));
     generateAgentSteps = vi.fn(async () => ({ ok: true }));
     generateStepConfig = vi.fn(async () => ({ ok: true }));
     getAgentAiConversationHistory = vi.fn(async () => ({ ok: true }));
@@ -394,6 +401,7 @@ vi.mock("@seclai/sdk", () => {
     createExperiment = vi.fn(async () => ({ ok: true }));
     getExperiment = vi.fn(async () => ({ ok: true }));
     cancelExperiment = vi.fn(async () => ({ ok: true }));
+    deleteExperiment = vi.fn(async () => undefined);
 
     // search
     search = vi.fn(async () => ({ ok: true }));
@@ -666,6 +674,55 @@ describe("seclai CLI", () => {
     expect(io.exitCode).toBe(0);
     const client = mockState.instances[0];
     expect(client.deleteAgentRun).toHaveBeenCalledWith("run_1");
+  });
+
+  test("agents attachment-references calls getAgentAttachmentReferences", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await runCli(
+      ["node", "seclai", "--api-key", "k", "agents", "attachment-references", "agent_1"],
+      io.rt
+    );
+
+    expect(io.exitCode).toBe(0);
+    const client = mockState.instances[0];
+    expect(client.getAgentAttachmentReferences).toHaveBeenCalledWith("agent_1");
+  });
+
+  test("agents runs download-attachment writes bytes to --output file", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), "seclai-cli-"));
+    const outPath = path.join(tmpDir, "att.bin");
+
+    await runCli(
+      [
+        "node",
+        "seclai",
+        "--api-key",
+        "k",
+        "agents",
+        "runs",
+        "download-attachment",
+        "run_1",
+        "att_1",
+        "--download-name",
+        "report.pdf",
+        "--output",
+        outPath,
+      ],
+      io.rt
+    );
+
+    expect(io.exitCode).toBe(0);
+    const client = mockState.instances[0];
+    expect(client.downloadAgentRunAttachment).toHaveBeenCalledWith("run_1", "att_1", {
+      downloadName: "report.pdf",
+    });
+    expect(await readFile(outPath, "utf8")).toBe("file-bytes");
+    await rm(tmpDir, { recursive: true, force: true });
   });
 
   test("sources upload reads file and passes bytes", async () => {
@@ -1149,6 +1206,17 @@ describe("seclai CLI", () => {
     expect(client.cancelExperiment).toHaveBeenCalledWith("exp_1");
   });
 
+  test("models experiments delete calls deleteExperiment", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await runCli(["node", "seclai", "--api-key", "k", "models", "experiments", "delete", "exp_1"], io.rt);
+
+    expect(io.exitCode).toBe(0);
+    const client = mockState.instances[0];
+    expect(client.deleteExperiment).toHaveBeenCalledWith("exp_1");
+  });
+
   test("search calls search with query", async () => {
     const { runCli } = await importCli();
     const io = makeRuntime();
@@ -1362,6 +1430,11 @@ describe("seclai CLI", () => {
     expect(io.exitCode).toBe(0);
     expect(io.stdout).toContain("_seclai_completions");
     expect(io.stdout).toContain("complete -F");
+    // New 1.3.0 commands are offered by the completion script.
+    expect(io.stdout).toContain("attachment-references");
+    expect(io.stdout).toContain("download-attachment");
+    expect(io.stdout).toContain("preview-import");
+    expect(io.stdout).toContain("experiments");
   });
 
   test("completion zsh outputs zsh script", async () => {

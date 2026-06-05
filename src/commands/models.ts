@@ -149,4 +149,16 @@ export function register(program: Command, rt: CliRuntime): void {
         printJson(rt, await client.cancelExperiment(experimentId));
       });
     });
+
+  experiments
+    .command("delete")
+    .description("Soft-delete a model playground experiment (preserves audit history).")
+    .argument("<experimentId>", "Experiment ID.")
+    .action(async (experimentId: string) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        await client.deleteExperiment(experimentId);
+        printJson(rt, { ok: true });
+      });
+    });
 }

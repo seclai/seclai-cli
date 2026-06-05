@@ -14,9 +14,19 @@ seclai sources upload-text <sourceId> --json '{"text":"Article content here...",
 
 ## Upload input for agent runs
 ```bash
+# Check what files (if any) the agent expects before uploading. requires_uploads
+# reports whether the agent accepts files; the agent block lists the exact names /
+# indexes / patterns a run-time batch must satisfy.
+seclai agents attachment-references <agentId>
 seclai agents upload-input <agentId> --file ./input.pdf
 seclai agents upload-input <agentId> --file ./data.csv --file-name "report.csv" --mime-type "text/csv"
 seclai agents input-status <agentId> <uploadId>
+```
+
+## Download an attachment emitted by a run
+```bash
+# attachmentId is the URL-safe-base64 storage_key from run output manifests / webhooks.
+seclai agents runs download-attachment <runId> <attachmentId> --output ./out.pdf
 ```
 
 ## Replace content
