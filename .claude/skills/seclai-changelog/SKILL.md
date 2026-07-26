@@ -18,7 +18,12 @@ All six Seclai SDK repos keep a root `CHANGELOG.md` in [Common Changelog](https:
 - Entry form: `- Change ([ref](url))`. Imperative present tense, self-describing — it must read correctly without its group heading. "Support CentOS", never "Support of CentOS" or "Added support".
 - Breaking changes take a `**Breaking:**` prefix and sort first within their group. Otherwise sort by importance.
 - A release may open with a one-sentence italic notice instead of, or before, its groups — used for first releases (`_Initial release._`) and no-op version bumps.
-- Version links are reference-style at the bottom: `[1.4.0]: https://github.com/seclai/<repo>/releases/tag/1.4.0` (tags carry no `v` prefix).
+- Version links are reference-style at the bottom:
+  `[1.4.0]: https://github.com/seclai/<repo>/releases/tag/1.4.0`. **Check the tag
+  format per repo** — seclai-python and seclai-javascript tag without a prefix,
+  seclai-go tags `v1.4.0` because Go module resolution requires it. The heading
+  stays bare (`## [1.5.0]`); only the link target carries the `v`. Confirm with
+  `git tag --sort=-v:refname | head -1` before writing the link block.
 - Authors are omitted — these are effectively single-contributor repos.
 
 ## Determine the version
