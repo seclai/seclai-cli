@@ -22,10 +22,21 @@ S=.claude/skills/seclai-sdk-sync/sdksync.py     # vendored into each SDK repo
 python3 $S spec-diff HEAD                       # what the new spec changed
 python3 $S parity .                             # spec paths with no request call
 python3 $S params .                             # params the endpoint does not accept
+python3 $S returns .                            # return types that disagree with the spec
+python3 $S models . --since HEAD                # hand-written models left behind
 python3 $S api-delta 1.3.0                      # public methods added since a tag
 ```
 
-`parity` and `params` exit non-zero on a finding, so both work as CI gates.
+The three audits are three different directions, and each finds what the others
+structurally cannot:
+
+| | direction | catches |
+| --- | --- | --- |
+| `parity` | spec → client | endpoints nobody implemented |
+| `params` | client → spec | query keys the endpoint ignores or requires |
+| `returns` | client → spec | a response shape the client can no longer deserialize |
+
+`parity`, `params`, `returns` and `models` exit non-zero on a finding, so all work as CI gates.
 Run them over the **whole spec**, never just the diff — `GET /me` sat unimplemented
 in both the Python and JavaScript SDKs for months because each sync only looked at
 its own new paths.
@@ -58,6 +69,36 @@ required `q` (the extractor read `q["k"] =` but not the map literal that sets it
 Four of six Go findings were artefacts. Since both were fixed, all four SDKs report
 the *same* three findings — independently-written clients agreeing is the signal
 that the check is reading them correctly.
+
+## `returns` — the axis that catches a changed response
+
+Compares each method's **declared return type** against the spec's response
+schema, and splits the result by how much it costs you:
+
+- **SHAPE MISMATCH** (error) — the client commits to a list and the endpoint
+  returns an object, or the reverse. This throws at deserialization; a shipped
+  SDK is already broken. This is the 2026-07 envelope change.
+- **NAME DIFFERS** (warning) — same shape, different type name. All four SDKs
+  drop the spec's `Model` and `Api` affixes by convention, so this tier is mostly
+  noise by design. Keep it out of CI with `--quiet-renamed`.
+- **UNTYPED** (warning) — the spec names a schema and the client returns
+  `JsonElement` / `json.RawMessage` / `unknown` / `JSONValue`. Not a defect, but
+  it is the coverage backlog: seclai-python reports 206.
+
+A wholly untyped return is never a shape error — it commits to nothing and
+deserializes anything. But `list[dict[str, Any]]` **is** a commitment to a list,
+and is graded as one.
+
+## `models` — hand-written models that fell behind
+
+Only seclai-csharp: everywhere else regeneration keeps models in step. Use
+`--since <rev>`, which limits the report to properties a schema **gained** since
+that rev. Without it you get every long-standing coverage gap — 27 for
+seclai-csharp, none of them actionable, which is how a gate gets muted.
+
+It cannot see models whose schema is declared inline rather than as a named
+component; it prints how many are unchecked for that reason. Two of the six
+models left stale in 2026-07 were in that blind spot, so treat the count as real.
 
 ## `docexamples` — compile the README
 

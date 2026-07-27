@@ -4,6 +4,8 @@
 Subcommands:
   parity     spec paths that have no request call in the hand-written client
   params     query params the client sends that the endpoint does not declare
+  returns    client return types that disagree with the spec's response schema
+  models     hand-written models missing properties their schema declares
   spec-diff  paths and schemas added/removed/changed between two spec revisions
   api-delta  public client methods added/removed between two git revisions
 
@@ -49,7 +51,12 @@ LANGS = {
         "detect": "seclai/seclai.py",
         "sources": ["seclai/seclai.py"],
         "method_re": r"^[ \t]+(?:async )?def ([a-z][a-z0-9_]*)\(",
+        # Private helpers start with `_` and so never anchor a block of their
+        # own; without this the public method above them swallows their request
+        # calls. `api_key`, a plain property, was credited with GET /sources.
+        "boundary_re": r"^[ \t]*(?:async )?def |^class ",
         "verb_re": r'"(GET|POST|PUT|PATCH|DELETE)"',
+        "return_re": r"\s*->\s*([^:\n]+):",
         "dict_at": [r"params\s*=\s*(?:_strip_none\()?\s*"],
         "dict_key_re": r'"([a-zA-Z_][a-zA-Z0-9_]*)"\s*:',
         "skip": {"request", "request_raw", "stream", "paginate"},
@@ -62,6 +69,7 @@ LANGS = {
         # `return (await this.request(...)` and attributes findings to "return".
         "method_re": r"^  (?:async )?\*?([a-zA-Z_][a-zA-Z0-9_]*)\s*[(<]",
         "verb_re": r'"(GET|POST|PUT|PATCH|DELETE)"',
+        "return_re": r"\s*:\s*([^{\n]+?)\s*\{",
         "dict_at": [r"query:\s*"],
         "dict_key_re": r'["\']?([a-zA-Z_][a-zA-Z0-9_]*)["\']?\s*:',
         "skip": {"request", "requestRaw", "uploadFile", "paginate"},
@@ -75,6 +83,8 @@ LANGS = {
         # between two client methods are read as part of the earlier one.
         "boundary_re": r"^(?:func|type|var|const)\b",
         "verb_re": r"http\.Method(Get|Post|Put|Patch|Delete)",
+        # Go returns `(*T, error)`; take the first element of the tuple.
+        "return_re": r"\s*\(?\s*([^,{\n]+?)\s*(?:,\s*error)?\s*\)?\s*\{",
         "key_re": r'q\["([a-zA-Z_][a-zA-Z0-9_]*)"\]\s*=',
         # Go builds a query either by subscript assignment (key_re) or as a map
         # literal. Reading only the former made Search and SearchDocs — whose
@@ -89,7 +99,13 @@ LANGS = {
         "detect": "src/Seclai/SeclaiClient.cs",
         "sources": ["src/Seclai/*.cs"],
         "method_re": r"public (?:async )?[\w<>,?\[\]. ]+ ([A-Z][A-Za-z0-9]*)\s*\(",
+        # Same reason as python: only `public` anchors a block, so the private
+        # Send*/BuildUri helpers fall inside whichever method precedes them.
+        "boundary_re": r"^    (?:private|internal|protected|static)\b",
         "verb_re": r"HttpMethod\.(Get|Post|Put|Patch|Delete)",
+        # C# puts the return type BEFORE the method name, so unlike the other
+        # three it is read from the block head, not from after the parameters.
+        "return_head_re": r"^\s*public (?:async )?(.+?)\s+[A-Z][A-Za-z0-9]*\s*\(",
         "key_re": r'\["([a-zA-Z_][a-zA-Z0-9_]*)"\]\s*=',
         "helpers": {"PaginationQuery(": ["page", "limit", "sort", "order"]},
         "skip": {"SendJsonAsync", "SendNoContentAsync", "SendRawAsync", "BuildUri", "PaginationQuery"},
@@ -638,6 +654,310 @@ def cmd_api_delta(args) -> int:
     return 0
 
 
+# ── returns ──────────────────────────────────────────────────────────────────
+# The third axis. `parity` walks spec->client paths, `params` walks client->spec
+# query keys, and neither can see a response shape. In 2026-07 two endpoints
+# changed their 200 body from a bare array to a paginated envelope; every shipped
+# SDK still declared a list, so all four broke at runtime and both checks stayed
+# green. This compares the client's DECLARED return type against the spec's.
+
+# Untyped escape hatches. Returning one is legal but means the caller gets no
+# help from the compiler, so it is reported as a warning when the spec has a name.
+UNTYPED = {
+    "csharp": {"JsonElement", "JsonDocument", "object", "string", "Stream", "byte[]"},
+    "go": {"json.RawMessage", "any", "interface{}", "map[string]any", "[]byte"},
+    "python": {"Any", "dict", "dict[str, Any]", "Dict[str, Any]", "object", "bytes",
+               "JSONValue", "JSONObject"},
+    "javascript": {"unknown", "any", "object", "Blob", "ArrayBuffer", "string"},
+}
+NO_RETURN = {"csharp": {"Task", "void"}, "go": {"error", ""},
+             "python": {"None"}, "javascript": {"void"}}
+
+
+def short_label(label: str) -> str:
+    """Drop the spec's module qualification: `routers__api__agents__X` -> `X`.
+
+    No SDK reproduces that qualification in its own type names, so comparing the
+    full name marks every qualified schema as a mismatch — 38 of 38 C# findings
+    on the first run, which is a broken check rather than a broken SDK.
+    """
+    m = re.match(r"^array<(.+)>$", label)
+    if m:
+        return f"array<{short_label(m.group(1))}>"
+    return label.rsplit("__", 1)[-1]
+
+
+def strip_generated_prefix(name: str) -> str:
+    """`RoutersApiAgentsSetEmailTriggerConfigRequest` -> the spec's short name.
+
+    oapi-codegen flattens the spec's `routers__api__agents__X` qualification into
+    the type name, so a literal comparison against the schema name never matches.
+    """
+    return re.sub(r"^Routers(?:Api|Authenticated)[A-Z][a-zA-Z]*?(?=[A-Z])", "", name)
+
+
+def normalise_type(t: str, lang: str) -> str:
+    """A client return type expressed the way `_schema_label` labels a schema."""
+    t = t.strip().rstrip(";").strip()
+    for wrapper in (r"^Task<(.+)>$", r"^Promise<(.+)>$", r"^Awaitable\[(.+)\]$"):
+        m = re.match(wrapper, t)
+        if m:
+            t = m.group(1).strip()
+    t = t.lstrip("*&").replace(" | null", "").replace(" | undefined", "")
+    t = re.sub(r"\s*\|\s*None$", "", t)
+    t = t.rstrip("?")
+    for arr in (r"^List<(.+)>$", r"^IReadOnlyList<(.+)>$", r"^\[\](.+)$",
+                r"^list\[(.+)\]$", r"^List\[(.+)\]$", r"^(.+)\[\]$"):
+        m = re.match(arr, t)
+        if m:
+            return f"array<{normalise_type(m.group(1), lang)}>"
+    if t in NO_RETURN.get(lang, set()):
+        return "none"
+    if t in UNTYPED.get(lang, set()):
+        return "?"
+    return strip_generated_prefix(t.lstrip("*"))
+
+
+def block_return(body: str, cfg: dict) -> str | None:
+    """The declared return type of the method a block starts with.
+
+    Read by slicing the parameter list with paren matching rather than by regex:
+    signatures wrap across lines and contain nested parens and generics, both of
+    which truncate a regex silently — and a silent truncation here reads as
+    "this method declares nothing to check".
+    """
+    if "return_head_re" in cfg:
+        m = re.match(cfg["return_head_re"], body, re.S)
+        return m.group(1).strip() if m else None
+    # Start at the paren the method anchor itself ends on. Taking the first `(`
+    # in the block instead picks up Go's receiver — `func (c *Client) GetMe(` —
+    # so the "return type" came back as the rest of the signature.
+    anchor = re.match(cfg["method_re"], body, re.M)
+    if not anchor:
+        return None
+    open_paren = body.find("(", anchor.end() - 1)
+    if open_paren == -1:
+        return None
+    params = balanced_slice(body, open_paren, "(", ")")
+    if params is None:
+        return None
+    rest = body[open_paren + len(params) + 2:]
+    m = re.match(cfg["return_re"], rest, re.S)
+    return m.group(1).strip() if m else None
+
+
+def cmd_returns(args) -> int:
+    repo = Path(args.repo).resolve()
+    lang = args.lang or detect_lang(repo)
+    cfg = LANGS[lang]
+    if "return_re" not in cfg and "return_head_re" not in cfg:
+        print(f"{repo.name} [{lang}] — return types are not declared; nothing to check.")
+        return 0
+    spec = load_spec(args.rev, args.spec, repo)
+
+    want: dict[tuple[str, str], str] = {}
+    for raw, ops in spec.get("paths", {}).items():
+        for verb, op in ops.items():
+            if verb not in ("get", "post", "put", "patch", "delete"):
+                continue
+            for code in ("200", "201", "202"):
+                if code in op.get("responses", {}):
+                    want[(verb.upper(), normalise(raw))] = short_label(
+                        _schema_label(_json_schema(op, "response", code)))
+                    break
+
+    mismatched, renamed, untyped, n = [], [], [], 0
+    for path in source_files(repo, cfg):
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for mname, body in method_blocks(text, cfg["method_re"], cfg.get("boundary_re")):
+            if mname in cfg.get("skip", set()):
+                continue
+            call = block_call(body, cfg["verb_re"])
+            if not call or call not in want:
+                continue
+            declared = block_return(body, cfg)
+            if declared is None:
+                continue
+            n += 1
+            got, expect = normalise_type(declared, lang), want[call]
+            if expect in ("object", "none", "unknown", "?"):
+                continue          # the spec itself declares nothing to match
+            if got == expect or strip_generated_prefix(got) == expect:
+                continue
+            # Separate the two failure modes. A list where the API returns an
+            # envelope throws at deserialization; a type NAMED differently from
+            # its schema is only cosmetic, and the SDKs rename by convention —
+            # all four drop the spec's `Model` and `Api` affixes. Ranking those
+            # equally buried the one real finding under eleven harmless ones.
+            # A wholly untyped return (`JsonElement`, `unknown`, `JSONValue`)
+            # commits to no shape at all and deserializes anything, so it is a
+            # coverage warning, never a shape error.
+            if got == "?":
+                untyped.append((mname, call, expect, declared))
+            # Shape next. `list[dict[str, Any]]` IS a commitment to a list and is
+            # also untyped; testing untyped-ness first classified seclai-python's
+            # list_evaluation_criteria as a soft warning and reported the repo
+            # clean, when it is exactly as broken as the Go and JS ones.
+            elif got.startswith("array<") != expect.startswith("array<"):
+                mismatched.append((mname, call, expect, declared))
+            elif "?" in got:
+                untyped.append((mname, call, expect, declared))
+            else:
+                renamed.append((mname, call, expect, declared))
+
+    print(f"{repo.name} [{lang}] — {n} method(s) with both a declared return type "
+          f"and a named response schema")
+
+    if mismatched:
+        print(f"\nSHAPE MISMATCH ({len(mismatched)}) — list vs object; this fails at deserialization:")
+        for name, (verb, p), expect, declared in mismatched:
+            print(f"   {name}  ({verb} {p})\n       spec: {expect}\n       code: {declared}")
+    if renamed and not args.quiet_renamed:
+        print(f"\nWARN — NAME DIFFERS ({len(renamed)}) — same shape, different type name:")
+        for name, (verb, p), expect, declared in renamed:
+            print(f"   {name}  ({verb} {p}): {declared}, spec calls it {expect}")
+    if untyped and not args.quiet_untyped:
+        print(f"\nWARN — UNTYPED ({len(untyped)}) — spec names a schema, the client returns a blob:")
+        for name, (verb, p), expect, declared in untyped:
+            print(f"   {name}  ({verb} {p}): {declared}, spec declares {expect}")
+
+    if mismatched:
+        print(f"\n{len(mismatched)} return type(s) disagree with the spec in SHAPE.")
+        return 1
+    print("\nno return type disagrees with the spec in shape")
+    return 0
+
+
+# ── Model completeness ───────────────────────────────────────────────────────
+# Only for SDKs whose models are written by hand. Where a generator owns the
+# models, regeneration keeps them in step and this check has nothing to say.
+MODEL_LANGS = {
+    "csharp": {
+        "glob": "src/Seclai/Models/*.cs",
+        "class_re": r"public (?:sealed |abstract )?class (\w+)",
+        "prop_re": r'\[JsonPropertyName\("([^"]+)"\)\]',
+    },
+}
+
+
+def git_location(spec: Path, fallback: Path) -> tuple[Path, str]:
+    """(git work tree, path relative to its root) for a spec file.
+
+    `git show REV:path` resolves `path` from the repo ROOT, so pointing -C at
+    the file's own directory silently fails. seclai-csharp bundles no spec and
+    is always audited with --spec pointing into seclai-python, so this is the
+    normal case, not the edge case.
+    """
+    if not spec.is_absolute():
+        return fallback, str(spec)
+    try:
+        top = subprocess.check_output(
+            ["git", "-C", str(spec.parent), "rev-parse", "--show-toplevel"],
+            stderr=subprocess.DEVNULL, text=True).strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        die(f"{spec} is not inside a git work tree; --since needs one")
+    root = Path(top)
+    return root, str(spec.resolve().relative_to(root.resolve()))
+
+
+def spec_schema_index(spec: dict) -> dict[str, list[tuple[str, set[str]]]]:
+    """Short schema name -> [(full name, property names)].
+
+    The spec qualifies some schemas by module (`routers__api__agents__X`), and
+    two modules can export the same trailing name, so a short name may resolve
+    to more than one schema.
+    """
+    index: dict[str, list[tuple[str, set[str]]]] = {}
+    for full, sch in (spec.get("components", {}).get("schemas") or {}).items():
+        short = full.rsplit("__", 1)[-1]
+        index.setdefault(short, []).append((full, set(sch.get("properties") or {})))
+    return index
+
+
+def cmd_models(args) -> int:
+    repo = Path(args.repo).resolve()
+    lang = args.lang or detect_lang(repo)
+    cfg = MODEL_LANGS.get(lang)
+    if not cfg:
+        print(f"{repo.name} [{lang}] — models are generated; nothing to check by hand.")
+        return 0
+
+    spec = load_spec(args.rev, args.spec, repo)
+    index = spec_schema_index(spec)
+
+    # `--since` narrows the report to properties the schema GAINED since a rev.
+    # Without it the C# models show 27 findings, every one a coverage gap that
+    # predates this sync — a signal nobody can act on, and a gate nobody keeps.
+    # With it the question becomes the one that actually bit: did this sync
+    # leave a model behind? Six were, in 2026-07, and only review caught them.
+    gained: dict[str, set[str]] | None = None
+    if args.since:
+        spec_repo, rel = git_location(Path(args.spec), repo)
+        before = spec_schema_index(load_spec(args.since, rel, spec_repo))
+        gained = {}
+        for short, cands in index.items():
+            now = set.union(*(p for _, p in cands))
+            was = set.union(*(p for _, p in before[short])) if short in before else set()
+            if now - was:
+                gained[short] = now - was
+
+    files = sorted(repo.glob(cfg["glob"]))
+    scope = f", {len(gained)} schema(s) changed since {args.since}" if gained is not None else ""
+    print(f"{repo.name} [{lang}] — {len(files)} model file(s), {len(index)} spec schema names{scope}")
+
+    missing, extra, unmatched = [], [], []
+    for f in files:
+        text = f.read_text(encoding="utf-8", errors="replace")
+        m = re.search(cfg["class_re"], text)
+        if not m:
+            continue
+        cls = m.group(1)
+        have = set(re.findall(cfg["prop_re"], text))
+        cands = index.get(cls)
+        if not cands:
+            unmatched.append(cls)
+            continue
+        # With more than one candidate, only properties common to all of them are
+        # unambiguously missing. A gate that guesses is a gate that gets muted.
+        want = set.intersection(*(p for _, p in cands))
+        if gained is not None:
+            want &= gained.get(cls, set())
+        gone = want - have
+        if gone:
+            missing.append((cls, sorted(gone), [n for n, _ in cands]))
+        if len(cands) == 1 and gained is None:
+            surplus = have - cands[0][1]
+            if surplus:
+                extra.append((cls, sorted(surplus)))
+
+    if missing:
+        print(f"\nMISSING PROPERTIES ({len(missing)}) — the spec declares these and the model does not:")
+        for cls, props, full in missing:
+            where = f"  [{', '.join(full)}]" if full != [cls] else ""
+            print(f"   {cls}{where}\n       {', '.join(props)}")
+    if extra:
+        print(f"\nWARN — EXTRA PROPERTIES ({len(extra)}) — in the model, not in the schema:")
+        for cls, props in extra:
+            print(f"   {cls}: {', '.join(props)}")
+    if unmatched and not args.quiet_unmatched and gained is None:
+        print(f"\nWARN — NOT IN SPEC ({len(unmatched)}) — model classes with no matching schema:")
+        print("   " + ", ".join(sorted(unmatched)))
+
+    if unmatched:
+        # Not a finding: the spec declares some request bodies inline rather than
+        # as a named component, so CreateSourceRequest and UpdateSourceRequest —
+        # both of which WERE left stale in 2026-07 — have nothing to match
+        # against. Say so, so the count is never read as full coverage.
+        print(f"\n   note: {len(unmatched)} model class(es) have no named schema "
+              f"and are unchecked (inline request bodies land here).")
+
+    if missing:
+        print(f"\n{len(missing)} model(s) behind the spec.")
+        return 1
+    print("\nall models carry every property their schema declares")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(prog="sdksync", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -659,6 +979,29 @@ def main() -> int:
     p.add_argument("--quiet-unexposed", action="store_true",
                    help="suppress the declared-but-never-sent report")
     p.set_defaults(func=cmd_params)
+
+    p = sub.add_parser("returns", help="client return types that disagree with the spec response")
+    p.add_argument("repo", nargs="?", default=".")
+    p.add_argument("--spec", default="openapi/seclai.openapi.json")
+    p.add_argument("--rev", help="read the spec from this git rev instead of the working tree")
+    p.add_argument("--lang", choices=list(LANGS))
+    p.add_argument("--quiet-untyped", action="store_true",
+                   help="suppress the returns-a-blob report")
+    p.add_argument("--quiet-renamed", action="store_true",
+                   help="suppress the same-shape-different-name report")
+    p.set_defaults(func=cmd_returns)
+
+    p = sub.add_parser("models", help="hand-written models missing properties their schema declares")
+    p.add_argument("repo", nargs="?", default=".")
+    p.add_argument("--spec", default="openapi/seclai.openapi.json")
+    p.add_argument("--rev", help="read the spec from this git rev instead of the working tree")
+    p.add_argument("--lang", choices=list(LANGS))
+    p.add_argument("--since", metavar="REV",
+                   help="only report properties the schema gained since this spec rev "
+                        "(the sync gate; without it every long-standing gap is listed)")
+    p.add_argument("--quiet-unmatched", action="store_true",
+                   help="suppress the model-classes-with-no-schema report")
+    p.set_defaults(func=cmd_models)
 
     p = sub.add_parser("spec-diff", help="paths/schemas added, removed or changed between revisions")
     p.add_argument("old", help="git rev of the older spec")
