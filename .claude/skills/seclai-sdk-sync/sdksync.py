@@ -291,6 +291,7 @@ def cmd_params(args) -> int:
     index = spec_query_index(spec)
 
     undeclared, not_in_spec, unparsed, exposed = set(), set(), set(), {}
+    missing_required: set[tuple[str, str, str]] = set()
 
     for f in files:
         text = f.read_text(errors="replace")
@@ -306,8 +307,13 @@ def cmd_params(args) -> int:
             if call not in index:
                 not_in_spec.add((mname, f"{call[0]} {call[1]}"))
                 continue
-            raw, declared, _required = index[call]
+            raw, declared, required = index[call]
             exposed.setdefault((call[0], raw), set()).update(keys)
+            if ok:
+                # Only trust this when the query construction parsed: an
+                # unreadable site would otherwise look like "sends nothing".
+                for k in sorted(required - keys):
+                    missing_required.add((mname, f"{call[0]} {raw}", k))
             for k in sorted(keys - declared):
                 undeclared.add((mname, f"{call[0]} {raw}", k, tuple(sorted(declared))))
 
@@ -325,6 +331,12 @@ def cmd_params(args) -> int:
         print(f"\nNOT IN SPEC ({len(not_in_spec)}) — client calls a path the spec does not declare:")
         for m, op in sorted(not_in_spec):
             print(f"   {m}  ({op})")
+
+    if missing_required:
+        print(f"\nMISSING REQUIRED ({len(missing_required)}) — the endpoint requires this"
+              f" and no code path sends it:")
+        for m, op, k in sorted(missing_required):
+            print(f"   {m}  ({op})  needs: {k}")
 
     if unparsed:
         print(f"\nUNPARSED ({len(unparsed)}) — query construction could not be read;"
@@ -346,7 +358,7 @@ def cmd_params(args) -> int:
             for op, names in sorted(gaps):
                 print(f"   {op}: {', '.join(names)}")
 
-    errors = len(undeclared) + len(not_in_spec) + len(unparsed)
+    errors = len(undeclared) + len(not_in_spec) + len(unparsed) + len(missing_required)
     print()
     if errors:
         print(f"{errors} error(s)")
@@ -466,6 +478,20 @@ def cmd_spec_diff(args) -> int:
 
 
 # ── api-delta ────────────────────────────────────────────────────────────────
+def verify_rev(repo: Path, rev: str | None) -> None:
+    """Fail loudly on an unresolvable rev.
+
+    Without this, an unreadable rev yields an empty method set and the delta
+    reports every method in the SDK as newly added — a confident wrong answer.
+    """
+    if rev is None:
+        return
+    r = subprocess.run(["git", "-C", str(repo), "rev-parse", "--verify", "--quiet", f"{rev}^{{commit}}"],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        die(f"not a git revision in {repo.name}: {rev!r}")
+
+
 def methods_at(repo: Path, rev: str | None, cfg: dict, files: list[Path]) -> set[str]:
     names: set[str] = set()
     for f in files:
@@ -498,6 +524,8 @@ def cmd_api_delta(args) -> int:
     cfg = LANGS[lang]
     files = source_files(repo, cfg)
 
+    verify_rev(repo, args.old)
+    verify_rev(repo, args.new)
     old = methods_at(repo, args.old, cfg, files)
     new = methods_at(repo, args.new, cfg, files)
 
