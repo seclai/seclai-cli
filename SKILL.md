@@ -50,6 +50,15 @@ table as the code, so they assert the same wrong parameter names — one Go test
 asserted the buggy `query` instead of the required `q`, locking the defect in. The
 spec is the only independent oracle.
 
+**Treat a finding you believe is wrong as a bug in the tool, not as noise to skip.**
+Twice now that instinct was right: Go's `GetMe` was reported as sending
+page/limit/sort/order it never sends (a method block ran on past its own function
+and swallowed the helpers below it), and `Search` was reported as never sending its
+required `q` (the extractor read `q["k"] =` but not the map literal that sets it).
+Four of six Go findings were artefacts. Since both were fixed, all four SDKs report
+the *same* three findings — independently-written clients agreeing is the signal
+that the check is reading them correctly.
+
 ## `docexamples` — compile the README
 
 ```bash
@@ -87,6 +96,21 @@ For repos without a bundled spec, point at one:
 1. **Confirm the spec is identical** across the repos that bundle it. They must
    not diverge — a local edit is always wrong; fix the spec upstream in `seclai`.
 2. **`spec-diff`** to see added/removed/changed paths and schema property changes.
+
+   Under each changed path it names what a client can observe — `+query`,
+   `~query … is now required`, `~request`, `~response` — and only says
+   `(docs only)` when nothing but prose moved. A `~response` line is the one to
+   stop on: it means a **shipped** SDK is already failing to deserialize, because
+   the server changed under it. In the 2026-07 fast-follow two endpoints went from
+   a bare array to a paginated envelope, breaking the method in all four SDKs.
+
+   Do not stop at the new paths. The `SCHEMA PROPERTY CHANGES` section lists
+   **existing** models that gained fields, and those are easy to miss because
+   nothing about them looks new. Repos with generated models pick them up on
+   regeneration; hand-written ones (seclai-csharp) do not. In the 2026-07 sync six
+   C# models were left stale this way, including the `disabled` fields that agent
+   pause/resume depends on — the methods shipped but the state they set was
+   invisible in the response.
 3. **Regenerate**, per repo:
    - python: `make generate`, then **immediately** `poetry run black .` — the
      generator formats with ruff but the repo commits black, so raw output shows

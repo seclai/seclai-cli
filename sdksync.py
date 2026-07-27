@@ -71,8 +71,17 @@ LANGS = {
         "sources": ["*.go"],
         "exclude": ["*_test.go"],
         "method_re": r"^func \(c \*Client\) ([A-Z][A-Za-z0-9]*)\(",
+        # Free functions and type decls end a block; without this the helpers
+        # between two client methods are read as part of the earlier one.
+        "boundary_re": r"^(?:func|type|var|const)\b",
         "verb_re": r"http\.Method(Get|Post|Put|Patch|Delete)",
         "key_re": r'q\["([a-zA-Z_][a-zA-Z0-9_]*)"\]\s*=',
+        # Go builds a query either by subscript assignment (key_re) or as a map
+        # literal. Reading only the former made Search and SearchDocs — whose
+        # required `q` is set in the literal — report as never sending it, the
+        # false positive twin of the bug this check exists to find.
+        "dict_at": [r"map\[string\]string"],
+        "dict_key_re": r'"([a-zA-Z_][a-zA-Z0-9_]*)"\s*:',
         "helpers": {"listQuery(": ["page", "limit"]},
         "skip": {"Do", "buildURL"},
     },
@@ -207,11 +216,24 @@ def spec_query_index(spec: dict) -> dict[tuple[str, str], tuple[str, set[str], s
     return index
 
 
-def method_blocks(text: str, method_re: str):
-    """Yield (name, body). Each block runs to the next method anchor."""
+def method_blocks(text: str, method_re: str, boundary_re: str | None = None):
+    """Yield (name, body). Each block ends at the next method OR declaration.
+
+    Ending only at the next *method* anchor makes a block swallow everything
+    between two methods, so any free function declared in the gap is attributed
+    to the method above it. In seclai-go that made `GetMe` — which sends no query
+    at all — appear to send page/limit/sort/order, because the `listQuery` and
+    `sortableListQuery` helpers sit between it and the next client method. Four
+    of six reported Go errors were that one artefact, and a check that cries wolf
+    is a check somebody turns off.
+    """
     ms = list(re.finditer(method_re, text, re.M))
+    bounds = [m.start() for m in re.finditer(boundary_re, text, re.M)] if boundary_re else []
     for i, m in enumerate(ms):
         end = ms[i + 1].start() if i + 1 < len(ms) else len(text)
+        nxt = next((b for b in bounds if b > m.start()), None)
+        if nxt is not None:
+            end = min(end, nxt)
         yield m.group(1), text[m.start():end]
 
 
@@ -295,7 +317,7 @@ def cmd_params(args) -> int:
 
     for f in files:
         text = f.read_text(errors="replace")
-        for mname, body in method_blocks(text, cfg["method_re"]):
+        for mname, body in method_blocks(text, cfg["method_re"], cfg.get("boundary_re")):
             if mname in cfg.get("skip", ()):
                 continue
             call = block_call(body, cfg["verb_re"])
@@ -419,6 +441,66 @@ def cmd_parity(args) -> int:
 
 
 # ── spec-diff ────────────────────────────────────────────────────────────────
+def _schema_label(sch: dict | None) -> str:
+    """A short, comparable name for a response/request schema."""
+    if not sch:
+        return "none"
+    if "$ref" in sch:
+        return sch["$ref"].rsplit("/", 1)[-1]
+    if sch.get("type") == "array":
+        return f"array<{_schema_label(sch.get('items'))}>"
+    if sch.get("type") == "object" or "properties" in sch:
+        return "object"
+    return sch.get("type", "unknown")
+
+
+def _json_schema(op: dict, section: str, code: str | None = None) -> dict | None:
+    node = op.get("requestBody") if section == "request" else op.get("responses", {}).get(code, {})
+    return (node or {}).get("content", {}).get("application/json", {}).get("schema")
+
+
+def diff_operation(old: dict, new: dict, path: str, verb: str) -> list[str]:
+    """What actually changed on one operation, beyond its prose.
+
+    The original implementation labelled every non-verb change
+    "description/params only", which reads as "nothing to do". In the 2026-07
+    fast-follow two endpoints silently changed their 200 body from a bare array
+    to a paginated envelope — a change that breaks every shipped client at
+    runtime — and the tool reported them as prose edits. Anything a client can
+    observe gets named here; only genuine prose edits fall through to "docs only".
+    """
+    lo = spec_query_index(old).get((verb, normalise(path)))
+    ln = spec_query_index(new).get((verb, normalise(path)))
+    oop = old["paths"][path][verb.lower()]
+    nop = new["paths"][path][verb.lower()]
+    out: list[str] = []
+
+    if lo and ln:
+        _, oq, oreq = lo
+        _, nq, nreq = ln
+        if nq - oq:
+            out.append("+query " + ", ".join(sorted(nq - oq)))
+        if oq - nq:
+            out.append("-query " + ", ".join(sorted(oq - nq)))
+        for name in sorted((nreq - oreq) & (oq & nq)):
+            out.append(f"~query {name} is now required")
+        for name in sorted((oreq - nreq) & (oq & nq)):
+            out.append(f"~query {name} is no longer required")
+
+    ob, nb = _schema_label(_json_schema(oop, "request")), _schema_label(_json_schema(nop, "request"))
+    if ob != nb:
+        out.append(f"~request {ob} -> {nb}")
+
+    for code in sorted(set(oop.get("responses", {})) | set(nop.get("responses", {}))):
+        if code.startswith("4") or code.startswith("5"):
+            continue
+        a = _schema_label(_json_schema(oop, "response", code))
+        b = _schema_label(_json_schema(nop, "response", code))
+        if a != b:
+            out.append(f"~response {code}: {a} -> {b}")
+    return out
+
+
 def cmd_spec_diff(args) -> int:
     repo = Path(args.repo).resolve()
     old = load_spec(args.old, args.spec, repo)
@@ -441,15 +523,27 @@ def cmd_spec_diff(args) -> int:
         for p in sorted(op - np_):
             print(f"   {p}")
 
-    changed = []
+    changed, breaking = [], 0
     for p in sorted(np_ & op):
-        if json.dumps(old["paths"][p], sort_keys=True) != json.dumps(new["paths"][p], sort_keys=True):
-            oo, nn = set(ops(old, p)), set(ops(new, p))
-            note = "verbs " + ", ".join(sorted(nn - oo)) if nn - oo else "description/params only"
-            changed.append(f"   {p}  ({note})")
+        if json.dumps(old["paths"][p], sort_keys=True) == json.dumps(new["paths"][p], sort_keys=True):
+            continue
+        oo, nn = set(ops(old, p)), set(ops(new, p))
+        lines = []
+        if nn - oo:
+            lines.append("+verbs " + ", ".join(sorted(nn - oo)))
+        if oo - nn:
+            lines.append("-verbs " + ", ".join(sorted(oo - nn)))
+        for verb in sorted(oo & nn):
+            lines += [f"{verb} {d}" for d in diff_operation(old, new, p, verb)]
+        breaking += sum(1 for ln in lines if "~response" in ln or ln.startswith("-verbs"))
+        changed.append(f"   {p}" + ("\n" + "\n".join(f"       {ln}" for ln in lines) if lines
+                                    else "  (docs only)"))
     if changed:
         print(f"\nCHANGED PATHS ({len(changed)}):")
         print("\n".join(changed))
+        if breaking:
+            print(f"\n   !! {breaking} response/verb change(s) above can break a shipped client.")
+            print("      Check the SDK's declared return type, not just its query params.")
 
     if ns_ - os_:
         print(f"\nADDED SCHEMAS ({len(ns_ - os_)}):")
