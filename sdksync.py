@@ -6,6 +6,7 @@ Subcommands:
   params     query params the client sends that the endpoint does not declare
   returns    client return types that disagree with the spec's response schema
   models     hand-written models missing properties their schema declares
+  surface    public API surface diff against a released tag
   spec-diff  paths and schemas added/removed/changed between two spec revisions
   api-delta  public client methods added/removed between two git revisions
 
@@ -48,6 +49,8 @@ PATH_LITERAL_RE = r"""(?:"(/[^"\n]*)"|`(/[^`\n]*)`|'(/[^'\n]*)')"""
 #               Expansion is arity-aware: only as many keys as arguments supplied.
 LANGS = {
     "python": {
+        "sig_re": r"\n    (?:async )?def ([a-z]\w*)\(([^)]*)\)\s*->\s*([^:]+):",
+        "sig_groups": ("name", "params", "ret"),
         "detect": "seclai/seclai.py",
         "sources": ["seclai/seclai.py"],
         "method_re": r"^[ \t]+(?:async )?def ([a-z][a-z0-9_]*)\(",
@@ -62,6 +65,8 @@ LANGS = {
         "skip": {"request", "request_raw", "stream", "paginate"},
     },
     "javascript": {
+        "sig_re": r"\n  (?:async )?(\w+)\(([^)]*)\)\s*:\s*([^{\n]+?)\s*\{",
+        "sig_groups": ("name", "params", "ret"),
         "detect": "src/client.ts",
         "sources": ["src/client.ts"],
         # Exactly two spaces: class members sit at that indent, while statements
@@ -75,6 +80,8 @@ LANGS = {
         "skip": {"request", "requestRaw", "uploadFile", "paginate"},
     },
     "go": {
+        "sig_re": r"func \(c \*Client\) (\w+)\(([^)]*)\) \(([^)]*)\)",
+        "sig_groups": ("name", "params", "ret"),
         "detect": "client.go",
         "sources": ["*.go"],
         "exclude": ["*_test.go"],
@@ -96,6 +103,8 @@ LANGS = {
         "skip": {"Do", "buildURL"},
     },
     "csharp": {
+        "sig_re": r"public (?:async )?([\w<>,?\[\]. ]+?) ([A-Z]\w*)\(([^)]*)\)",
+        "sig_groups": ("ret", "name", "params"),
         "detect": "src/Seclai/SeclaiClient.cs",
         "sources": ["src/Seclai/*.cs"],
         "method_re": r"public (?:async )?[\w<>,?\[\]. ]+ ([A-Z][A-Za-z0-9]*)\s*\(",
@@ -570,6 +579,20 @@ def cmd_spec_diff(args) -> int:
         for s in sorted(os_ - ns_):
             print(f"   {s}")
 
+    ov = old.get("x-seclai-versions") or {}
+    nv = new.get("x-seclai-versions") or {}
+    if ov != nv:
+        print("\nAPI VERSIONS CHANGED:")
+        for key in ("default", "latest"):
+            if ov.get(key) != nv.get(key):
+                print(f"   {key}: {ov.get(key)} -> {nv.get(key)}")
+        gained = [v for v in nv.get("known", []) if v not in ov.get("known", [])]
+        if gained:
+            print(f"   +known {', '.join(gained)}")
+        print("   Each SDK pins these as constants and rejects an unknown version, so "
+              "update them\n   or the new version cannot be selected. Their tests assert "
+              "the constants match this block.")
+
     prop_changes = []
     for k in sorted(ns_ & os_):
         o = set((old["components"]["schemas"][k].get("properties") or {}))
@@ -828,6 +851,144 @@ def cmd_returns(args) -> int:
     return 0
 
 
+
+# ── surface ──────────────────────────────────────────────────────────────────
+def public_surface(text: str, cfg: dict) -> dict[str, set[tuple[str, str]]]:
+    """method name -> {(return type, parameter list)}. A set, because C# and Go
+    both allow overloads/variants under one name."""
+    out: dict[str, set[tuple[str, str]]] = {}
+    order = cfg["sig_groups"]
+    for m in re.finditer(cfg["sig_re"], text, re.S):
+        parts = dict(zip(order, m.groups()))
+        norm = lambda x: " ".join((x or "").split())
+        out.setdefault(norm(parts["name"]), set()).add((norm(parts["ret"]), norm(parts["params"])))
+    return out
+
+
+
+def _params(sig: str) -> list[str]:
+    """Split a parameter list, ignoring nesting inside generics and defaults."""
+    out, depth, cur = [], 0, ""
+    for ch in sig:
+        if ch in "<([{":
+            depth += 1
+        elif ch in ">)]}":
+            depth -= 1
+        if ch == "," and depth == 0:
+            out.append(cur.strip())
+            cur = ""
+        else:
+            cur += ch
+    if cur.strip():
+        out.append(cur.strip())
+    return [p for p in out if p and p != "*"]
+
+
+def classify_change(lang: str, old: tuple[str, str], new: tuple[str, str]) -> tuple[str, str]:
+    """(severity, label) for one signature change. severity is 'break' or 'warn'.
+
+    Not every signature change breaks a caller, and a check that says it does is
+    a check people switch off. Narrowing a return from `unknown` to a concrete
+    type is safe for every TypeScript consumer; a Python return annotation is not
+    enforced at all. Adding an optional parameter still compiles everywhere — but
+    it changes the method's metadata token, so a C# consumer that does not
+    recompile breaks at runtime. That last case is real and easy to miss.
+    """
+    old_ret, old_par = old
+    new_ret, new_par = new
+    if old_par != new_par:
+        op, np_ = _params(old_par), _params(new_par)
+        added_optional = (np_[:len(op)] == op
+                          and all("=" in a for a in np_[len(op):]))
+        if added_optional:
+            if lang == "csharp":
+                return "warn", "optional parameters added — source compatible, but binary breaking for consumers that do not recompile"
+            return "warn", "optional parameters added — source compatible"
+        return "break", "parameter list changed"
+    if old_ret != new_ret:
+        if lang == "javascript" and "unknown" in old_ret and "unknown" not in new_ret:
+            return "warn", "return narrowed from unknown — safe for consumers"
+        if lang == "python":
+            return "warn", "return annotation changed — not enforced at runtime, but check the value did not change"
+        return "break", "return type changed"
+    return "warn", "signature reordered"
+
+
+def cmd_surface(args) -> int:
+    """Diff the public API surface against a released tag.
+
+    The check that answers "is this release breaking?". Reading the changelog
+    cannot answer it, and neither can the compiler: adding an optional parameter
+    in C# still compiles for every caller but breaks any consumer that does not
+    recompile. That is exactly how a binary-breaking change reached an
+    otherwise-additive release in 2026-07.
+    """
+    repo = Path(args.repo).resolve()
+    if repo.name in NOT_APPLICABLE:
+        print(f"{repo.name}: not applicable — {NOT_APPLICABLE[repo.name]}")
+        return 0
+    lang = args.lang or detect_lang(repo)
+    if not lang:
+        die(f"cannot detect SDK language in {repo}")
+    cfg = LANGS[lang]
+    if "sig_re" not in cfg:
+        print(f"{repo.name} [{lang}] — no signature pattern; nothing to compare.")
+        return 0
+    verify_rev(repo, args.rev)
+
+    files = source_files(repo, cfg)
+    rel = [str(f.relative_to(repo)) for f in files]
+    old_text = "".join(
+        subprocess.run(["git", "-C", str(repo), "show", f"{args.rev}:{r}"],
+                       capture_output=True, text=True).stdout for r in rel)
+    new_text = "".join(f.read_text(encoding="utf-8", errors="replace") for f in files)
+
+    old, new = public_surface(old_text, cfg), public_surface(new_text, cfg)
+    removed = sorted(set(old) - set(new))
+    added = sorted(set(new) - set(old))
+    changed = [k for k in sorted(set(old) & set(new)) if old[k] - new[k]]
+
+    print(f"{repo.name} [{lang}] — {len(old)} public method(s) at {args.rev}, {len(new)} now")
+
+    if removed:
+        print(f"\nREMOVED ({len(removed)}) — every caller breaks:")
+        for k in removed:
+            print(f"   {k}")
+    breaks, warns = [], []
+    for k in changed:
+        gone = sorted(old[k] - new[k])
+        now = sorted(new[k] - old[k])
+        sev, label = ("break", "signature removed")
+        if len(gone) == 1 and len(now) == 1:
+            sev, label = classify_change(lang, gone[0], now[0])
+        (breaks if sev == "break" else warns).append((k, label, gone, now))
+
+    def show(rows: list) -> None:
+        for k, label, gone, now in rows:
+            print(f"   {k} — {label}")
+            for ret, params in gone:
+                print(f"       was: {ret} ({params[:100]})")
+            for ret, params in now:
+                print(f"       now: {ret} ({params[:100]})")
+
+    if breaks:
+        print(f"\nBREAKING ({len(breaks)}) — a released signature no longer works:")
+        show(breaks)
+    if warns and not args.quiet_warn:
+        print(f"\nWARN — CHANGED ({len(warns)}) — compatible, but verify:")
+        show(warns)
+    if added and not args.quiet_added:
+        print(f"\nADDED ({len(added)}):")
+        print("   " + ", ".join(added))
+
+    if removed or breaks:
+        print(f"\n{len(removed) + len(breaks)} breaking change(s). Keep the old form and add "
+              "alongside it, or bump the major.")
+        return 1
+    print("\nno breaking change — every released signature still works")
+    return 0
+
+
 # ── Model completeness ───────────────────────────────────────────────────────
 # Only for SDKs whose models are written by hand. Where a generator owns the
 # models, regeneration keeps them in step and this check has nothing to say.
@@ -990,6 +1151,14 @@ def main() -> int:
     p.add_argument("--quiet-renamed", action="store_true",
                    help="suppress the same-shape-different-name report")
     p.set_defaults(func=cmd_returns)
+
+    p = sub.add_parser("surface", help="public API surface diff against a released tag")
+    p.add_argument("rev", help="git rev of the last release, e.g. 1.3.0 or v1.5.0")
+    p.add_argument("repo", nargs="?", default=".")
+    p.add_argument("--lang", choices=list(LANGS))
+    p.add_argument("--quiet-added", action="store_true", help="suppress the added-methods list")
+    p.add_argument("--quiet-warn", action="store_true", help="suppress the compatible-change report")
+    p.set_defaults(func=cmd_surface)
 
     p = sub.add_parser("models", help="hand-written models missing properties their schema declares")
     p.add_argument("repo", nargs="?", default=".")
