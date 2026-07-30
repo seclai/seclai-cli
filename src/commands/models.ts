@@ -12,6 +12,8 @@ export function register(program: Command, rt: CliRuntime): void {
     .option("--provider <provider>", "Filter by provider name.")
     .option("--supports-tool-use", "Only models that support tool use.")
     .option("--supports-thinking", "Only models that support thinking.")
+    .option("--supports-input-media <media>", "Only models accepting this input modality (e.g. image, audio).")
+    .option("--supports-output-media <media>", "Only models producing this output modality (e.g. image, video).")
     .action(async (opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
@@ -19,7 +21,19 @@ export function register(program: Command, rt: CliRuntime): void {
         if (opts.provider !== undefined) o.provider = opts.provider;
         if (opts.supportsToolUse !== undefined) o.supportsToolUse = opts.supportsToolUse;
         if (opts.supportsThinking !== undefined) o.supportsThinking = opts.supportsThinking;
+        if (opts.supportsInputMedia !== undefined) o.supportsInputMedia = opts.supportsInputMedia;
+        if (opts.supportsOutputMedia !== undefined) o.supportsOutputMedia = opts.supportsOutputMedia;
         printJson(rt, await client.listModels(o));
+      });
+    });
+
+  models
+    .command("tiers")
+    .description("Show each media-generation modality and tier with its model and cost.")
+    .action(async () => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        printJson(rt, await client.getGenerationTiers());
       });
     });
 

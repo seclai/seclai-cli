@@ -14,13 +14,11 @@ export function register(program: Command, rt: CliRuntime): void {
     .option("--page <n>", "Page number.", (v: string) => Number(v))
     .option("--limit <n>", "Page size.", (v: string) => Number(v))
     .option("--status <status>", "Filter by status.")
-    .option("--severity <severity>", "Filter by severity.")
     .action(async (opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
         const o: Record<string, unknown> = listOpts(opts);
         if (opts.status) o.status = opts.status;
-        if (opts.severity) o.severity = opts.severity;
         printJson(rt, await client.listAlerts(o));
       });
     });

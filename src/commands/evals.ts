@@ -16,10 +16,22 @@ export function register(program: Command, rt: CliRuntime): void {
     .argument("<agentId>", "Agent ID.")
     .option("--page <n>", "Page number.", (v: string) => Number(v))
     .option("--limit <n>", "Page size.", (v: string) => Number(v))
+    .option(
+      "--paged",
+      "Return the {data, pagination} envelope instead of a bare array. Works regardless of --api-version.",
+    )
     .action(async (agentId: string, opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
-        printJson(rt, await client.listEvaluationCriteria(agentId, listOpts(opts)));
+        // The endpoint answers with a bare array by default and the envelope
+        // once the account opts in; both SDK methods read either shape, so the
+        // flag picks the output the caller wants rather than what the API sent.
+        printJson(
+          rt,
+          opts.paged
+            ? await client.listEvaluationCriteriaPage(agentId, listOpts(opts))
+            : await client.listEvaluationCriteria(agentId, listOpts(opts)),
+        );
       });
     });
 

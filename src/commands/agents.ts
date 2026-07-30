@@ -80,6 +80,65 @@ export function register(program: Command, rt: CliRuntime): void {
       });
     });
 
+  agents
+    .command("disable")
+    .description("Pause an agent across every trigger path (API, schedule, email, sub-agent calls).")
+    .argument("<agentId>", "Agent ID.")
+    .action(async (agentId: string) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        printJson(rt, await client.disableAgent(agentId));
+      });
+    });
+
+  agents
+    .command("enable")
+    .description("Resume a paused agent.")
+    .argument("<agentId>", "Agent ID.")
+    .action(async (agentId: string) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        printJson(rt, await client.enableAgent(agentId));
+      });
+    });
+
+  agents
+    .command("callers")
+    .description("List the live agents that call this agent via a call_agent step.")
+    .argument("<agentId>", "Agent ID.")
+    .action(async (agentId: string) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        printJson(rt, await client.getAgentCallers(agentId));
+      });
+    });
+
+  // --- Triggers ---
+
+  const triggers = agents.command("triggers").description("Agent trigger configuration.");
+
+  triggers
+    .command("email-config")
+    .description("Set the alias, sender allowlist, and inbound-handling flags on an EMAIL_RECEIVED trigger.")
+    .argument("<agentId>", "Agent ID.")
+    .argument("<triggerId>", "Trigger ID.")
+    .option("--json <json>", "Config body JSON. Use '-' for stdin.")
+    .option("--json-file <path>", "Config body JSON file. Use '-' for stdin.")
+    .action(async (agentId: string, triggerId: string, opts) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        const body = await readJsonInput(rt, { json: opts.json, jsonFile: opts.jsonFile });
+        printJson(
+          rt,
+          await client.setEmailTriggerConfig(
+            agentId,
+            triggerId,
+            body as Parameters<typeof client.setEmailTriggerConfig>[2],
+          ),
+        );
+      });
+    });
+
   // --- Run ---
 
   agents
@@ -190,13 +249,16 @@ export function register(program: Command, rt: CliRuntime): void {
 
   runs
     .command("delete")
-    .description("Delete a run.")
+    .description("Deprecated alias for 'runs cancel'. The API has no delete-a-run operation.")
     .argument("<runId>", "Run ID.")
     .action(async (runId: string) => {
       await run(rt, async () => {
+        // This never deleted anything: it called the cancel endpoint all along.
+        // Kept so existing scripts keep working, routed to the method that says
+        // what it does.
+        rt.writeErr("warning: 'runs delete' is deprecated and cancels the run. Use 'runs cancel'.\n");
         const client = createClient(program.opts<GlobalOptions>());
-        await client.deleteAgentRun(runId);
-        printJson(rt, { ok: true });
+        printJson(rt, await client.cancelAgentRun(runId));
       });
     });
 
@@ -405,12 +467,22 @@ export function register(program: Command, rt: CliRuntime): void {
     });
 
   ai.command("history")
-    .description("Get agent AI conversation history.")
+    .description("Get agent AI conversation history for one step type.")
     .argument("<agentId>", "Agent ID.")
-    .action(async (agentId: string) => {
+    .requiredOption("--step-type <type>", "Step type to read history for (e.g. llm). Required by the API.")
+    .option("--step-id <id>", "Restrict to a single step.")
+    .option("--limit <n>", "Page size.", (v: string) => Number(v))
+    .option("--offset <n>", "Offset.", (v: string) => Number(v))
+    .action(async (agentId: string, opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
-        printJson(rt, await client.getAgentAiConversationHistory(agentId));
+        const o: Parameters<typeof client.getAgentAiConversationHistory>[1] = {
+          stepType: opts.stepType,
+        };
+        if (opts.stepId !== undefined) o.stepId = opts.stepId;
+        if (opts.limit !== undefined) o.limit = opts.limit;
+        if (opts.offset !== undefined) o.offset = opts.offset;
+        printJson(rt, await client.getAgentAiConversationHistory(agentId, o));
       });
     });
 

@@ -102,6 +102,7 @@ Tokens are cached in `~/.seclai/sso/cache/` and auto-refreshed when expired.
 | `SECLAI_API_URL` | Override API base URL (default: `https://api.seclai.com`) |
 | `SECLAI_PROFILE` | Default SSO profile name (default: `default`) |
 | `SECLAI_CONFIG_DIR` | Config directory path (default: `~/.seclai`) |
+| `SECLAI_API_VERSION` | Dated API version (alternative to `--api-version`) |
 | `SECLAI_SSO_DOMAIN` | Override SSO domain (default: `auth.seclai.com`) |
 | `SECLAI_SSO_CLIENT_ID` | Override SSO client ID (default: `4bgf8v9qmc5puivbaqon9n5lmr`) |
 | `SECLAI_SSO_REGION` | Override SSO region (default: `us-west-2`) |
@@ -114,8 +115,35 @@ Tokens are cached in `~/.seclai/sso/cache/` and auto-refreshed when expired.
 | `--profile <name>` | SSO profile name |
 | `--account-id <id>` | Account ID (`X-Account-Id` header) |
 | `--config-dir <path>` | Config directory path |
+| `--api-version <date>` | Opt into dated API changes released on or before this `YYYY-MM-DD` |
+| `--allow-unknown-api-version` | Send an `--api-version` this CLI was not built against |
 | `--compact` | Output compact (single-line) JSON |
 | `-V, --version` | Print version |
+
+---
+
+## API Versions
+
+The API is versioned by date. Responses can change shape between versions — a
+bare array becoming a `{data, pagination}` envelope, for instance — so the CLI
+sends **no version header by default**. Upgrading the CLI on its own never
+changes what a command prints.
+
+```bash
+# See which version a request resolves to
+seclai api-version get
+
+# Opt one invocation into the changes released up to a date
+seclai --api-version 2026-07-27 alerts list
+
+# Or for every client on the account, not just this CLI
+seclai api-version set 2026-07-27
+seclai api-version clear    # revert to the default
+```
+
+An `--api-version` this CLI was not built against is rejected, because a newer
+version can reshape a response the CLI would then misread. Pass
+`--allow-unknown-api-version` to send it anyway.
 
 ---
 
@@ -129,6 +157,20 @@ seclai agents create --json '{"name":"My Agent"}'
 seclai agents get <agentId>
 seclai agents update <agentId> --json '{"name":"Renamed"}'
 seclai agents delete <agentId>
+
+# Pause an agent across every trigger path, then resume it
+seclai agents disable <agentId>
+seclai agents enable <agentId>
+
+# Which live agents call this one via a call_agent step?
+seclai agents callers <agentId>
+```
+
+#### Triggers
+
+```bash
+# Alias, sender allowlist, and inbound-handling flags for an EMAIL_RECEIVED trigger
+seclai agents triggers email-config <agentId> <triggerId> --json '{"alias":"support"}'
 ```
 
 #### Running Agents
@@ -158,8 +200,8 @@ seclai agents run <agentId> --json '{"input":"Hi"}' --poll --poll-interval-ms 20
 ```bash
 seclai agents runs list <agentId> [--page N] [--limit N]
 seclai agents runs get <runId> [--include-step-outputs]
-seclai agents runs delete <runId>
 seclai agents runs cancel <runId>
+seclai agents runs delete <runId>   # deprecated alias for `runs cancel`
 seclai agents runs search [--page N] [--limit N] [--json '...']
 seclai agents runs eval-results <agentId> <runId> [--page N] [--limit N]
 # Download a file attachment emitted by a run step. attachmentId is the
@@ -204,7 +246,8 @@ seclai agents input-status <agentId> <uploadId>
 ```bash
 seclai agents ai gen-steps <agentId> --user-input "Build a QA chatbot"
 seclai agents ai step-config <agentId> --user-input "Configure the search step"
-seclai agents ai history <agentId>
+# --step-type is required: the API rejects the request without it.
+seclai agents ai history <agentId> --step-type llm [--step-id <id>] [--limit N] [--offset N]
 seclai agents ai mark <agentId> <conversationId> --json '{"accepted":true}'
 ```
 
@@ -303,13 +346,17 @@ seclai memory ai accept <conversationId> --json '{"accepted":true}'
 #### Criteria
 
 ```bash
-seclai evals criteria list <agentId> [--page N] [--limit N]
+seclai evals criteria list <agentId> [--page N] [--limit N] [--paged]
 seclai evals criteria create <agentId> --json '{"name":"Quality"}'
 seclai evals criteria get <criteriaId>
 seclai evals criteria update <criteriaId> --json '{"name":"Renamed"}'
 seclai evals criteria delete <criteriaId>
 seclai evals criteria summary <criteriaId>
 ```
+
+`--paged` returns the `{data, pagination}` envelope instead of a bare array. It
+works whatever `--api-version` is in effect, so you can move scripts to the
+envelope before the account opts in.
 
 #### Results
 
@@ -375,7 +422,7 @@ seclai governance ai decline <conversationId>
 ### Alerts
 
 ```bash
-seclai alerts list [--page N] [--limit N] [--status open] [--severity high]
+seclai alerts list [--page N] [--limit N] [--status open]
 seclai alerts get <alertId>
 seclai alerts status <alertId> --json '{"status":"resolved"}'
 seclai alerts comment <alertId> --json '{"comment":"Investigating"}'
@@ -401,6 +448,15 @@ seclai alerts prefs update <organizationId> <alertType> --json '{"enabled":true}
 ```
 
 ### Models
+
+```bash
+seclai models list [--provider <name>] [--supports-tool-use] [--supports-thinking]
+seclai models list --supports-input-media image --supports-output-media video
+seclai models get <modelId>
+
+# Each media-generation modality and tier, with its model and cost
+seclai models tiers
+```
 
 #### Model Alerts
 
@@ -431,6 +487,63 @@ seclai models experiments delete <experimentId>   # soft-delete, preserves audit
 
 ```bash
 seclai search --query "deployment guide" [--limit N] [--entity-type agent|source|kb]
+
+# Search the Seclai documentation
+seclai docs search --query "memory banks" [--mode keyword|semantic] [--limit N]
+```
+
+### Account
+
+```bash
+# The authenticated user's account ID and organization memberships
+seclai me
+```
+
+### Email
+
+Agent email: the domains agents send from, the inbound blocklist, inbound
+health, and recipient opt-outs.
+
+#### Domains
+
+```bash
+seclai email domains list
+seclai email domains add --kind custom --value mail.example.com [--delegated]
+seclai email domains verify <domainId>        # check DNS now
+seclai email domains set-primary <domainId>
+seclai email domains test-email <domainId>    # send a test to the account owner
+seclai email domains dmarc <domainId> [--days N] [--top-sources N]
+seclai email domains remove <domainId>
+seclai email domains use-shared               # revert to agent.seclai.com
+```
+
+`add` returns the DNS records to publish. Use `--delegated` when the domain's
+DNS is delegated to Seclai, so those records are published for you.
+
+#### Blocked Senders
+
+```bash
+seclai email blocked list [--limit N] [--offset N]
+seclai email blocked add --sender-email spam@example.com [--note "phishing"]
+seclai email blocked add --sender-email example.com --match-type domain
+seclai email blocked remove <blockedId>
+seclai email blocked auto-block-mode <mode>
+```
+
+#### Inbound Health
+
+```bash
+seclai email inbound status                   # quota, pause state, queued runs
+seclai email inbound rejections [--agent-id <id>] [--limit N]
+seclai email inbound cancel-queued            # fail all over-quota parked runs
+seclai email inbound resume                   # lift the account-wide pause
+```
+
+#### Opt-outs
+
+```bash
+seclai email optouts list [--agent-id <id>] [--limit N] [--offset N]
+seclai email optouts remove <optoutId>
 ```
 
 ### AI Assistant

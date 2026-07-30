@@ -10,13 +10,15 @@ import {
   SeclaiConfigurationError,
 } from "@seclai/sdk";
 
-/** Global CLI options parsed from top-level flags (--api-key, --compact, --profile, --account-id, --config-dir). */
+/** Global CLI options parsed from top-level flags (--api-key, --compact, --profile, --account-id, --config-dir, --api-version). */
 export type GlobalOptions = {
   apiKey?: string;
   compact?: boolean;
   profile?: string;
   accountId?: string;
   configDir?: string;
+  apiVersion?: string;
+  allowUnknownApiVersion?: boolean;
 };
 
 /** Runtime abstraction that decouples the CLI from Node globals, enabling testability. */
@@ -122,12 +124,21 @@ export function createClient(opts: GlobalOptions): Seclai {
     profile?: string;
     configDir?: string;
     accountId?: string;
+    apiVersion?: string;
+    allowUnknownApiVersion?: boolean;
   } = {};
 
   if (opts.apiKey !== undefined) seclaiOpts.apiKey = opts.apiKey;
   if (opts.profile !== undefined) seclaiOpts.profile = opts.profile;
   if (opts.configDir !== undefined) seclaiOpts.configDir = opts.configDir;
   if (opts.accountId !== undefined) seclaiOpts.accountId = opts.accountId;
+
+  // Omitted by default, so upgrading the CLI never changes a response shape;
+  // passing --api-version opts into the dated changes released up to that date.
+  const envVersion = process.env.SECLAI_API_VERSION;
+  const version = opts.apiVersion ?? (envVersion && envVersion.length > 0 ? envVersion : undefined);
+  if (version !== undefined) seclaiOpts.apiVersion = version;
+  if (opts.allowUnknownApiVersion) seclaiOpts.allowUnknownApiVersion = true;
 
   const envUrl = process.env.SECLAI_API_URL;
   seclaiOpts.baseUrl = envUrl && envUrl.length > 0 ? envUrl : "https://api.seclai.com";

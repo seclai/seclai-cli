@@ -11,15 +11,16 @@ _seclai_completions() {
   prev="\${COMP_WORDS[COMP_CWORD-1]}"
 
   # Top-level commands
-  commands="agents sources contents kb memory evals solutions governance alerts models search ai skills mcp completion help"
+  commands="agents sources contents kb memory evals solutions governance alerts email models search docs me api-version ai skills mcp completion auth configure help"
 
   case "\${COMP_WORDS[1]}" in
     agents)
       case "\${COMP_WORDS[2]}" in
-        runs)   COMPREPLY=( $(compgen -W "list get delete cancel search eval-results download-attachment" -- "$cur") ); return ;;
-        def)    COMPREPLY=( $(compgen -W "get update" -- "$cur") ); return ;;
-        ai)     COMPREPLY=( $(compgen -W "gen-steps step-config history mark" -- "$cur") ); return ;;
-        *)      COMPREPLY=( $(compgen -W "list create get update delete run runs def export preview-import upload-input input-status attachment-references ai" -- "$cur") ); return ;;
+        runs)     COMPREPLY=( $(compgen -W "list get delete cancel search eval-results download-attachment" -- "$cur") ); return ;;
+        def)      COMPREPLY=( $(compgen -W "get update" -- "$cur") ); return ;;
+        ai)       COMPREPLY=( $(compgen -W "gen-steps step-config history mark" -- "$cur") ); return ;;
+        triggers) COMPREPLY=( $(compgen -W "email-config" -- "$cur") ); return ;;
+        *)        COMPREPLY=( $(compgen -W "list create get update delete disable enable callers triggers run runs def export preview-import upload-input input-status attachment-references ai" -- "$cur") ); return ;;
       esac ;;
     sources|source)
       case "\${COMP_WORDS[2]}" in
@@ -57,12 +58,24 @@ _seclai_completions() {
         prefs)   COMPREPLY=( $(compgen -W "list update" -- "$cur") ); return ;;
         *)       COMPREPLY=( $(compgen -W "list get status comment subscribe unsubscribe configs prefs" -- "$cur") ); return ;;
       esac ;;
+    email)
+      case "\${COMP_WORDS[2]}" in
+        domains) COMPREPLY=( $(compgen -W "list add remove verify set-primary use-shared test-email dmarc" -- "$cur") ); return ;;
+        blocked) COMPREPLY=( $(compgen -W "list add remove auto-block-mode" -- "$cur") ); return ;;
+        inbound) COMPREPLY=( $(compgen -W "status rejections cancel-queued resume" -- "$cur") ); return ;;
+        optouts) COMPREPLY=( $(compgen -W "list remove" -- "$cur") ); return ;;
+        *)       COMPREPLY=( $(compgen -W "domains blocked inbound optouts" -- "$cur") ); return ;;
+      esac ;;
     models)
       case "\${COMP_WORDS[2]}" in
         alerts)      COMPREPLY=( $(compgen -W "list mark-read mark-all-read unread-count" -- "$cur") ); return ;;
         experiments) COMPREPLY=( $(compgen -W "list create get cancel delete" -- "$cur") ); return ;;
-        *)           COMPREPLY=( $(compgen -W "alerts recommendations experiments" -- "$cur") ); return ;;
+        *)           COMPREPLY=( $(compgen -W "list get tiers alerts recommendations experiments" -- "$cur") ); return ;;
       esac ;;
+    docs) COMPREPLY=( $(compgen -W "search" -- "$cur") ); return ;;
+    api-version) COMPREPLY=( $(compgen -W "get set clear" -- "$cur") ); return ;;
+    auth) COMPREPLY=( $(compgen -W "login logout status refresh" -- "$cur") ); return ;;
+    configure) COMPREPLY=( $(compgen -W "sso list" -- "$cur") ); return ;;
     ai) COMPREPLY=( $(compgen -W "feedback kb source solution memory memory-history accept decline memory-accept" -- "$cur") ); return ;;
     skills) COMPREPLY=( $(compgen -W "install" -- "$cur") ); return ;;
     mcp) COMPREPLY=( $(compgen -W "configure show" -- "$cur") ); return ;;
@@ -91,17 +104,25 @@ _seclai() {
     'solutions:Manage solutions'
     'governance:Governance AI assistant'
     'alerts:Manage alerts and alert configurations'
-    'models:Model alerts and recommendations'
+    'email:Agent email domains, blocklist, inbound health, opt-outs'
+    'models:Models, model alerts, recommendations, experiments'
     'search:Search across Seclai resources'
+    'docs:Search the Seclai documentation'
+    'me:Show the authenticated user and organizations'
+    'api-version:Read or pin the dated API version'
     'ai:Top-level AI assistant'
     'skills:Install skill files for AI coding tools'
     'mcp:Configure the Seclai MCP server'
     'completion:Generate shell completion scripts'
+    'auth:SSO authentication'
+    'configure:Manage SSO profiles'
     'help:Display help for command'
   )
 
   _arguments -C \\
     '--api-key[Seclai API key]:key' \\
+    '--api-version[Dated API version (YYYY-MM-DD)]:date' \\
+    '--allow-unknown-api-version[Permit an unrecognized --api-version]' \\
     '--compact[Output compact JSON]' \\
     '-V[Output version]' \\
     '-h[Display help]' \\
@@ -113,7 +134,7 @@ _seclai() {
     args)
       case \${words[1]} in
         agents)
-          local -a sub=(list create get update delete run runs def export preview-import upload-input input-status attachment-references ai)
+          local -a sub=(list create get update delete disable enable callers triggers run runs def export preview-import upload-input input-status attachment-references ai)
           _describe 'subcommand' sub ;;
         sources|source)
           local -a sub=(list create get update delete upload upload-text exports migration)
@@ -139,8 +160,23 @@ _seclai() {
         alerts)
           local -a sub=(list get status comment subscribe unsubscribe configs prefs)
           _describe 'subcommand' sub ;;
+        email)
+          local -a sub=(domains blocked inbound optouts)
+          _describe 'subcommand' sub ;;
         models)
-          local -a sub=(alerts recommendations experiments)
+          local -a sub=(list get tiers alerts recommendations experiments)
+          _describe 'subcommand' sub ;;
+        docs)
+          local -a sub=(search)
+          _describe 'subcommand' sub ;;
+        api-version)
+          local -a sub=(get set clear)
+          _describe 'subcommand' sub ;;
+        auth)
+          local -a sub=(login logout status refresh)
+          _describe 'subcommand' sub ;;
+        configure)
+          local -a sub=(sso list)
           _describe 'subcommand' sub ;;
         ai)
           local -a sub=(feedback kb source solution memory memory-history accept decline memory-accept)
@@ -164,7 +200,7 @@ _seclai "$@"
 const FISH = `# seclai fish completion — save to ~/.config/fish/completions/seclai.fish
 #   seclai completion fish > ~/.config/fish/completions/seclai.fish
 
-set -l top agents sources contents kb memory evals solutions governance alerts models search ai skills mcp completion help
+set -l top agents sources contents kb memory evals solutions governance alerts email models search docs me api-version ai skills mcp completion auth configure help
 
 # Top-level
 complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "agents" -d "Manage agents"
@@ -176,15 +212,19 @@ complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "evals" -d "E
 complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "solutions" -d "Solutions"
 complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "governance" -d "Governance AI"
 complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "alerts" -d "Alerts"
-complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "models" -d "Model alerts"
+complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "email" -d "Agent email"
+complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "models" -d "Models and model alerts"
 complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "search" -d "Search resources"
+complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "docs" -d "Search documentation"
+complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "me" -d "Authenticated user"
+complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "api-version" -d "Dated API version"
 complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "ai" -d "AI assistant"
 complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "skills" -d "Skill files"
 complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "mcp" -d "MCP server config"
 complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "completion" -d "Shell completions"
 
 # agents
-complete -c seclai -n "__fish_seen_subcommand_from agents; and not __fish_seen_subcommand_from list create get update delete run runs def export preview-import upload-input input-status attachment-references ai" -f -a "list create get update delete run runs def export preview-import upload-input input-status attachment-references ai"
+complete -c seclai -n "__fish_seen_subcommand_from agents; and not __fish_seen_subcommand_from list create get update delete disable enable callers triggers run runs def export preview-import upload-input input-status attachment-references ai" -f -a "list create get update delete disable enable callers triggers run runs def export preview-import upload-input input-status attachment-references ai"
 
 # sources
 complete -c seclai -n "__fish_seen_subcommand_from sources; and not __fish_seen_subcommand_from list create get update delete upload upload-text exports migration" -f -a "list create get update delete upload upload-text exports migration"
@@ -210,8 +250,23 @@ complete -c seclai -n "__fish_seen_subcommand_from governance; and not __fish_se
 # alerts
 complete -c seclai -n "__fish_seen_subcommand_from alerts; and not __fish_seen_subcommand_from list get status comment subscribe unsubscribe configs prefs" -f -a "list get status comment subscribe unsubscribe configs prefs"
 
+# email
+complete -c seclai -n "__fish_seen_subcommand_from email; and not __fish_seen_subcommand_from domains blocked inbound optouts" -f -a "domains blocked inbound optouts"
+
 # models
-complete -c seclai -n "__fish_seen_subcommand_from models; and not __fish_seen_subcommand_from alerts recommendations experiments" -f -a "alerts recommendations experiments"
+complete -c seclai -n "__fish_seen_subcommand_from models; and not __fish_seen_subcommand_from list get tiers alerts recommendations experiments" -f -a "list get tiers alerts recommendations experiments"
+
+# docs
+complete -c seclai -n "__fish_seen_subcommand_from docs; and not __fish_seen_subcommand_from search" -f -a "search"
+
+# api-version
+complete -c seclai -n "__fish_seen_subcommand_from api-version; and not __fish_seen_subcommand_from get set clear" -f -a "get set clear"
+
+# auth
+complete -c seclai -n "__fish_seen_subcommand_from auth; and not __fish_seen_subcommand_from login logout status refresh" -f -a "login logout status refresh"
+
+# configure
+complete -c seclai -n "__fish_seen_subcommand_from configure; and not __fish_seen_subcommand_from sso list" -f -a "sso list"
 
 # ai
 complete -c seclai -n "__fish_seen_subcommand_from ai; and not __fish_seen_subcommand_from feedback kb source solution memory memory-history accept decline memory-accept" -f -a "feedback kb source solution memory memory-history accept decline memory-accept"
@@ -227,6 +282,8 @@ complete -c seclai -n "__fish_seen_subcommand_from completion; and not __fish_se
 
 # Global options
 complete -c seclai -l api-key -d "Seclai API key"
+complete -c seclai -l api-version -d "Dated API version (YYYY-MM-DD)"
+complete -c seclai -l allow-unknown-api-version -d "Permit an unrecognized --api-version"
 complete -c seclai -l compact -d "Output compact JSON"
 complete -c seclai -s V -l version -d "Output version"
 `;

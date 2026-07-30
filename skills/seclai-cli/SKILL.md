@@ -50,8 +50,24 @@ Override the API URL with `SECLAI_API_URL` (default: https://api.seclai.com).
 --profile <name>   # SSO profile name (or set SECLAI_PROFILE, default: 'default')
 --account-id <id>  # Account ID for multi-org targeting (X-Account-Id header)
 --config-dir <path> # Config directory (or set SECLAI_CONFIG_DIR, default: ~/.seclai)
+--api-version <date> # Opt into dated API changes up to YYYY-MM-DD (or set SECLAI_API_VERSION)
+--allow-unknown-api-version # Send an --api-version this CLI was not built against
 --compact          # Output compact single-line JSON
 -V, --version      # Print version
+```
+
+## API versions
+
+The API is versioned by date and responses can change shape between versions,
+so the CLI sends no version header by default — upgrading it never changes what
+a command prints. Opt in per invocation with `--api-version`, or pin the whole
+account:
+
+```bash
+seclai api-version get            # which version does a request resolve to?
+seclai --api-version 2026-07-27 alerts list
+seclai api-version set 2026-07-27 # every client on the account, not just the CLI
+seclai api-version clear
 ```
 
 ## Common patterns
@@ -79,6 +95,10 @@ seclai agents create --json '{"name":"My Agent","description":"..."}'
 seclai agents get <agentId>
 seclai agents update <agentId> --json '{"name":"Renamed"}'
 seclai agents delete <agentId>
+seclai agents disable <agentId>   # pause across every trigger path
+seclai agents enable <agentId>
+seclai agents callers <agentId>   # live agents that call this one via call_agent
+seclai agents triggers email-config <agentId> <triggerId> --json '{"alias":"support"}'
 ```
 
 ### Running agents
@@ -104,8 +124,8 @@ seclai agents run <agentId> --json '{"input":"Hello"}' --poll [--poll-interval-m
 ```bash
 seclai agents runs list <agentId> [--page N] [--limit N] [--status <status>]
 seclai agents runs get <runId> [--include-step-outputs]
-seclai agents runs delete <runId>
 seclai agents runs cancel <runId>
+seclai agents runs delete <runId>  # deprecated alias for `runs cancel`; there is no delete-a-run API
 seclai agents runs search --json '{"query":"..."}'
 seclai agents runs eval-results <agentId> <runId> [--page N] [--limit N]
 # Download a file attachment emitted by a run step (attachmentId = storage_key from run output manifests / webhooks).
@@ -155,7 +175,8 @@ seclai agents input-status <agentId> <uploadId>
 ```bash
 seclai agents ai gen-steps <agentId> --user-input "Build a QA chatbot"
 seclai agents ai step-config <agentId> --json '{"step_type":"llm","user_input":"Configure the LLM step"}'
-seclai agents ai history <agentId>
+# --step-type is required; the API rejects the request without it
+seclai agents ai history <agentId> --step-type llm [--step-id <id>] [--limit N] [--offset N]
 seclai agents ai mark <agentId> <conversationId> --json '{"accepted":true}'
 ```
 
@@ -250,7 +271,7 @@ seclai memory ai accept <conversationId> --json '{"accepted":true}'
 ### Evaluations — criteria
 
 ```bash
-seclai evals criteria list <agentId> [--page N] [--limit N]
+seclai evals criteria list <agentId> [--page N] [--limit N] [--paged]
 seclai evals criteria create <agentId> --json '{"name":"Response Quality","description":"...","eval_type":"llm_judge"}'
 seclai evals criteria get <criteriaId>
 seclai evals criteria update <criteriaId> --json '{"name":"Updated Criteria"}'
@@ -305,7 +326,7 @@ seclai solutions ai decline <solutionId> <conversationId>
 ### Alerts
 
 ```bash
-seclai alerts list [--page N] [--limit N] [--status <status>] [--severity <severity>]
+seclai alerts list [--page N] [--limit N] [--status <status>]
 seclai alerts get <alertId>
 seclai alerts status <alertId> --json '{"status":"resolved"}'
 seclai alerts comment <alertId> --json '{"comment":"Fixed the issue"}'
@@ -379,7 +400,9 @@ seclai models recommendations <modelId>
 
 ```bash
 seclai models list [--provider <name>] [--supports-tool-use] [--supports-thinking]
+seclai models list [--supports-input-media <media>] [--supports-output-media <media>]
 seclai models get <modelId>
+seclai models tiers   # media-generation modality/tier → model and cost
 ```
 
 ### Model playground experiments
@@ -396,6 +419,43 @@ seclai models experiments delete <experimentId>  # soft-delete, preserves audit 
 
 ```bash
 seclai search --query "deployment guide" [--limit N] [--entity-type <type>]
+seclai docs search --query "memory banks" [--mode keyword|semantic] [--limit N]
+```
+
+### Account
+
+```bash
+seclai me   # account ID and organization memberships
+```
+
+### Agent email
+
+```bash
+# Sending domains
+seclai email domains list
+seclai email domains add --kind custom --value mail.example.com [--delegated]
+seclai email domains verify <domainId>
+seclai email domains set-primary <domainId>
+seclai email domains test-email <domainId>
+seclai email domains dmarc <domainId> [--days N] [--top-sources N]
+seclai email domains remove <domainId>
+seclai email domains use-shared      # revert to agent.seclai.com
+
+# Inbound sender blocklist
+seclai email blocked list [--limit N] [--offset N]
+seclai email blocked add --sender-email spam@example.com [--match-type domain] [--note "..."]
+seclai email blocked remove <blockedId>
+seclai email blocked auto-block-mode <mode>
+
+# Inbound health
+seclai email inbound status          # quota, pause state, queued runs
+seclai email inbound rejections [--agent-id <id>] [--limit N]
+seclai email inbound cancel-queued
+seclai email inbound resume
+
+# Recipient opt-outs
+seclai email optouts list [--agent-id <id>] [--limit N] [--offset N]
+seclai email optouts remove <optoutId>
 ```
 
 ### AI assistant (global)

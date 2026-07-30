@@ -19,6 +19,8 @@ import { register as registerEvals } from "./commands/evals.js";
 import { register as registerSolutions } from "./commands/solutions.js";
 import { register as registerGovernance } from "./commands/governance.js";
 import { register as registerAlerts } from "./commands/alerts.js";
+import { register as registerEmail } from "./commands/email.js";
+import { register as registerAccount } from "./commands/account.js";
 import { register as registerModels } from "./commands/models.js";
 import { register as registerSearch } from "./commands/search.js";
 import { register as registerAi } from "./commands/ai.js";
@@ -63,6 +65,14 @@ export function createProgram(rt: CliRuntime = defaultRuntime()): Command {
       "Config directory (defaults to SECLAI_CONFIG_DIR, then ~/.seclai)."
     )
     .option(
+      "--api-version <date>",
+      "Opt into dated API changes released on or before this YYYY-MM-DD (defaults to SECLAI_API_VERSION; omitted means the account default)."
+    )
+    .option(
+      "--allow-unknown-api-version",
+      "Send an --api-version this CLI was not built against instead of rejecting it."
+    )
+    .option(
       "--compact",
       "Output compact JSON (no indentation)."
     );
@@ -73,7 +83,8 @@ export function createProgram(rt: CliRuntime = defaultRuntime()): Command {
       `  SECLAI_API_KEY      Default API key (alternative to --api-key)\n` +
       `  SECLAI_API_URL      Override API base URL (default: https://api.seclai.com)\n` +
       `  SECLAI_PROFILE      Default SSO profile (alternative to --profile)\n` +
-      `  SECLAI_CONFIG_DIR   Config directory (alternative to --config-dir)\n\n` +
+      `  SECLAI_CONFIG_DIR   Config directory (alternative to --config-dir)\n` +
+      `  SECLAI_API_VERSION  Dated API version (alternative to --api-version)\n\n` +
       `Examples:\n` +
       `  seclai agents list\n` +
       `  seclai agents run <agentId> --json '{"input":"Hello"}'\n` +
@@ -107,6 +118,8 @@ export function createProgram(rt: CliRuntime = defaultRuntime()): Command {
   registerSolutions(program, rt);
   registerGovernance(program, rt);
   registerAlerts(program, rt);
+  registerEmail(program, rt);
+  registerAccount(program, rt);
   registerModels(program, rt);
   registerSearch(program, rt);
   registerAi(program, rt);
