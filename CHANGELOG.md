@@ -1,0 +1,158 @@
+# Changelog
+
+## [1.5.0] - 2026-07-30
+
+### Changed
+
+- **Breaking:** Require `--step-type` on `agents ai history`. The API marks the parameter required and the command had no way to supply it, so every call answered 422; `--step-id`, `--limit` and `--offset` are now accepted as well
+- Deprecate `agents runs delete`. It never deleted anything — the endpoint it calls is the cancel endpoint, and the API has no delete-a-run operation — so it now warns and cancels. Use `agents runs cancel`
+- Require `@seclai/sdk` 1.5.0
+
+### Added
+
+- Add an `--api-version <date>` global option, sent as the `Seclai-Version` header, opting into dated API changes released on or before that date. Omitted by default, so upgrading the CLI alone never changes a command's output. `SECLAI_API_VERSION` sets it for a shell, and `--allow-unknown-api-version` permits a date this release was not built against
+- Add `api-version get`, `api-version set <date>` and `api-version clear` to read the version a request resolves to and to pin or clear the account's version
+- Add the `email` command group covering agent email: `domains` (list, add, remove, verify, set-primary, use-shared, test-email, dmarc), `blocked` (list, add, remove, auto-block-mode), `inbound` (status, rejections, cancel-queued, resume) and `optouts` (list, remove)
+- Add `agents disable` and `agents enable` to pause and resume an agent across every trigger path, and `agents callers` to list the live agents that call it via a `call_agent` step
+- Add `agents triggers email-config` to set the alias, sender allowlist and inbound-handling flags on an `EMAIL_RECEIVED` trigger
+- Add `me`, reporting the authenticated user's account ID and organization memberships
+- Add `docs search` for keyword or semantic search over the Seclai documentation
+- Add `models tiers`, mapping each media-generation modality and tier to its model and cost
+- Add `--supports-input-media` and `--supports-output-media` filters to `models list`
+- Add `--paged` to `evals criteria list`, returning the canonical `{data, pagination}` envelope. It works whatever `--api-version` is in effect, so scripts can move to the envelope before the account opts in
+
+### Removed
+
+- **Breaking:** Remove `--severity` from `alerts list`. `GET /alerts` declares no such filter, so results looked filtered and were not, and the parameter becomes a 422 once `--api-version` is `2026-07-27` or later
+
+### Fixed
+
+- Complete the `auth` and `configure` groups and their subcommands, and `models list` / `models get`, in bash, zsh and fish. All were reachable but absent from the generated completion scripts — including `configure sso`, the first command a new user runs
+
+## [1.4.0] - 2026-06-05
+
+### Added
+
+- Add `agents attachment-references` to read an agent's static attachment-reference contract before staging uploads ([#9](https://github.com/seclai/seclai-cli/pull/9))
+- Add `agents runs download-attachment` for a file emitted by a run step, writing to `--output` or streaming raw bytes to stdout ([#9](https://github.com/seclai/seclai-cli/pull/9))
+- Add `models experiments delete` to soft-delete a model playground experiment ([#9](https://github.com/seclai/seclai-cli/pull/9))
+
+## [1.3.0] - 2026-05-22
+
+### Added
+
+- Add `agents preview-import` to validate an agent definition without creating anything, reporting step, schedule, alert, criteria and policy counts plus any unresolved entity refs ([#8](https://github.com/seclai/seclai-cli/pull/8))
+
+## [1.2.2] - 2026-04-24
+
+### Added
+
+- Add `models list` and `models get` for the model catalog ([#7](https://github.com/seclai/seclai-cli/pull/7))
+- Add model playground commands `models experiments list`, `create`, `get` and `cancel` ([#7](https://github.com/seclai/seclai-cli/pull/7))
+
+## [1.2.1] - 2026-04-02
+
+### Added
+
+- Add `agents export`, returning a portable JSON snapshot of an agent definition ([#6](https://github.com/seclai/seclai-cli/pull/6))
+
+## [1.2.0] - 2026-03-27
+
+### Added
+
+- Add `auth login`, `logout`, `status` and `refresh` for browser-based OAuth2/PKCE SSO, with tokens cached locally and refreshed automatically. `login` takes `--no-browser` and `--port` ([#5](https://github.com/seclai/seclai-cli/pull/5))
+- Add `configure sso` and `configure list` to create and inspect `~/.seclai/config` profiles ([#5](https://github.com/seclai/seclai-cli/pull/5))
+- Add `--profile` and `--config-dir` global options, selecting the SSO profile and config directory ([#5](https://github.com/seclai/seclai-cli/pull/5))
+
+## [1.1.1] - 2026-03-24
+
+### Added
+
+- Add `mcp configure` to write Seclai MCP server config into AI coding tool config files, and `mcp show` to print the snippet for manual setup ([#4](https://github.com/seclai/seclai-cli/pull/4))
+
+## [1.1.0] - 2026-03-24
+
+### Added
+
+- Expand coverage from agents, sources and contents to knowledge bases, memory banks, source exports, embedding migrations, solutions, governance, evaluations, alerts, model alerts and the AI assistants ([#3](https://github.com/seclai/seclai-cli/pull/3))
+- Add `agents run --events` to stream every SSE event as newline-delimited JSON, with `--event-filter` and `--output full|data|status`, and `--poll` to submit and poll until completion ([#3](https://github.com/seclai/seclai-cli/pull/3))
+- Add `search` across all resource types in an account ([#3](https://github.com/seclai/seclai-cli/pull/3))
+- Add `skills install` to install Seclai CLI skill files into AI coding tool directories ([#3](https://github.com/seclai/seclai-cli/pull/3))
+- Add `completion bash|zsh|fish` to generate shell completion scripts ([#3](https://github.com/seclai/seclai-cli/pull/3))
+
+## [1.0.6] - 2026-01-30
+
+### Added
+
+- Add `contents upload` to replace existing content with a file upload, taking `--title` and `--mime-type`
+- Add `--metadata` and `--metadata-file` to the upload commands
+
+### Removed
+
+- **Breaking:** Remove the `<agentId>` argument from the run-scoped commands. The API stopped requiring it in 1.0.4, where it was retained and ignored; pass the run ID alone
+
+## [1.0.5] - 2026-01-30
+
+_Documentation only. Every command and option gained help text; there are no functional changes._
+
+## [1.0.4] - 2026-01-27
+
+### Added
+
+- Accept a run ID alone in `agents runs get` and `agents runs cancel`. The agent ID argument is still accepted, and is removed in 1.0.6
+
+## [1.0.3] - 2026-01-20
+
+### Added
+
+- Accept `source` as an alias for the `sources` command
+
+### Fixed
+
+- Send requests to `https://api.seclai.com` by default rather than relying on the SDK's default, and honour `SECLAI_API_URL` when set
+- Resolve the entrypoint through symlinks, so a globally installed `seclai` runs instead of exiting silently
+- Report SDK errors with status, URL and response body instead of a bare message
+
+## [1.0.2] - 2026-01-13
+
+### Changed
+
+- Require `@seclai/sdk` 1.0.3
+
+## [1.0.1] - 2026-01-13
+
+### Added
+
+- Add `agents run --stream` to wait for a streaming run to complete and print the final result
+
+## [1.0.0] - 2026-01-12
+
+_Stable release. No functional changes since 0.0.2._
+
+## [0.0.2] - 2026-01-12
+
+### Fixed
+
+- Report the published version in the generated documentation instead of `0.0.0`
+
+## [0.0.1] - 2026-01-12
+
+_Initial release._
+
+[1.5.0]: https://github.com/seclai/seclai-cli/releases/tag/1.5.0
+[1.4.0]: https://github.com/seclai/seclai-cli/releases/tag/1.4.0
+[1.3.0]: https://github.com/seclai/seclai-cli/releases/tag/1.3.0
+[1.2.2]: https://github.com/seclai/seclai-cli/releases/tag/1.2.2
+[1.2.1]: https://github.com/seclai/seclai-cli/releases/tag/1.2.1
+[1.2.0]: https://github.com/seclai/seclai-cli/releases/tag/1.2.0
+[1.1.1]: https://github.com/seclai/seclai-cli/releases/tag/1.1.1
+[1.1.0]: https://github.com/seclai/seclai-cli/releases/tag/1.1.0
+[1.0.6]: https://github.com/seclai/seclai-cli/releases/tag/1.0.6
+[1.0.5]: https://github.com/seclai/seclai-cli/releases/tag/1.0.5
+[1.0.4]: https://github.com/seclai/seclai-cli/releases/tag/1.0.4
+[1.0.3]: https://github.com/seclai/seclai-cli/releases/tag/1.0.3
+[1.0.2]: https://github.com/seclai/seclai-cli/releases/tag/1.0.2
+[1.0.1]: https://github.com/seclai/seclai-cli/releases/tag/1.0.1
+[1.0.0]: https://github.com/seclai/seclai-cli/releases/tag/1.0.0
+[0.0.2]: https://github.com/seclai/seclai-cli/releases/tag/0.0.2
+[0.0.1]: https://github.com/seclai/seclai-cli/releases/tag/0.0.1
