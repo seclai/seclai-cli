@@ -110,8 +110,21 @@ not a preference: a CLI's output is a scripting interface.
   the SDK takes camelCase too, but the *wire* parameter is snake_case. Assert on
   the SDK call in tests, not on the URL.
 
-## No changelog
+## Changelog
 
-This repo has no `CHANGELOG.md`; releases derive from PR titles, with `#minor`
-in the merge commit for a feature-bearing sync. The `seclai-changelog` skill
-does not apply here.
+`seclai-cli` keeps a root `CHANGELOG.md` like the other five repos — see the
+`seclai-changelog` skill, which is vendored here too. Two things are specific to
+this repo:
+
+- **The version comes from the merge commit.** `seclai/github-tag-action` reads
+  it for `#major` / `#minor`, defaulting to a patch bump. A sync that adds
+  commands must say `#minor` in the PR title, or the heading you write will not
+  match the tag that gets cut.
+- **Entries describe commands, not SDK methods.** A consumer of this package
+  runs `seclai email domains list`; that they are reaching
+  `listEmailDomains()` is an implementation detail. Group a family of new
+  commands into one entry rather than listing each endpoint.
+
+A removed flag is `Removed` and `**Breaking:**` even when it never worked —
+scripts passing `--severity` used to succeed and now fail, and that is what a
+reader needs to know.
