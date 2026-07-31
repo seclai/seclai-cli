@@ -86,6 +86,16 @@ or set environment variables:
 | `SECLAI_SSO_CLIENT_ID` | Cognito app client ID | `4bgf8v9qmc5puivbaqon9n5lmr` |
 | `SECLAI_SSO_REGION` | AWS region | `us-west-2` |
 
+Set profiles up interactively, and list the ones you have:
+
+```bash
+# Prompts for domain, client ID, region, and account ID
+seclai configure sso [--profile-name <name>]
+
+# Show every configured profile
+seclai configure list
+```
+
 Use a named profile with `--profile`:
 
 ```bash

@@ -7,96 +7,128 @@ import { run, printJson } from "../helpers.js";
 
 // --- Skill content ---
 
-const SKILL_MD = `---
+const SKILL_FILES: Array<{ name: string; content: string }> = [
+  { name: "SKILL.md", content: `---
 name: seclai-cli
 description: >-
   Manage Seclai agents, knowledge bases, sources, memory banks, evaluations,
-  solutions, governance, alerts, and more via the CLI. Use when working with
-  the Seclai platform or when the user mentions Seclai CLI commands.
+  solutions, governance, alerts, agent email, and models via the CLI. Use when
+  working with the Seclai platform or when the user mentions Seclai CLI commands.
 ---
 
 # Seclai CLI
 
-The Seclai CLI (\`seclai\` / \`npx @seclai/cli\`) manages agents, knowledge bases, sources, memory banks, evaluations, solutions, governance, alerts, and more from the terminal.
+The Seclai CLI (\`seclai\` / \`npx @seclai/cli\`) manages agents, knowledge bases,
+sources, memory banks, evaluations, solutions, governance, alerts, agent email,
+and models from the terminal.
 
-All commands output JSON to stdout. Pipe into \`jq\` for filtering.
+Every command writes JSON to stdout. Pipe into \`jq\` for filtering. Errors go to
+stderr and set a non-zero exit code, so \`set -e\` scripts fail as expected.
+
+**Find the commands for a task in the map below, then read that reference file.**
+Only this page is loaded up front; the references are read on demand.
 
 ## Quick start
 
 \`\`\`bash
-# authenticate
 export SECLAI_API_KEY="sk-..."
 
-# create an agent
 seclai agents create --json '{"name":"My Agent","description":"QA chatbot"}'
-
-# configure steps via AI assistant
 seclai agents ai gen-steps <agentId> --user-input "Build a QA chatbot that uses a knowledge base"
-
-# accept the generated plan
 seclai agents ai mark <agentId> <conversationId> --json '{"accepted":true}'
-
-# run the agent
 seclai agents run <agentId> --json '{"input":"How do I reset my password?"}' --stream
-
-# list runs
 seclai agents runs list <agentId>
 \`\`\`
+
+## Command map
+
+| Group | What it covers | Reference |
+| --- | --- | --- |
+| \`agents\` | Agents, runs, definitions, export/import, input uploads, triggers, agent AI | [references/agents.md](references/agents.md) |
+| \`sources\` \`contents\` \`kb\` \`memory\` | Sources and uploads, exports, embedding migration, indexed content, knowledge bases, memory banks | [references/knowledge.md](references/knowledge.md) |
+| \`evals\` | Evaluation criteria, results, runs, agent-level summaries | [references/evaluations.md](references/evaluations.md) |
+| \`solutions\` \`governance\` | Solutions, resource links, conversations, solution and governance AI | [references/solutions.md](references/solutions.md) |
+| \`alerts\` | Alerts, alert configurations, organization preferences | [references/alerts.md](references/alerts.md) |
+| \`email\` | Agent email: sending domains, inbound blocklist, inbound health, opt-outs | [references/email.md](references/email.md) |
+| \`models\` | Model catalog, generation tiers, model alerts, recommendations, playground experiments | [references/models.md](references/models.md) |
+| \`auth\` \`configure\` \`api-version\` \`mcp\` \`skills\` \`completion\` | Authentication, profiles, API version pinning, editor integration | [references/setup.md](references/setup.md) |
+| \`ai\` | Top-level AI assistant for knowledge bases, sources, solutions and memory | [references/ai-assistant.md](references/ai-assistant.md) |
+
+Cross-cutting topics: [streaming and event modes](references/streaming.md),
+[file uploads](references/uploads.md).
 
 ## Authentication
 
 Two modes:
 
-1. **API key** — set \`SECLAI_API_KEY\` env var or pass \`--api-key <key>\`.
-2. **SSO** — run \`seclai auth login\` for browser-based OAuth2/PKCE. Tokens are cached locally and auto-refreshed.
+1. **API key** — set \`SECLAI_API_KEY\`, or pass \`--api-key <key>\`.
+2. **SSO** — \`seclai auth login\` for browser-based OAuth2/PKCE. Tokens are cached
+   locally and refreshed automatically.
 
-Override the API URL with \`SECLAI_API_URL\` (default: https://api.seclai.com).
+Override the API host with \`SECLAI_API_URL\` (default \`https://api.seclai.com\`).
 
 ## Global options
 
 \`\`\`bash
---api-key <key>    # Seclai API key (or set SECLAI_API_KEY)
---profile <name>   # SSO profile name (or set SECLAI_PROFILE, default: 'default')
---account-id <id>  # Account ID for multi-org targeting (X-Account-Id header)
---config-dir <path> # Config directory (or set SECLAI_CONFIG_DIR, default: ~/.seclai)
---api-version <date> # Opt into dated API changes up to YYYY-MM-DD (or set SECLAI_API_VERSION)
---allow-unknown-api-version # Send an --api-version this CLI was not built against
---compact          # Output compact single-line JSON
--V, --version      # Print version
+--api-key <key>              # or set SECLAI_API_KEY
+--profile <name>             # SSO profile (or SECLAI_PROFILE, default 'default')
+--account-id <id>            # multi-org targeting (X-Account-Id header)
+--config-dir <path>          # or SECLAI_CONFIG_DIR, default ~/.seclai
+--api-version <date>         # or SECLAI_API_VERSION; see below
+--allow-unknown-api-version  # send a version this CLI was not built against
+--compact                    # single-line JSON
+-V, --version
 \`\`\`
 
 ## API versions
 
-The API is versioned by date and responses can change shape between versions,
-so the CLI sends no version header by default — upgrading it never changes what
-a command prints. Opt in per invocation with \`--api-version\`, or pin the whole
-account:
+The API is versioned by date, and a version can change a response's shape — a
+bare array becoming \`{data, pagination}\`, for instance. **The CLI sends no
+version header by default**, so upgrading it never changes what a command
+prints. Opt in per invocation, or pin the account:
 
 \`\`\`bash
-seclai api-version get            # which version does a request resolve to?
-seclai --api-version 2026-07-27 alerts list
-seclai api-version set 2026-07-27 # every client on the account, not just the CLI
+seclai api-version get                        # what does a request resolve to?
+seclai --api-version 2026-07-27 alerts list   # this invocation only
+seclai api-version set 2026-07-27             # every client on the account
 seclai api-version clear
 \`\`\`
 
+An \`--api-version\` this CLI was not built against is rejected, because a newer
+version can reshape a response the CLI would then misread. Pass
+\`--allow-unknown-api-version\` to send it anyway. An empty value is an error, not
+a no-op — \`--api-version "\$VER"\` with an unset \`VER\` fails rather than silently
+using the default.
+
 ## Common patterns
 
-### JSON input
-Most create/update commands accept \`--json '{"key":"value"}'\` or \`--json-file path.json\`.
-Use \`--json -\` or \`--json-file -\` to read from stdin.
+**JSON input.** Most create/update commands take \`--json '{"key":"value"}'\` or
+\`--json-file path.json\`. Use \`-\` as the value to read from stdin.
 
-### AI assistant shorthand
-AI generation commands accept \`--user-input <text>\` as shorthand for \`--json '{"user_input":"<text>"}'\`.
+**AI shorthand.** AI generation commands accept \`--user-input <text>\` in place of
+\`--json '{"user_input":"<text>"}'\`.
 
-### Pagination
-List commands support \`--page <n>\` and \`--limit <n>\`. Some also support \`--sort <field>\` and \`--order asc|desc\`.
+**Pagination.** List commands take \`--page <n>\` and \`--limit <n>\`; some add
+\`--sort <field>\` and \`--order asc|desc\`. A few endpoints paginate by offset
+instead and take \`--limit\` / \`--offset\`.
 
-### File uploads
-Upload commands accept \`--file <path>\` (required), plus optional \`--title\`, \`--metadata '{"k":"v"}'\`, \`--metadata-file path.json\`, \`--file-name\`, \`--mime-type\`.
+**Uploads.** Upload commands take \`--file <path>\`, plus optional \`--title\`,
+\`--metadata '{"k":"v"}'\`, \`--metadata-file\`, \`--file-name\` and \`--mime-type\`.
 
-## Commands
+## Search and account
 
-### Agents
+\`\`\`bash
+seclai search --query "deployment guide" [--limit N] [--entity-type <type>]
+seclai docs search --query "memory banks" [--mode keyword|semantic] [--limit N]
+seclai me   # account ID and organization memberships
+\`\`\`
+` },
+  { name: "references/agents.md", content: `# Agents
+
+Agents, their runs, definitions, export/import, input uploads, triggers, and the
+agent AI assistant.
+
+## CRUD and lifecycle
 
 \`\`\`bash
 seclai agents list [--page N] [--limit N]
@@ -104,92 +136,338 @@ seclai agents create --json '{"name":"My Agent","description":"..."}'
 seclai agents get <agentId>
 seclai agents update <agentId> --json '{"name":"Renamed"}'
 seclai agents delete <agentId>
-seclai agents disable <agentId>   # pause across every trigger path
+
+# pause across every trigger path (API, schedule, email, sub-agent calls)
+seclai agents disable <agentId>
 seclai agents enable <agentId>
-seclai agents callers <agentId>   # live agents that call this one via call_agent
+
+# which live agents call this one via a call_agent step?
+seclai agents callers <agentId>
+\`\`\`
+
+## Triggers
+
+\`\`\`bash
+# alias, sender allowlist and inbound-handling flags for an EMAIL_RECEIVED trigger
 seclai agents triggers email-config <agentId> <triggerId> --json '{"alias":"support"}'
 \`\`\`
 
-### Running agents
+## Running agents
+
+Four modes: basic, streaming, NDJSON events, and polling. See
+[streaming.md](streaming.md) for event shapes and filtering.
 
 \`\`\`bash
 # simple run — returns the final result
 seclai agents run <agentId> --json '{"input":"Hello"}'
 
-# stream — wait for completion via SSE, print final result
+# stream — wait for completion via SSE, print the final result
 seclai agents run <agentId> --json '{"input":"Hello"}' --stream [--timeout-ms 60000]
 
-# events — stream individual SSE events as NDJSON lines
-# --output: full (entire event), data (event data only), status (status events only)
-# --event-filter: comma-separated event types to include, e.g. "status,data"
+# events — every SSE event as an NDJSON line
+# --output: full (entire event), data (event data only), status (one-line summary)
+# --event-filter: comma-separated event types, e.g. "status,data"
 seclai agents run <agentId> --json '{"input":"Hello"}' --events [--output full|data|status] [--event-filter "status,data"]
 
-# poll — poll for completion
+# poll — submit, then poll until complete
 seclai agents run <agentId> --json '{"input":"Hello"}' --poll [--poll-interval-ms 2000] [--include-step-outputs]
 \`\`\`
 
-### Agent runs
+## Runs
 
 \`\`\`bash
 seclai agents runs list <agentId> [--page N] [--limit N] [--status <status>]
 seclai agents runs get <runId> [--include-step-outputs]
 seclai agents runs cancel <runId>
-seclai agents runs delete <runId>  # deprecated alias for \`runs cancel\`; there is no delete-a-run API
+seclai agents runs delete <runId>  # deprecated alias for \`runs cancel\`; the API has no delete-a-run operation
 seclai agents runs search --json '{"query":"..."}'
 seclai agents runs eval-results <agentId> <runId> [--page N] [--limit N]
-# Download a file attachment emitted by a run step (attachmentId = storage_key from run output manifests / webhooks).
+
+# Download a file emitted by a run step. attachmentId is the URL-safe-base64
+# storage_key from run output manifests or webhooks.
 seclai agents runs download-attachment <runId> <attachmentId> [--download-name <name>] [--output <path>]
 \`\`\`
 
-### Agent definitions
+Without \`--output\`, raw bytes go to stdout — redirect to a file rather than
+letting them hit the terminal.
+
+## Definitions
 
 \`\`\`bash
 seclai agents def get <agentId>
-seclai agents def update <agentId> --json '{"steps":[{"step_type":"llm","config":{...}}]}'
+seclai agents def update <agentId> --json '{"steps":[{"step_type":"llm","config":{}}]}'
 \`\`\`
 
-### Agent export / import
+## Export and import
 
 \`\`\`bash
-# Export an agent as a portable JSON snapshot.
+# portable JSON snapshot of an agent definition
 seclai agents export <agentId> [--no-download]
 
-# Validate an agent_definition payload before importing — no DB writes.
-# Reports counts and any unresolved_refs (KBs, memory banks, source connections,
-# or sub-agents that don't exist in this account). The body shape is
-# \`{ "agent_definition": <export payload> }\`.
+# Validate an agent_definition payload before importing — no writes.
+# Reports counts and any unresolved_refs (knowledge bases, memory banks, source
+# connections or sub-agents that do not exist in this account).
 seclai agents export <agentId> \\
   | jq '{agent_definition: .}' \\
   | seclai agents preview-import --json-file -
 
-# Import via \`agents create\` (or \`agents update\`) with \`agent_definition\` set
-# to the export payload and \`entity_remap\` mapping unresolved source UUIDs to
-# target UUIDs from preview-import's \`unresolved_refs[*].alternatives\`.
-seclai agents create --json '{"name":"Imported","trigger_type":"dynamic_input","agent_definition":{...},"entity_remap":{}}'
+# Import via \`agents create\` (or \`agents update\`) with agent_definition set to
+# the export payload, and entity_remap mapping unresolved source UUIDs to target
+# UUIDs taken from preview-import's unresolved_refs[*].alternatives.
+seclai agents create --json '{"name":"Imported","trigger_type":"dynamic_input","agent_definition":{},"entity_remap":{}}'
 \`\`\`
 
-### Agent input uploads
+## Input uploads
 
 \`\`\`bash
-# Discover what files (if any) an agent expects before staging uploads.
-# requires_uploads tells you whether the agent accepts files; the agent block
-# lists the exact names / indexes / patterns a run-time batch must satisfy.
+# What files (if any) does this agent expect? requires_uploads reports whether it
+# accepts files; the agent block lists the names, indexes and patterns a run-time
+# batch must satisfy. Call this before staging uploads.
 seclai agents attachment-references <agentId>
+
 seclai agents upload-input <agentId> --file ./input.pdf [--file-name name] [--mime-type type]
 seclai agents input-status <agentId> <uploadId>
 \`\`\`
 
-### Agent AI assistant
+## Agent AI assistant
 
 \`\`\`bash
 seclai agents ai gen-steps <agentId> --user-input "Build a QA chatbot"
 seclai agents ai step-config <agentId> --json '{"step_type":"llm","user_input":"Configure the LLM step"}'
+
 # --step-type is required; the API rejects the request without it
 seclai agents ai history <agentId> --step-type llm [--step-id <id>] [--limit N] [--offset N]
+
 seclai agents ai mark <agentId> <conversationId> --json '{"accepted":true}'
 \`\`\`
 
-### Sources
+## Example: knowledge-base-backed agent
+
+\`\`\`bash
+seclai kb create --json '{"name":"Support KB","description":"Customer support articles"}'
+seclai agents create --json '{"name":"Support Bot","description":"Answers customer questions"}'
+seclai agents ai gen-steps <agentId> --user-input "Build a QA chatbot that searches the Support KB"
+seclai agents ai mark <agentId> <conversationId> --json '{"accepted":true}'
+seclai agents run <agentId> --json '{"input":"How do I reset my password?"}' --stream
+\`\`\`
+
+## Example: memory-powered agent
+
+\`\`\`bash
+seclai memory create --json '{"name":"User Preferences","type":"general"}'
+seclai agents create --json '{"name":"Personal Assistant","description":"Remembers user preferences"}'
+seclai agents ai gen-steps <agentId> --user-input "Build a chat agent that remembers user preferences. Use general memory bank <memoryBankId>"
+seclai agents ai mark <agentId> <conversationId> --json '{"accepted":true}'
+\`\`\`
+` },
+  { name: "references/ai-assistant.md", content: `# Top-level AI assistant
+
+\`seclai ai\` creates resources from a natural-language description, without
+starting from a solution or an agent. The domain-scoped assistants —
+\`agents ai\`, \`memory ai\`, \`solutions ai\`, \`governance ai\` — live with their
+resources.
+
+\`\`\`bash
+seclai ai kb --user-input "Create a support knowledge base"
+seclai ai source --user-input "Create a documentation source"
+seclai ai solution --user-input "Build a customer support solution"
+seclai ai memory --user-input "Create a conversation memory bank"
+
+seclai ai memory-history
+seclai ai accept <conversationId> --json '{"accepted":true}'
+seclai ai decline <conversationId>
+seclai ai memory-accept <conversationId> --json '{"accepted":true}'
+
+seclai ai feedback --json '{"feedback":"The response was helpful"}'
+\`\`\`
+
+## The generate-then-accept cycle
+
+Every assistant command returns a *proposal* with a conversation ID. Nothing is
+created until you accept it:
+
+\`\`\`bash
+seclai ai kb --user-input "Create a support knowledge base"
+# read the proposal, note the conversation id
+seclai ai accept <conversationId> --json '{"accepted":true}'
+\`\`\`
+
+Memory-bank proposals have their own accept command (\`ai memory-accept\`) and
+their own history (\`ai memory-history\`); everything else uses \`ai accept\` /
+\`ai decline\`.
+` },
+  { name: "references/alerts.md", content: `# Alerts
+
+Account alerts, the configurations that raise them, and per-organization
+delivery preferences.
+
+Model-catalog alerts are separate — see [models.md](models.md).
+
+## Alerts
+
+\`\`\`bash
+seclai alerts list [--page N] [--limit N] [--status <status>]
+seclai alerts get <alertId>
+seclai alerts status <alertId> --json '{"status":"resolved"}'
+seclai alerts comment <alertId> --json '{"comment":"Fixed the issue"}'
+seclai alerts subscribe <alertId>
+seclai alerts unsubscribe <alertId>
+\`\`\`
+
+\`GET /alerts\` declares no severity filter, so there is no \`--severity\`. Filter
+client-side instead:
+
+\`\`\`bash
+seclai alerts list | jq '[.data[] | select(.severity == "high")]'
+\`\`\`
+
+## Alert configurations
+
+\`\`\`bash
+seclai alerts configs list [--page N] [--limit N]
+seclai alerts configs create --json '{"name":"Latency Alert","description":"...","threshold":5000}'
+seclai alerts configs get <configId>
+seclai alerts configs update <configId> --json '{"threshold":3000}'
+seclai alerts configs delete <configId>
+\`\`\`
+
+## Organization preferences
+
+\`\`\`bash
+seclai alerts prefs list
+seclai alerts prefs update <organizationId> <alertType> --json '{"enabled":true}'
+\`\`\`
+
+Preferences are per organization and per alert type, so \`update\` takes both.
+` },
+  { name: "references/email.md", content: `# Agent email
+
+The domains agents send from, the inbound blocklist, inbound health, and
+recipient opt-outs.
+
+Per-agent inbound configuration (alias, sender allowlist) lives on the trigger —
+see \`agents triggers email-config\` in [agents.md](agents.md).
+
+## Sending domains
+
+\`\`\`bash
+seclai email domains list
+seclai email domains add --kind custom --value mail.example.com [--delegated]
+seclai email domains verify <domainId>        # run a DNS check now
+seclai email domains set-primary <domainId>
+seclai email domains test-email <domainId>    # send a test to the account owner
+seclai email domains dmarc <domainId> [--days N] [--top-sources N]
+seclai email domains remove <domainId>
+seclai email domains use-shared               # revert to agent.seclai.com
+\`\`\`
+
+\`--kind\` is \`vanity\` (a subdomain of seclai.com) or \`custom\` (your own domain).
+\`add\` returns the DNS records to publish; pass \`--delegated\` when the domain's
+DNS is delegated to Seclai so those records are published for you. A domain must
+verify before \`set-primary\` will accept it.
+
+## Inbound sender blocklist
+
+\`\`\`bash
+seclai email blocked list [--limit N] [--offset N]
+seclai email blocked add --sender-email spam@example.com [--note "phishing"]
+seclai email blocked add --sender-email example.com --match-type domain
+seclai email blocked remove <blockedId>
+seclai email blocked auto-block-mode disabled|input|input_and_output
+\`\`\`
+
+\`--match-type\` is \`address\` (the default) or \`domain\`. \`auto-block-mode\` controls
+whether a governance BLOCK on an authenticated sender adds them to the blocklist
+automatically.
+
+## Inbound health
+
+\`\`\`bash
+seclai email inbound status          # quota usage, pause state, queued run counts
+seclai email inbound rejections [--agent-id <id>] [--limit N]
+seclai email inbound cancel-queued   # fail every over-quota parked run at once
+seclai email inbound resume          # lift the account-wide pause
+\`\`\`
+
+When inbound email exceeds quota, runs park in a QUEUED state and the account
+pauses. \`status\` shows both; \`cancel-queued\` clears the backlog and \`resume\`
+lifts the pause. Check \`rejections\` first — it reports why messages were turned
+away, which is usually the more useful answer.
+
+## Recipient opt-outs
+
+\`\`\`bash
+seclai email optouts list [--agent-id <id>] [--limit N] [--offset N]
+seclai email optouts remove <optoutId>
+\`\`\`
+
+Removing an opt-out lets that recipient receive agent email again.
+` },
+  { name: "references/evaluations.md", content: `# Evaluations Workflow
+
+## Step 1: Create evaluation criteria for an agent
+\`\`\`bash
+seclai evals criteria create <agentId> --json '{"name":"Answer Accuracy","description":"Does the answer correctly address the question?","eval_type":"llm_judge"}'
+\`\`\`
+
+## Step 2: Find runs to evaluate
+\`\`\`bash
+# list all runs for an agent
+seclai agents runs list <agentId> --limit 10
+
+# or find runs compatible with specific criteria
+seclai evals compatible-runs <criteriaId> --limit 10
+\`\`\`
+
+## Step 3: Test criteria before committing
+\`\`\`bash
+seclai evals test-draft <agentId> --json '{"criteria":{"name":"Answer Accuracy","eval_type":"llm_judge","description":"..."},"run_id":"<runId>"}'
+\`\`\`
+
+## Step 4: Create evaluation results
+\`\`\`bash
+seclai evals results create <criteriaId> --json '{"run_id":"<runId>","score":0.95}'
+\`\`\`
+
+## Step 5: Review summaries
+\`\`\`bash
+seclai evals criteria summary <criteriaId>
+seclai evals agent-results <agentId>
+seclai evals agent-runs <agentId> --limit 20
+seclai evals non-manual-summary <agentId>
+\`\`\`
+
+## Managing criteria
+\`\`\`bash
+seclai evals criteria list <agentId> [--page N] [--limit N] [--paged]
+seclai evals criteria get <criteriaId>
+seclai evals criteria update <criteriaId> --json '{"name":"Updated Name"}'
+seclai evals criteria delete <criteriaId>
+\`\`\`
+
+\`--paged\` wraps the results in \`{"data": [...]}\` instead of returning a bare
+array, so \`.data\` is a stable path to read whatever \`--api-version\` is in effect.
+Nothing is invented: the \`pagination\` block appears only once the API sends one,
+from \`--api-version 2026-07-27\`. Move scripts to \`.data\` first, then opt in to
+get \`.pagination\`.
+
+## Viewing results
+\`\`\`bash
+seclai evals results list <criteriaId> [--page N] [--limit N]
+seclai evals compatible-runs <criteriaId> [--page N] [--limit N]
+seclai evals agent-results <agentId> [--page N] [--limit N]
+seclai evals agent-runs <agentId> [--page N] [--limit N]
+\`\`\`
+` },
+  { name: "references/knowledge.md", content: `# Sources, content, knowledge bases and memory banks
+
+The ingestion side of Seclai: where documents come from, how they are indexed,
+and the stores agents read from.
+
+For upload mechanics — MIME types, size limits, metadata — see
+[uploads.md](uploads.md).
+
+## Sources
 
 \`\`\`bash
 seclai sources list [--page N] [--limit N] [--sort field] [--order asc|desc] [--account-id id]
@@ -199,14 +477,16 @@ seclai sources update <sourceId> --json '{"name":"Updated Docs"}'
 seclai sources delete <sourceId>
 \`\`\`
 
-### Source uploads
+\`source\` is accepted as an alias for \`sources\`.
+
+## Source uploads
 
 \`\`\`bash
 seclai sources upload <sourceId> --file ./doc.pdf [--title "My Doc"] [--metadata '{"category":"docs"}'] [--file-name name] [--mime-type type]
 seclai sources upload-text <sourceId> --json '{"text":"Article content here...","title":"My Article"}'
 \`\`\`
 
-### Source exports
+## Source exports
 
 \`\`\`bash
 seclai sources exports list <sourceId> [--page N] [--limit N]
@@ -218,7 +498,9 @@ seclai sources exports download <sourceId> <exportId>
 seclai sources exports estimate <sourceId> --json '{"format":"jsonl"}'
 \`\`\`
 
-### Embedding migration
+\`estimate\` reports the size and cost before you commit to \`create\`.
+
+## Embedding migration
 
 \`\`\`bash
 seclai sources migration get <sourceId>
@@ -226,7 +508,7 @@ seclai sources migration start <sourceId> --json '{"target_model":"text-embeddin
 seclai sources migration cancel <sourceId>
 \`\`\`
 
-### Contents (indexed content)
+## Contents (indexed content)
 
 \`\`\`bash
 seclai contents get <contentVersionId> [--start N] [--end N]
@@ -236,7 +518,10 @@ seclai contents replace-text <contentVersionId> --json '{"text":"Replacement tex
 seclai contents embeddings <contentVersionId> [--page N] [--limit N]
 \`\`\`
 
-### Knowledge bases
+\`--start\` / \`--end\` on \`contents get\` slice the returned text by character
+offset, which is how you inspect a long document without pulling all of it.
+
+## Knowledge bases
 
 \`\`\`bash
 seclai kb list [--page N] [--limit N] [--sort field] [--order asc|desc]
@@ -246,7 +531,7 @@ seclai kb update <kbId> --json '{"name":"Updated KB"}'
 seclai kb delete <kbId>
 \`\`\`
 
-### Memory banks
+## Memory banks
 
 \`\`\`bash
 seclai memory list [--page N] [--limit N] [--sort field] [--order asc|desc]
@@ -257,17 +542,20 @@ seclai memory update <memoryBankId> --json '{"name":"Renamed"}'
 seclai memory delete <memoryBankId>
 \`\`\`
 
-### Memory bank utilities
+### Utilities
 
 \`\`\`bash
 seclai memory stats <memoryBankId>
-seclai memory agents <memoryBankId>
+seclai memory agents <memoryBankId>        # agents using this bank
 seclai memory compact <memoryBankId>
 seclai memory delete-source <memoryBankId>
 seclai memory templates
 seclai memory test-compaction <memoryBankId> --json '{"prompt":"Summarize the conversation"}'
 seclai memory test-compaction-standalone --json '{"prompt":"Summarize the conversation"}'
 \`\`\`
+
+Both \`test-compaction\` commands are dry runs — they show what compaction would
+produce without writing to the bank.
 
 ### Memory bank AI
 
@@ -277,145 +565,56 @@ seclai memory ai last
 seclai memory ai accept <conversationId> --json '{"accepted":true}'
 \`\`\`
 
-### Evaluations — criteria
+## Example: create a source and upload content
 
 \`\`\`bash
-# --paged wraps results in {data: [...]}; pagination appears from --api-version 2026-07-27
-seclai evals criteria list <agentId> [--page N] [--limit N] [--paged]
-seclai evals criteria create <agentId> --json '{"name":"Response Quality","description":"...","eval_type":"llm_judge"}'
-seclai evals criteria get <criteriaId>
-seclai evals criteria update <criteriaId> --json '{"name":"Updated Criteria"}'
-seclai evals criteria delete <criteriaId>
-seclai evals criteria summary <criteriaId>
+seclai sources create --json '{"name":"Product Docs","description":"Product documentation source"}'
+# note the id from the output
+seclai sources upload <sourceId> --file ./docs.pdf --title "Product Manual" --metadata '{"version":"2.0"}'
+seclai sources get <sourceId>
 \`\`\`
+` },
+  { name: "references/models.md", content: `# Models
 
-### Evaluations — results & runs
+The model catalog, media-generation tiers, model-catalog alerts, recommendations
+and the playground.
+
+## Catalog
 
 \`\`\`bash
-seclai evals results list <criteriaId> [--page N] [--limit N]
-seclai evals results create <criteriaId> --json '{"run_id":"...","score":0.9}'
-seclai evals compatible-runs <criteriaId> [--page N] [--limit N]
-seclai evals test-draft <agentId> --json '{"criteria":{"name":"Test","eval_type":"llm_judge"},"run_id":"..."}'
-seclai evals agent-results <agentId> [--page N] [--limit N]
-seclai evals agent-runs <agentId> [--page N] [--limit N]
-seclai evals non-manual-summary <agentId>
+seclai models list [--provider <name>] [--supports-tool-use] [--supports-thinking]
+seclai models list [--supports-input-media <media>] [--supports-output-media <media>]
+seclai models get <modelId>
+
+# each media-generation modality and tier, with its model and cost
+seclai models tiers
 \`\`\`
 
-### Solutions
+The capability flags compose, so \`--supports-tool-use --supports-thinking\`
+returns only models with both. \`--supports-input-media\` / \`--supports-output-media\`
+take a modality such as \`image\`, \`audio\` or \`video\`.
 
-\`\`\`bash
-seclai solutions list [--page N] [--limit N] [--sort field] [--order asc|desc]
-seclai solutions create --json '{"name":"Customer Support Solution"}'
-seclai solutions get <solutionId>
-seclai solutions update <solutionId> --json '{"name":"Updated"}'
-seclai solutions delete <solutionId>
-\`\`\`
-
-### Solution links
-
-\`\`\`bash
-# link resources — each flag takes a JSON array of IDs
-seclai solutions link <solutionId> --agents '["agentId1"]' --kb '["kbId1"]' --sources '["sourceId1"]'
-seclai solutions unlink <solutionId> --agents '["agentId1"]'
-\`\`\`
-
-### Solution conversations & AI
-
-\`\`\`bash
-seclai solutions convos list <solutionId>
-seclai solutions convos add <solutionId> --json '{"message":"How should I structure this?"}'
-seclai solutions convos mark <solutionId> <conversationId> --json '{"accepted":true}'
-
-seclai solutions ai generate <solutionId> --user-input "Add an FAQ source"
-seclai solutions ai kb <solutionId> --user-input "Create a knowledge base for docs"
-seclai solutions ai source <solutionId> --user-input "Create a file source for PDFs"
-seclai solutions ai accept <solutionId> <conversationId> --json '{"accepted":true}'
-seclai solutions ai decline <solutionId> <conversationId>
-\`\`\`
-
-### Alerts
-
-\`\`\`bash
-seclai alerts list [--page N] [--limit N] [--status <status>]
-seclai alerts get <alertId>
-seclai alerts status <alertId> --json '{"status":"resolved"}'
-seclai alerts comment <alertId> --json '{"comment":"Fixed the issue"}'
-seclai alerts subscribe <alertId>
-seclai alerts unsubscribe <alertId>
-\`\`\`
-
-### Alert configurations
-
-\`\`\`bash
-seclai alerts configs list [--page N] [--limit N]
-seclai alerts configs create --json '{"name":"Latency Alert","description":"...","threshold":5000}'
-seclai alerts configs get <configId>
-seclai alerts configs update <configId> --json '{"threshold":3000}'
-seclai alerts configs delete <configId>
-\`\`\`
-
-### Alert preferences
-
-\`\`\`bash
-seclai alerts prefs list
-seclai alerts prefs update <organizationId> <alertType> --json '{"enabled":true}'
-\`\`\`
-
-### SSO authentication
-
-\`\`\`bash
-# interactive browser login (OAuth2 + PKCE)
-seclai auth login [--port <port>] [--no-browser]
-
-# show current auth status for the active profile
-seclai auth status
-
-# manually refresh the SSO token
-seclai auth refresh
-
-# remove cached SSO tokens
-seclai auth logout
-\`\`\`
-
-### Configuration
-
-\`\`\`bash
-# interactive SSO profile setup (prompts for domain, client ID, region, account ID)
-seclai configure sso [--profile-name <name>]
-
-# list all configured profiles
-seclai configure list
-\`\`\`
-
-### Governance AI
-
-\`\`\`bash
-seclai governance ai generate --user-input "Create a content safety policy"
-seclai governance ai list
-seclai governance ai accept <conversationId>
-seclai governance ai decline <conversationId>
-\`\`\`
-
-### Model alerts
+## Model alerts
 
 \`\`\`bash
 seclai models alerts list [--page N] [--limit N]
 seclai models alerts mark-read <alertId>
 seclai models alerts mark-all-read
 seclai models alerts unread-count
+\`\`\`
+
+These are catalog alerts — deprecations, price changes, new models — not the
+account alerts in [alerts.md](alerts.md).
+
+## Recommendations
+
+\`\`\`bash
 seclai models recommendations <modelId>
 \`\`\`
 
-### Models
+Suggests replacements for a model, which is how you act on a deprecation alert.
 
-\`\`\`bash
-seclai models list [--provider <name>] [--supports-tool-use] [--supports-thinking]
-seclai models list [--supports-input-media <media>] [--supports-output-media <media>]
-seclai models get <modelId>
-seclai models tiers   # media-generation modality/tier → model and cost
-\`\`\`
-
-### Model playground experiments
+## Playground experiments
 
 \`\`\`bash
 seclai models experiments list [--days N] [--start-date <date>] [--end-date <date>] [--limit N] [--offset N]
@@ -425,124 +624,131 @@ seclai models experiments cancel <experimentId>
 seclai models experiments delete <experimentId>  # soft-delete, preserves audit history
 \`\`\`
 
-### Search
+\`create\` takes several \`model_ids\` and runs the same prompt against each, which
+is the point — side-by-side comparison. \`cancel\` stops a running experiment;
+\`delete\` soft-deletes a finished one.
+` },
+  { name: "references/setup.md", content: `# Setup: authentication, profiles, API version, editor integration
+
+## SSO authentication
 
 \`\`\`bash
-seclai search --query "deployment guide" [--limit N] [--entity-type <type>]
-seclai docs search --query "memory banks" [--mode keyword|semantic] [--limit N]
+seclai auth login [--port <port>] [--no-browser]   # OAuth2 + PKCE in the browser
+seclai auth status                                 # active profile's auth state
+seclai auth refresh                                # refresh the token manually
+seclai auth logout                                 # clear cached tokens
 \`\`\`
 
-### Account
+Tokens are cached under the config directory and refreshed automatically, so
+\`auth refresh\` is only needed to force it. An API key in \`SECLAI_API_KEY\` takes a
+different path entirely and needs none of this.
+
+## Profiles
 
 \`\`\`bash
-seclai me   # account ID and organization memberships
+seclai configure sso [--profile-name <name>]   # interactive: domain, client ID, region, account ID
+seclai configure list                          # every configured profile
 \`\`\`
 
-### Agent email
+Profiles live in \`~/.seclai/config\` (override with \`--config-dir\` or
+\`SECLAI_CONFIG_DIR\`). Select one per invocation with \`--profile <name>\`, or set
+\`SECLAI_PROFILE\`.
+
+## API version
 
 \`\`\`bash
-# Sending domains
-seclai email domains list
-seclai email domains add --kind custom --value mail.example.com [--delegated]
-seclai email domains verify <domainId>
-seclai email domains set-primary <domainId>
-seclai email domains test-email <domainId>
-seclai email domains dmarc <domainId> [--days N] [--top-sources N]
-seclai email domains remove <domainId>
-seclai email domains use-shared      # revert to agent.seclai.com
-
-# Inbound sender blocklist
-seclai email blocked list [--limit N] [--offset N]
-seclai email blocked add --sender-email spam@example.com [--match-type domain] [--note "..."]
-seclai email blocked remove <blockedId>
-seclai email blocked auto-block-mode disabled|input|input_and_output
-
-# Inbound health
-seclai email inbound status          # quota, pause state, queued runs
-seclai email inbound rejections [--agent-id <id>] [--limit N]
-seclai email inbound cancel-queued
-seclai email inbound resume
-
-# Recipient opt-outs
-seclai email optouts list [--agent-id <id>] [--limit N] [--offset N]
-seclai email optouts remove <optoutId>
+seclai api-version get           # what version does a request resolve to?
+seclai api-version set <date>    # pin the account — affects every client
+seclai api-version clear         # remove the pin
 \`\`\`
 
-### AI assistant (global)
+\`set\` and \`clear\` change the account, not just this CLI. To affect only your own
+invocation, use the \`--api-version\` global option instead.
+
+## MCP server
 
 \`\`\`bash
-seclai ai feedback --json '{"feedback":"The response was helpful"}'
-seclai ai kb --user-input "Create a support knowledge base"
-seclai ai source --user-input "Create a documentation source"
-seclai ai solution --user-input "Build a customer support solution"
-seclai ai memory --user-input "Create a conversation memory bank"
-seclai ai memory-history
-seclai ai accept <conversationId> --json '{"accepted":true}'
-seclai ai decline <conversationId>
-seclai ai memory-accept <conversationId> --json '{"accepted":true}'
+# write Seclai MCP server config into AI coding tool config files
+seclai mcp configure --key <apiKey> [--target claude-code|cursor|claude-desktop|windsurf|all] [--dir .]
+
+# print the config JSON for manual setup
+seclai mcp show [--key <apiKey>]
 \`\`\`
 
-### Shell completion
+## Skill files
 
 \`\`\`bash
-# generate shell completion scripts
+# install these skill files into AI coding tool directories
+seclai skills install [--tool copilot|claude|cursor|windsurf|codex|kiro|cline|roo|gemini|antigravity|all] [--dir .]
+\`\`\`
+
+With no \`--tool\`, the target is detected from the directory structure.
+
+## Shell completion
+
+\`\`\`bash
 seclai completion bash   # eval "\$(seclai completion bash)" in ~/.bashrc
 seclai completion zsh    # eval "\$(seclai completion zsh)" in ~/.zshrc
 seclai completion fish   # seclai completion fish > ~/.config/fish/completions/seclai.fish
 \`\`\`
+` },
+  { name: "references/solutions.md", content: `# Solutions and governance
 
-### Skills
+Solutions group agents, knowledge bases and sources into one deliverable.
+Governance defines the policies applied to agent input and output.
 
-\`\`\`bash
-# install skill files into AI coding tool directories (auto-detects or specify)
-seclai skills install [--tool copilot|claude|cursor|windsurf|codex|kiro|cline|roo|gemini|antigravity|all] [--dir .]
-\`\`\`
-
-### MCP server
+## Solutions
 
 \`\`\`bash
-# configure MCP server access in AI coding tool config files
-seclai mcp configure --key <apiKey> [--target claude-code|cursor|claude-desktop|windsurf|all] [--dir .]
-
-# show the MCP config JSON snippet
-seclai mcp show [--key <apiKey>]
+seclai solutions list [--page N] [--limit N] [--sort field] [--order asc|desc]
+seclai solutions create --json '{"name":"Customer Support Solution"}'
+seclai solutions get <solutionId>
+seclai solutions update <solutionId> --json '{"name":"Updated"}'
+seclai solutions delete <solutionId>
 \`\`\`
 
-## Example: Create a source and upload content
+## Linking resources
 
 \`\`\`bash
-seclai sources create --json '{"name":"Product Docs","description":"Product documentation source"}'
-# note the id from the output
-seclai sources upload <sourceId> --file ./docs.pdf --title "Product Manual" --metadata '{"version":"2.0"}'
-seclai sources get <sourceId>
+# each flag takes a JSON array of IDs
+seclai solutions link <solutionId> --agents '["agentId1"]' --kb '["kbId1"]' --sources '["sourceId1"]'
+seclai solutions unlink <solutionId> --agents '["agentId1"]'
 \`\`\`
 
-## Example: Set up a knowledge base with an agent
+## Conversations
 
 \`\`\`bash
-seclai kb create --json '{"name":"Support KB","description":"Customer support articles"}'
-seclai agents create --json '{"name":"Support Bot","description":"Answers customer questions"}'
-seclai agents ai gen-steps <agentId> --user-input "Build a QA chatbot that searches the Support KB"
-seclai agents ai mark <agentId> <conversationId> --json '{"accepted":true}'
-seclai agents run <agentId> --json '{"input":"How do I reset my password?"}' --stream
+seclai solutions convos list <solutionId>
+seclai solutions convos add <solutionId> --json '{"message":"How should I structure this?"}'
+seclai solutions convos mark <solutionId> <conversationId> --json '{"accepted":true}'
 \`\`\`
 
-## Example: Evaluate agent quality
+## Solution AI
 
 \`\`\`bash
-# create eval criteria
-seclai evals criteria create <agentId> --json '{"name":"Answer Accuracy","eval_type":"llm_judge","description":"Does the answer correctly address the question?"}'
-# find compatible runs
-seclai evals compatible-runs <criteriaId> --limit 5
-# test the criteria against a run without persisting
-seclai evals test-draft <agentId> --json '{"criteria":{"name":"Answer Accuracy","eval_type":"llm_judge"},"run_id":"<runId>"}'
-# create a persisted result
-seclai evals results create <criteriaId> --json '{"run_id":"<runId>","score":0.95}'
-# view summary
-seclai evals criteria summary <criteriaId>
+seclai solutions ai generate <solutionId> --user-input "Add an FAQ source"
+seclai solutions ai kb <solutionId> --user-input "Create a knowledge base for docs"
+seclai solutions ai source <solutionId> --user-input "Create a file source for PDFs"
+seclai solutions ai accept <solutionId> <conversationId> --json '{"accepted":true}'
+seclai solutions ai decline <solutionId> <conversationId>
 \`\`\`
 
-## Example: Solution with linked resources
+\`ai kb\` and \`ai source\` create the resource and link it to the solution in one
+step, which is why they live here rather than under \`kb\` or \`sources\`.
+
+## Governance AI
+
+\`\`\`bash
+seclai governance ai generate --user-input "Create a content safety policy"
+seclai governance ai list
+seclai governance ai accept <conversationId>
+seclai governance ai decline <conversationId>
+\`\`\`
+
+A generated policy is a proposal until accepted — \`generate\` alone changes
+nothing.
+
+## Example: solution with linked resources
 
 \`\`\`bash
 seclai solutions create --json '{"name":"Customer Support"}'
@@ -550,31 +756,15 @@ seclai solutions link <solutionId> --agents '["<agentId>"]' --kb '["<kbId>"]' --
 seclai solutions get <solutionId>
 \`\`\`
 
-## Example: Memory-powered agent
-
-\`\`\`bash
-seclai memory create --json '{"name":"User Preferences","type":"general"}'
-seclai agents create --json '{"name":"Personal Assistant","description":"Remembers user preferences"}'
-seclai agents ai gen-steps <agentId> --user-input "Build a chat agent that remembers user preferences. Use general memory bank <memoryBankId>"
-seclai agents ai mark <agentId> <conversationId> --json '{"accepted":true}'
-\`\`\`
-
-## Example: Governance policy setup
+## Example: governance policy setup
 
 \`\`\`bash
 seclai governance ai generate --user-input "Create a content safety policy that blocks harmful outputs"
 seclai governance ai list
 seclai governance ai accept <conversationId>
 \`\`\`
-
-## Specific topics
-
-* **Streaming & event modes** [references/streaming.md](references/streaming.md)
-* **File uploads & content management** [references/uploads.md](references/uploads.md)
-* **Evaluations workflow** [references/evaluations.md](references/evaluations.md)
-`;
-
-const STREAMING_REF = `# Streaming Agent Runs
+` },
+  { name: "references/streaming.md", content: `# Streaming Agent Runs
 
 ## Modes
 
@@ -626,9 +816,8 @@ seclai agents run <agentId> --json '{"input":"Hello"}'
 # check later:
 seclai agents runs get <runId>
 \`\`\`
-`;
-
-const UPLOADS_REF = `# File Uploads & Content Management
+` },
+  { name: "references/uploads.md", content: `# File Uploads & Content Management
 
 ## Upload to a source
 \`\`\`bash
@@ -679,55 +868,8 @@ seclai contents get <contentVersionId> --start 0 --end 1000
 # view embeddings
 seclai contents embeddings <contentVersionId> [--page N] [--limit N]
 \`\`\`
-`;
-
-const EVALUATIONS_REF = `# Evaluations Workflow
-
-## Step 1: Create evaluation criteria for an agent
-\`\`\`bash
-seclai evals criteria create <agentId> --json '{"name":"Answer Accuracy","description":"Does the answer correctly address the question?","eval_type":"llm_judge"}'
-\`\`\`
-
-## Step 2: Find runs to evaluate
-\`\`\`bash
-# list all runs for an agent
-seclai agents runs list <agentId> --limit 10
-
-# or find runs compatible with specific criteria
-seclai evals compatible-runs <criteriaId> --limit 10
-\`\`\`
-
-## Step 3: Test criteria before committing
-\`\`\`bash
-seclai evals test-draft <agentId> --json '{"criteria":{"name":"Answer Accuracy","eval_type":"llm_judge","description":"..."},"run_id":"<runId>"}'
-\`\`\`
-
-## Step 4: Create evaluation results
-\`\`\`bash
-seclai evals results create <criteriaId> --json '{"run_id":"<runId>","score":0.95}'
-\`\`\`
-
-## Step 5: Review summaries
-\`\`\`bash
-seclai evals criteria summary <criteriaId>
-seclai evals agent-results <agentId>
-seclai evals agent-runs <agentId> --limit 20
-seclai evals non-manual-summary <agentId>
-\`\`\`
-
-## Managing criteria
-\`\`\`bash
-seclai evals criteria list <agentId>
-seclai evals criteria get <criteriaId>
-seclai evals criteria update <criteriaId> --json '{"name":"Updated Name"}'
-seclai evals criteria delete <criteriaId>
-\`\`\`
-
-## Viewing results
-\`\`\`bash
-seclai evals results list <criteriaId> [--page N] [--limit N]
-\`\`\`
-`;
+` },
+];
 
 // --- Tool detection & path mapping ---
 
@@ -737,12 +879,9 @@ type ToolConfig = {
 };
 
 function getToolConfig(tool: string, destDir: string): ToolConfig {
-  const skillFiles = [
-    { name: "SKILL.md", content: SKILL_MD },
-    { name: "references/streaming.md", content: STREAMING_REF },
-    { name: "references/uploads.md", content: UPLOADS_REF },
-    { name: "references/evaluations.md", content: EVALUATIONS_REF },
-  ];
+  // Generated from skills/seclai-cli/ by scripts/sync-skills.cjs — every file
+  // found there ships, so adding a reference needs no change here.
+  const skillFiles = SKILL_FILES;
 
   switch (tool) {
     case "copilot":

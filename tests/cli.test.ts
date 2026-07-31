@@ -1405,12 +1405,18 @@ describe("seclai CLI", () => {
     const parsed = JSON.parse(io.stdout);
     expect(parsed.ok).toBe(true);
     expect(parsed.tools).toEqual(["copilot"]);
-    expect(parsed.filesWritten).toBe(4);
+
+    // Derived, not a magic number: every file under skills/seclai-cli/ ships,
+    // so adding a reference must not require editing this assertion.
+    const { existsSync, readdirSync } = await import("node:fs");
+    const expectedFiles = 1 + readdirSync("skills/seclai-cli/references").filter((f) => f.endsWith(".md")).length;
+    expect(parsed.filesWritten).toBe(expectedFiles);
 
     // Verify files were written
-    const { existsSync } = await import("node:fs");
-    expect(existsSync(path.join(tmpDir, ".github", "copilot", "seclai-cli", "SKILL.md"))).toBe(true);
-    expect(existsSync(path.join(tmpDir, ".github", "copilot", "seclai-cli", "references", "streaming.md"))).toBe(true);
+    const installed = path.join(tmpDir, ".github", "copilot", "seclai-cli");
+    expect(existsSync(path.join(installed, "SKILL.md"))).toBe(true);
+    expect(existsSync(path.join(installed, "references", "streaming.md"))).toBe(true);
+    expect(existsSync(path.join(installed, "references", "agents.md"))).toBe(true);
 
     // Clean up
     await rm(tmpDir, { recursive: true });

@@ -1,34 +1,59 @@
+// Regenerate the skill content compiled into src/commands/skills.ts from the
+// files under skills/seclai-cli/.
+//
+// `seclai skills install` writes string constants, not the files on disk, so
+// editing skills/ alone changes nothing that ships. This script is the bridge,
+// and tests/drift.test.ts fails the build when the two diverge.
+//
+// The file list is discovered rather than hard-coded: an earlier version named
+// four files explicitly, so adding a fifth would have shipped nothing.
 const fs = require("fs");
+const path = require("path");
 
-// Read all static skill files
-const skillMd = fs.readFileSync("skills/seclai-cli/SKILL.md", "utf8");
-const streaming = fs.readFileSync("skills/seclai-cli/references/streaming.md", "utf8");
-const uploads = fs.readFileSync("skills/seclai-cli/references/uploads.md", "utf8");
-const evaluations = fs.readFileSync("skills/seclai-cli/references/evaluations.md", "utf8");
+const SKILL_DIR = "skills/seclai-cli";
+const MARKER_START = "const SKILL_FILES";
+const MARKER_END = "// --- Tool detection";
 
-// Escape for embedding inside JS template literals
+/** Every skill file, SKILL.md first, then references/ sorted for stable output. */
+function collect() {
+  const refDir = path.join(SKILL_DIR, "references");
+  const refs = fs
+    .readdirSync(refDir)
+    .filter((f) => f.endsWith(".md"))
+    .sort()
+    .map((f) => `references/${f}`);
+  return ["SKILL.md", ...refs];
+}
+
+/** Escape for embedding inside a JS template literal. */
 function escapeForTemplate(s) {
   return s.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$/g, "\\$");
 }
 
+const names = collect();
+const entries = names
+  .map((name) => {
+    const body = fs.readFileSync(path.join(SKILL_DIR, name), "utf8");
+    return `  { name: ${JSON.stringify(name)}, content: \`${escapeForTemplate(body)}\` },`;
+  })
+  .join("\n");
+
 const replacement =
-  "const SKILL_MD = `" + escapeForTemplate(skillMd) + "`;\n\n" +
-  "const STREAMING_REF = `" + escapeForTemplate(streaming) + "`;\n\n" +
-  "const UPLOADS_REF = `" + escapeForTemplate(uploads) + "`;\n\n" +
-  "const EVALUATIONS_REF = `" + escapeForTemplate(evaluations) + "`;\n\n";
+  "const SKILL_FILES: Array<{ name: string; content: string }> = [\n" +
+  entries +
+  "\n];\n\n";
 
-// Read the source file
-let code = fs.readFileSync("src/commands/skills.ts", "utf8");
+const target = path.join("src", "commands", "skills.ts");
+let code = fs.readFileSync(target, "utf8");
 
-// Find and replace from SKILL_MD to the tool detection section
-const start = code.indexOf("const SKILL_MD");
-const end = code.indexOf("// --- Tool detection");
-
+const start = code.indexOf(MARKER_START);
+const end = code.indexOf(MARKER_END);
 if (start === -1 || end === -1) {
-  console.error("Could not find markers. start:", start, "end:", end);
+  console.error(`Could not find markers in ${target}. start: ${start} end: ${end}`);
   process.exit(1);
 }
 
 code = code.substring(0, start) + replacement + code.substring(end);
-fs.writeFileSync("src/commands/skills.ts", code, "utf8");
-console.log("Regenerated ALL template constants from static files");
+fs.writeFileSync(target, code, "utf8");
+console.log(`Regenerated ${names.length} skill files into ${target}:`);
+for (const n of names) console.log(`  ${n}`);
