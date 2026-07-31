@@ -8,6 +8,8 @@ import {
   readAiInput,
   withAiInputOptions,
   listOpts,
+  withOffsetListOptions,
+  offsetListOpts,
 } from "../helpers.js";
 
 /** Register `agents` commands: CRUD, run (basic/stream/events/poll), runs, definition, export, input uploads, AI assistant. */
@@ -466,25 +468,27 @@ export function register(program: Command, rt: CliRuntime): void {
       });
     });
 
-  ai.command("history")
-    .description("Get agent AI conversation history for one step type.")
-    .argument("<agentId>", "Agent ID.")
-    .requiredOption("--step-type <type>", "Step type to read history for (e.g. llm). Required by the API.")
-    .option("--step-id <id>", "Restrict to a single step.")
-    .option("--limit <n>", "Page size.", (v: string) => Number(v))
-    .option("--offset <n>", "Offset.", (v: string) => Number(v))
-    .action(async (agentId: string, opts) => {
-      await run(rt, async () => {
-        const client = createClient(program.opts<GlobalOptions>());
-        const o: Parameters<typeof client.getAgentAiConversationHistory>[1] = {
-          stepType: opts.stepType,
-        };
-        if (opts.stepId !== undefined) o.stepId = opts.stepId;
-        if (opts.limit !== undefined) o.limit = opts.limit;
-        if (opts.offset !== undefined) o.offset = opts.offset;
-        printJson(rt, await client.getAgentAiConversationHistory(agentId, o));
-      });
+  withOffsetListOptions(
+    ai
+      .command("history")
+      .description("Get agent AI conversation history for one step type.")
+      .argument("<agentId>", "Agent ID.")
+      .requiredOption(
+        "--step-type <type>",
+        "Step type to read history for (e.g. llm). Required by the API.",
+      )
+      .option("--step-id <id>", "Restrict to a single step."),
+  ).action(async (agentId: string, opts) => {
+    await run(rt, async () => {
+      const client = createClient(program.opts<GlobalOptions>());
+      const o: Parameters<typeof client.getAgentAiConversationHistory>[1] = {
+        ...offsetListOpts(opts),
+        stepType: opts.stepType,
+      };
+      if (opts.stepId !== undefined) o.stepId = opts.stepId;
+      printJson(rt, await client.getAgentAiConversationHistory(agentId, o));
     });
+  });
 
   ai.command("mark")
     .description("Mark an AI suggestion (accept/reject).")

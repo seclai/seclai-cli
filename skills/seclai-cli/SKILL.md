@@ -271,6 +271,7 @@ seclai memory ai accept <conversationId> --json '{"accepted":true}'
 ### Evaluations — criteria
 
 ```bash
+# --paged wraps results in {data: [...]}; pagination appears from --api-version 2026-07-27
 seclai evals criteria list <agentId> [--page N] [--limit N] [--paged]
 seclai evals criteria create <agentId> --json '{"name":"Response Quality","description":"...","eval_type":"llm_judge"}'
 seclai evals criteria get <criteriaId>
@@ -445,7 +446,7 @@ seclai email domains use-shared      # revert to agent.seclai.com
 seclai email blocked list [--limit N] [--offset N]
 seclai email blocked add --sender-email spam@example.com [--match-type domain] [--note "..."]
 seclai email blocked remove <blockedId>
-seclai email blocked auto-block-mode <mode>
+seclai email blocked auto-block-mode disabled|input|input_and_output
 
 # Inbound health
 seclai email inbound status          # quota, pause state, queued runs

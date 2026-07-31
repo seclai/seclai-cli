@@ -354,9 +354,11 @@ seclai evals criteria delete <criteriaId>
 seclai evals criteria summary <criteriaId>
 ```
 
-`--paged` returns the `{data, pagination}` envelope instead of a bare array. It
-works whatever `--api-version` is in effect, so you can move scripts to the
-envelope before the account opts in.
+`--paged` wraps the results in `{"data": [...]}` instead of returning a bare
+array, so `.data` is a stable path to read whatever `--api-version` is in
+effect. Nothing is invented: the `pagination` block appears only once the API
+sends one, from `--api-version 2026-07-27`. Migrate scripts to `.data` first,
+then opt in to get `.pagination`.
 
 #### Results
 
@@ -527,7 +529,7 @@ seclai email blocked list [--limit N] [--offset N]
 seclai email blocked add --sender-email spam@example.com [--note "phishing"]
 seclai email blocked add --sender-email example.com --match-type domain
 seclai email blocked remove <blockedId>
-seclai email blocked auto-block-mode <mode>
+seclai email blocked auto-block-mode disabled|input|input_and_output
 ```
 
 #### Inbound Health

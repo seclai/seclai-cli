@@ -121,6 +121,9 @@ _seclai() {
 
   _arguments -C \\
     '--api-key[Seclai API key]:key' \\
+    '--profile[SSO profile name]:name' \\
+    '--account-id[Account ID (X-Account-Id header)]:id' \\
+    '--config-dir[Config directory]:path' \\
     '--api-version[Dated API version (YYYY-MM-DD)]:date' \\
     '--allow-unknown-api-version[Permit an unrecognized --api-version]' \\
     '--compact[Output compact JSON]' \\
@@ -222,6 +225,8 @@ complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "ai" -d "AI a
 complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "skills" -d "Skill files"
 complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "mcp" -d "MCP server config"
 complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "completion" -d "Shell completions"
+complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "auth" -d "SSO authentication"
+complete -c seclai -n "not __fish_seen_subcommand_from $top" -f -a "configure" -d "Manage SSO profiles"
 
 # agents
 complete -c seclai -n "__fish_seen_subcommand_from agents; and not __fish_seen_subcommand_from list create get update delete disable enable callers triggers run runs def export preview-import upload-input input-status attachment-references ai" -f -a "list create get update delete disable enable callers triggers run runs def export preview-import upload-input input-status attachment-references ai"
@@ -282,6 +287,9 @@ complete -c seclai -n "__fish_seen_subcommand_from completion; and not __fish_se
 
 # Global options
 complete -c seclai -l api-key -d "Seclai API key"
+complete -c seclai -l profile -d "SSO profile name"
+complete -c seclai -l account-id -d "Account ID (X-Account-Id header)"
+complete -c seclai -l config-dir -d "Config directory"
 complete -c seclai -l api-version -d "Dated API version (YYYY-MM-DD)"
 complete -c seclai -l allow-unknown-api-version -d "Permit an unrecognized --api-version"
 complete -c seclai -l compact -d "Output compact JSON"

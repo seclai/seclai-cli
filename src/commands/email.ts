@@ -1,6 +1,12 @@
 import { Command } from "commander";
 import type { CliRuntime, GlobalOptions } from "../helpers.js";
-import { run, createClient, printJson } from "../helpers.js";
+import {
+  run,
+  createClient,
+  printJson,
+  withOffsetListOptions,
+  offsetListOpts,
+} from "../helpers.js";
 
 /** Register `email` commands: sending domains, inbound blocklist, inbound health, and agent opt-outs. */
 export function register(program: Command, rt: CliRuntime): void {
@@ -115,20 +121,16 @@ export function register(program: Command, rt: CliRuntime): void {
 
   const blocked = email.command("blocked").description("Inbound email sender blocklist.");
 
-  blocked
-    .command("list")
-    .description("List blocked inbound senders (newest first) and the account's auto-block mode.")
-    .option("--limit <n>", "Page size.", (v: string) => Number(v))
-    .option("--offset <n>", "Offset.", (v: string) => Number(v))
-    .action(async (opts) => {
-      await run(rt, async () => {
-        const client = createClient(program.opts<GlobalOptions>());
-        const o: Parameters<typeof client.listBlockedEmailSenders>[0] = {};
-        if (opts.limit !== undefined) o.limit = opts.limit;
-        if (opts.offset !== undefined) o.offset = opts.offset;
-        printJson(rt, await client.listBlockedEmailSenders(o));
-      });
+  withOffsetListOptions(
+    blocked
+      .command("list")
+      .description("List blocked inbound senders (newest first) and the account's auto-block mode."),
+  ).action(async (opts) => {
+    await run(rt, async () => {
+      const client = createClient(program.opts<GlobalOptions>());
+      printJson(rt, await client.listBlockedEmailSenders(offsetListOpts(opts)));
     });
+  });
 
   blocked
     .command("add")
@@ -167,7 +169,7 @@ export function register(program: Command, rt: CliRuntime): void {
   blocked
     .command("auto-block-mode")
     .description("Set whether a governance BLOCK on an authenticated sender auto-adds them to the blocklist.")
-    .argument("<mode>", "Auto-block mode.")
+    .argument("<mode>", "One of 'disabled', 'input', or 'input_and_output'.")
     .action(async (mode: string) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
@@ -228,22 +230,19 @@ export function register(program: Command, rt: CliRuntime): void {
 
   const optouts = email.command("optouts").description("Recipients who opted out of agent email.");
 
-  optouts
-    .command("list")
-    .description("List agent-email opt-outs.")
-    .option("--agent-id <id>", "Restrict to one agent.")
-    .option("--limit <n>", "Page size.", (v: string) => Number(v))
-    .option("--offset <n>", "Offset.", (v: string) => Number(v))
-    .action(async (opts) => {
-      await run(rt, async () => {
-        const client = createClient(program.opts<GlobalOptions>());
-        const o: Parameters<typeof client.listAgentEmailOptOuts>[0] = {};
-        if (opts.agentId !== undefined) o.agentId = opts.agentId;
-        if (opts.limit !== undefined) o.limit = opts.limit;
-        if (opts.offset !== undefined) o.offset = opts.offset;
-        printJson(rt, await client.listAgentEmailOptOuts(o));
-      });
+  withOffsetListOptions(
+    optouts
+      .command("list")
+      .description("List agent-email opt-outs.")
+      .option("--agent-id <id>", "Restrict to one agent."),
+  ).action(async (opts) => {
+    await run(rt, async () => {
+      const client = createClient(program.opts<GlobalOptions>());
+      const o: Parameters<typeof client.listAgentEmailOptOuts>[0] = offsetListOpts(opts);
+      if (opts.agentId !== undefined) o.agentId = opts.agentId;
+      printJson(rt, await client.listAgentEmailOptOuts(o));
     });
+  });
 
   optouts
     .command("remove")

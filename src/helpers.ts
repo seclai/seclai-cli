@@ -135,6 +135,18 @@ export function createClient(opts: GlobalOptions): Seclai {
 
   // Omitted by default, so upgrading the CLI never changes a response shape;
   // passing --api-version opts into the dated changes released up to that date.
+  //
+  // An empty --api-version is rejected rather than ignored. The SDK tests the
+  // option for truthiness, so "" would send no header and skip the
+  // unknown-version guard — `--api-version "$VER"` with an unset VER would
+  // quietly return default-version output, the exact silent reshape the flag
+  // exists to prevent. An empty SECLAI_API_VERSION is treated as unset, which
+  // is the ordinary convention for an environment variable.
+  if (opts.apiVersion !== undefined && opts.apiVersion.length === 0) {
+    throw new Error(
+      "--api-version was given an empty value. Pass a YYYY-MM-DD date, or omit the flag to use the account default.",
+    );
+  }
   const envVersion = process.env.SECLAI_API_VERSION;
   const version = opts.apiVersion ?? (envVersion && envVersion.length > 0 ? envVersion : undefined);
   if (version !== undefined) seclaiOpts.apiVersion = version;
@@ -201,6 +213,27 @@ export function withListOptions(cmd: Command): Command {
   return cmd
     .option("--page <n>", "Page number (1-based).", (v: string) => Number(v))
     .option("--limit <n>", "Page size.", (v: string) => Number(v));
+}
+
+/**
+ * Add limit/offset options, for the endpoints that paginate by offset rather
+ * than by page number. Pairs with {@link offsetListOpts}.
+ */
+export function withOffsetListOptions(cmd: Command): Command {
+  return cmd
+    .option("--limit <n>", "Page size.", (v: string) => Number(v))
+    .option("--offset <n>", "Number of items to skip.", (v: string) => Number(v));
+}
+
+/** Pick the defined limit/offset values for an offset-paginated call. */
+export function offsetListOpts(opts: { limit?: number; offset?: number }): {
+  limit?: number;
+  offset?: number;
+} {
+  const o: { limit?: number; offset?: number } = {};
+  if (opts.limit !== undefined) o.limit = opts.limit;
+  if (opts.offset !== undefined) o.offset = opts.offset;
+  return o;
 }
 
 /** Add sortable list options (page, limit, sort, order) */

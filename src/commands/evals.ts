@@ -18,14 +18,15 @@ export function register(program: Command, rt: CliRuntime): void {
     .option("--limit <n>", "Page size.", (v: string) => Number(v))
     .option(
       "--paged",
-      "Return the {data, pagination} envelope instead of a bare array. Works regardless of --api-version.",
+      "Wrap the results in {data: [...]} instead of returning a bare array. The pagination block is included once the API sends one, from --api-version 2026-07-27.",
     )
     .action(async (agentId: string, opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
         // The endpoint answers with a bare array by default and the envelope
-        // once the account opts in; both SDK methods read either shape, so the
-        // flag picks the output the caller wants rather than what the API sent.
+        // once the account opts in. --paged normalises the array into {data},
+        // so `.data` is a stable path to read either way — but nothing is
+        // invented: `pagination` appears only when the API actually sent it.
         printJson(
           rt,
           opts.paged

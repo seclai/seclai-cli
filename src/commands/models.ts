@@ -1,6 +1,15 @@
 import { Command } from "commander";
 import type { CliRuntime, GlobalOptions } from "../helpers.js";
-import { run, createClient, printJson, listOpts, withJsonInputOptions, readJsonInput } from "../helpers.js";
+import {
+  run,
+  createClient,
+  printJson,
+  listOpts,
+  withJsonInputOptions,
+  readJsonInput,
+  withOffsetListOptions,
+  offsetListOpts,
+} from "../helpers.js";
 
 /** Register `models` commands: list, get, alerts, recommendations, playground experiments. */
 export function register(program: Command, rt: CliRuntime): void {
@@ -110,26 +119,23 @@ export function register(program: Command, rt: CliRuntime): void {
 
   const experiments = models.command("experiments").description("Model playground experiments.");
 
-  experiments
-    .command("list")
-    .description("List model playground experiments.")
-    .option("--days <n>", "Filter to last N days.", (v: string) => Number(v))
-    .option("--start-date <date>", "Start date (ISO 8601).")
-    .option("--end-date <date>", "End date (ISO 8601).")
-    .option("--limit <n>", "Page size.", (v: string) => Number(v))
-    .option("--offset <n>", "Offset.", (v: string) => Number(v))
-    .action(async (opts) => {
-      await run(rt, async () => {
-        const client = createClient(program.opts<GlobalOptions>());
-        const o: Parameters<typeof client.listExperiments>[0] = {};
-        if (opts.days !== undefined) o.days = opts.days;
-        if (opts.startDate !== undefined) o.startDate = opts.startDate;
-        if (opts.endDate !== undefined) o.endDate = opts.endDate;
-        if (opts.limit !== undefined) o.limit = opts.limit;
-        if (opts.offset !== undefined) o.offset = opts.offset;
-        printJson(rt, await client.listExperiments(o));
-      });
+  withOffsetListOptions(
+    experiments
+      .command("list")
+      .description("List model playground experiments.")
+      .option("--days <n>", "Filter to last N days.", (v: string) => Number(v))
+      .option("--start-date <date>", "Start date (ISO 8601).")
+      .option("--end-date <date>", "End date (ISO 8601)."),
+  ).action(async (opts) => {
+    await run(rt, async () => {
+      const client = createClient(program.opts<GlobalOptions>());
+      const o: Parameters<typeof client.listExperiments>[0] = offsetListOpts(opts);
+      if (opts.days !== undefined) o.days = opts.days;
+      if (opts.startDate !== undefined) o.startDate = opts.startDate;
+      if (opts.endDate !== undefined) o.endDate = opts.endDate;
+      printJson(rt, await client.listExperiments(o));
     });
+  });
 
   withJsonInputOptions(experiments
     .command("create")

@@ -549,6 +549,10 @@ beforeEach(() => {
   mockState.instances.length = 0;
   mockState.lastCtorArgs = undefined;
   mockState.nextListSourcesError = undefined;
+  // createClient is real code and reads this, so a developer or CI runner that
+  // exports it — the variable this release introduces and documents — would
+  // otherwise fail the "no --api-version leaves apiVersion unset" test.
+  delete process.env.SECLAI_API_VERSION;
 });
 
 describe("seclai CLI", () => {
@@ -1740,6 +1744,32 @@ describe("seclai CLI — SDK 1.5.0 surface", () => {
     }
   });
 
+  test("an empty --api-version is rejected, not ignored", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    // The SDK tests apiVersion for truthiness, so "" would send no header and
+    // skip the unknown-version guard — `--api-version "$VER"` with an unset VER
+    // would silently return default-version output.
+    const exitCode = await runCli(
+      ["node", "seclai", "--api-key", "k", "--api-version", "", "agents", "list"],
+      io.rt
+    );
+
+    expect(exitCode).not.toBe(0);
+    expect(io.stderr).toContain("--api-version");
+  });
+
+  test("an empty SECLAI_API_VERSION is treated as unset", async () => {
+    process.env.SECLAI_API_VERSION = "";
+    try {
+      await ok(["agents", "list"]);
+      expect(mockState.lastCtorArgs).not.toHaveProperty("apiVersion");
+    } finally {
+      delete process.env.SECLAI_API_VERSION;
+    }
+  });
+
   test("--allow-unknown-api-version reaches the SDK constructor", async () => {
     await ok(["--api-version", "2027-01-01", "--allow-unknown-api-version", "agents", "list"]);
     expect(mockState.lastCtorArgs).toMatchObject({ allowUnknownApiVersion: true });
@@ -1873,8 +1903,9 @@ describe("seclai CLI — SDK 1.5.0 surface", () => {
     const shared = await ok(["email", "domains", "use-shared"]);
     expect(shared.client.useSharedEmailDomain).toHaveBeenCalled();
 
-    const test = await ok(["email", "domains", "test-email", "dom_1"]);
-    expect(test.client.sendEmailDomainTestEmail).toHaveBeenCalledWith("dom_1");
+    // Not `test` — that would shadow vitest's import for this whole body.
+    const tested = await ok(["email", "domains", "test-email", "dom_1"]);
+    expect(tested.client.sendEmailDomainTestEmail).toHaveBeenCalledWith("dom_1");
   });
 
   test("email domains dmarc passes days and top-sources", async () => {
@@ -1929,8 +1960,9 @@ describe("seclai CLI — SDK 1.5.0 surface", () => {
     const removed = await ok(["email", "blocked", "remove", "blk_1"]);
     expect(removed.client.unblockEmailSender).toHaveBeenCalledWith("blk_1");
 
-    const mode = await ok(["email", "blocked", "auto-block-mode", "authenticated"]);
-    expect(mode.client.setAutoBlockMode).toHaveBeenCalledWith({ mode: "authenticated" });
+    // One of the three modes the API accepts: disabled, input, input_and_output.
+    const mode = await ok(["email", "blocked", "auto-block-mode", "input_and_output"]);
+    expect(mode.client.setAutoBlockMode).toHaveBeenCalledWith({ mode: "input_and_output" });
   });
 
   // --- Inbound health ---
