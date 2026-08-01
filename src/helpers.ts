@@ -1,4 +1,4 @@
-import { Command } from "commander";
+import { Command, InvalidArgumentError } from "commander";
 import { readFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import process from "node:process";
@@ -151,17 +151,11 @@ export function createClient(opts: GlobalOptions): Seclai {
   // Omitted by default, so upgrading the CLI never changes a response shape;
   // passing --api-version opts into the dated changes released up to that date.
   //
-  // An empty --api-version is rejected rather than ignored. The SDK tests the
-  // option for truthiness, so "" would send no header and skip the
-  // unknown-version guard — `--api-version "$VER"` with an unset VER would
-  // quietly return default-version output, the exact silent reshape the flag
-  // exists to prevent. An empty SECLAI_API_VERSION is treated as unset, which
-  // is the ordinary convention for an environment variable.
-  if (opts.apiVersion !== undefined && opts.apiVersion.length === 0) {
-    throw new Error(
-      "--api-version was given an empty value. Pass a YYYY-MM-DD date, or omit the flag to use the account default.",
-    );
-  }
+  // An empty --api-version is rejected before we get here, by the global
+  // empty-value guard in cli.ts: the SDK tests the option for truthiness, so ""
+  // would send no header and skip the unknown-version guard. An empty
+  // SECLAI_API_VERSION is treated as unset, which is the ordinary convention
+  // for an environment variable.
   const envVersion = process.env.SECLAI_API_VERSION;
   const version = opts.apiVersion ?? (envVersion && envVersion.length > 0 ? envVersion : undefined);
   if (version !== undefined) seclaiOpts.apiVersion = version;
@@ -223,11 +217,31 @@ export async function run(rt: CliRuntime, main: () => Promise<void>): Promise<vo
   }
 }
 
+/**
+ * Argument parser for an option that takes a number, failing the parse instead
+ * of forwarding garbage. A bare `Number(v)` turns `--limit abc` into `NaN` and
+ * `--limit ""` into `0`, and the SDK stringifies whatever it is handed — so the
+ * request left as `?limit=NaN` and came back a server 422 naming nothing.
+ *
+ * Commander wraps an {@link InvalidArgumentError} with the offending flag and
+ * value, so the message here only has to say what was expected.
+ */
+export function parseNumber(value: string): number {
+  const parsed = value.trim() === "" ? Number.NaN : Number(value);
+  if (!Number.isFinite(parsed)) {
+    throw new InvalidArgumentError("Expected a number.");
+  }
+  return parsed;
+}
+
+/** The `--limit` declaration shared by the pagination helpers below. */
+function withLimitOption(cmd: Command): Command {
+  return cmd.option("--limit <n>", "Page size.", parseNumber);
+}
+
 /** Add common pagination options to a command */
 export function withListOptions(cmd: Command): Command {
-  return cmd
-    .option("--page <n>", "Page number (1-based).", (v: string) => Number(v))
-    .option("--limit <n>", "Page size.", (v: string) => Number(v));
+  return withLimitOption(cmd.option("--page <n>", "Page number (1-based).", parseNumber));
 }
 
 /**
@@ -235,9 +249,7 @@ export function withListOptions(cmd: Command): Command {
  * than by page number. Pairs with {@link offsetListOpts}.
  */
 export function withOffsetListOptions(cmd: Command): Command {
-  return cmd
-    .option("--limit <n>", "Page size.", (v: string) => Number(v))
-    .option("--offset <n>", "Number of items to skip.", (v: string) => Number(v));
+  return withLimitOption(cmd).option("--offset <n>", "Number of items to skip.", parseNumber);
 }
 
 /** Pick the defined limit/offset values for an offset-paginated call. */

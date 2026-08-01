@@ -1,6 +1,6 @@
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import type { CliRuntime, GlobalOptions } from "../helpers.js";
-import { run, createClient, printJson } from "../helpers.js";
+import { run, createClient, printJson, parseNumber } from "../helpers.js";
 
 /** Register the `search` command for querying across Seclai resources, and `docs search`. */
 export function register(program: Command, rt: CliRuntime): void {
@@ -8,7 +8,7 @@ export function register(program: Command, rt: CliRuntime): void {
     .command("search")
     .description("Search across Seclai resources.")
     .requiredOption("--query <text>", "Search query text.")
-    .option("--limit <n>", "Max results.", (v: string) => Number(v))
+    .option("--limit <n>", "Max results.", parseNumber)
     .option("--entity-type <type>", "Filter by entity type (e.g. agent, source, knowledge_base, memory_bank).")
     .action(async (opts) => {
       await run(rt, async () => {
@@ -26,8 +26,10 @@ export function register(program: Command, rt: CliRuntime): void {
     .command("search")
     .description("Search the Seclai documentation.")
     .requiredOption("--query <text>", "Search query text.")
-    .option("--mode <mode>", "'keyword' or 'semantic'.")
-    .option("--limit <n>", "Max results.", (v: string) => Number(v))
+    // The SDK types this as a closed union, so an unrecognised mode can only
+    // ever be a 422. Fail the parse with the accepted values instead.
+    .addOption(new Option("--mode <mode>", "Search mode.").choices(["keyword", "semantic"]))
+    .option("--limit <n>", "Max results.", parseNumber)
     .action(async (opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());

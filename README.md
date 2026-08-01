@@ -153,7 +153,14 @@ seclai api-version clear    # revert to the default
 
 An `--api-version` this CLI was not built against is rejected, because a newer
 version can reshape a response the CLI would then misread. Pass
-`--allow-unknown-api-version` to send it anyway.
+`--allow-unknown-api-version` to send it anyway. `api-version set` takes a
+`YYYY-MM-DD` date and rejects anything else, because the pin applies to every
+client on the account and nothing re-checks it afterwards.
+
+Every global option that takes a value rejects an empty one rather than ignoring
+it. A shell expanding an unset variable passes `""`, so `--api-key "$KEY"` with
+`KEY` unset would otherwise fall back to `SECLAI_API_KEY` or a cached SSO session
+and run as a different identity.
 
 ---
 

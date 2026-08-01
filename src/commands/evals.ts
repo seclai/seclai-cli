@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import type { CliRuntime, GlobalOptions } from "../helpers.js";
-import { run, createClient, printJson, readJsonInput, listOpts } from "../helpers.js";
+import { run, createClient, printJson, readJsonInput, listOpts, parseNumber } from "../helpers.js";
 
 /** Register `evals` commands: criteria CRUD, results, compatible-runs, test-draft, agent-level summaries. */
 export function register(program: Command, rt: CliRuntime): void {
@@ -14,8 +14,8 @@ export function register(program: Command, rt: CliRuntime): void {
     .command("list")
     .description("List evaluation criteria for an agent.")
     .argument("<agentId>", "Agent ID.")
-    .option("--page <n>", "Page number.", (v: string) => Number(v))
-    .option("--limit <n>", "Page size.", (v: string) => Number(v))
+    .option("--page <n>", "Page number.", parseNumber)
+    .option("--limit <n>", "Page size.", parseNumber)
     .option(
       "--paged",
       "Wrap the results in {data: [...]} instead of returning a bare array. The pagination block is included once the API sends one, from --api-version 2026-07-27.",
@@ -106,8 +106,8 @@ export function register(program: Command, rt: CliRuntime): void {
     .command("list")
     .description("List results for criteria.")
     .argument("<criteriaId>", "Criteria ID.")
-    .option("--page <n>", "Page number.", (v: string) => Number(v))
-    .option("--limit <n>", "Page size.", (v: string) => Number(v))
+    .option("--page <n>", "Page number.", parseNumber)
+    .option("--limit <n>", "Page size.", parseNumber)
     .action(async (criteriaId: string, opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
@@ -135,8 +135,8 @@ export function register(program: Command, rt: CliRuntime): void {
     .command("compatible-runs")
     .description("List runs compatible with criteria.")
     .argument("<criteriaId>", "Criteria ID.")
-    .option("--page <n>", "Page number.", (v: string) => Number(v))
-    .option("--limit <n>", "Page size.", (v: string) => Number(v))
+    .option("--page <n>", "Page number.", parseNumber)
+    .option("--limit <n>", "Page size.", parseNumber)
     .action(async (criteriaId: string, opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
@@ -162,8 +162,8 @@ export function register(program: Command, rt: CliRuntime): void {
     .command("agent-results")
     .description("List all evaluation results for an agent.")
     .argument("<agentId>", "Agent ID.")
-    .option("--page <n>", "Page number.", (v: string) => Number(v))
-    .option("--limit <n>", "Page size.", (v: string) => Number(v))
+    .option("--page <n>", "Page number.", parseNumber)
+    .option("--limit <n>", "Page size.", parseNumber)
     .action(async (agentId: string, opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
@@ -175,8 +175,8 @@ export function register(program: Command, rt: CliRuntime): void {
     .command("agent-runs")
     .description("List evaluation run summaries for an agent.")
     .argument("<agentId>", "Agent ID.")
-    .option("--page <n>", "Page number.", (v: string) => Number(v))
-    .option("--limit <n>", "Page size.", (v: string) => Number(v))
+    .option("--page <n>", "Page number.", parseNumber)
+    .option("--limit <n>", "Page size.", parseNumber)
     .action(async (agentId: string, opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());

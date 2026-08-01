@@ -96,9 +96,14 @@ seclai api-version clear
 
 An \`--api-version\` this CLI was not built against is rejected, because a newer
 version can reshape a response the CLI would then misread. Pass
-\`--allow-unknown-api-version\` to send it anyway. An empty value is an error, not
-a no-op — \`--api-version "\$VER"\` with an unset \`VER\` fails rather than silently
-using the default.
+\`--allow-unknown-api-version\` to send it anyway. \`api-version set\` takes a
+\`YYYY-MM-DD\` date and rejects anything else, because the pin applies to every
+client on the account.
+
+An empty value is an error, not a no-op, for every global option that takes one
+(\`--api-key\`, \`--profile\`, \`--account-id\`, \`--config-dir\`, \`--api-version\`).
+\`--api-key "\$KEY"\` with an unset \`KEY\` fails rather than quietly falling back to
+\`SECLAI_API_KEY\` or a cached SSO session and running as a different identity.
 
 ## Common patterns
 

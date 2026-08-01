@@ -1,22 +1,24 @@
 # Changelog
 
-## [1.5.0] - 2026-07-30
+## [1.5.0] - 2026-07-31
 
 ### Changed
 
 - **Breaking:** Require `--step-type` on `agents ai history`. The API marks the parameter required and the command had no way to supply it, so every call answered 422; `--step-id`, `--limit` and `--offset` are now accepted as well
-- Deprecate `agents runs delete`. It never deleted anything — the endpoint it calls is the cancel endpoint, and the API has no delete-a-run operation — so it now warns and cancels. Use `agents runs cancel`
+- **Breaking:** Deprecate `agents runs delete`. It never deleted anything — the endpoint it calls is the cancel endpoint, and the API has no delete-a-run operation — so it now warns on stderr and cancels, and prints the cancelled run in place of `{"ok": true}`, matching `agents runs cancel`. Use `agents runs cancel`
+- **Breaking:** Reject an empty value for `--api-key`, `--profile`, `--account-id`, `--config-dir` and `--api-version`. A shell expanding an unset variable passes `""`, which every consumer treated as absent — `--api-key "$KEY"` with `KEY` unset would fall through to `SECLAI_API_KEY` or a cached SSO session and act as a different identity
+- Reject a non-numeric `--page`, `--limit` or `--offset` at parse time instead of sending `NaN` and reporting the server's 422
 - Require `@seclai/sdk` 1.5.0
 
 ### Added
 
 - Add an `--api-version <date>` global option, sent as the `Seclai-Version` header, opting into dated API changes released on or before that date. Omitted by default, so upgrading the CLI alone never changes a command's output. `SECLAI_API_VERSION` sets it for a shell, `--allow-unknown-api-version` permits a date this release was not built against, and an empty `--api-version` is rejected rather than silently ignored
-- Add `api-version get`, `api-version set <date>` and `api-version clear` to read the version a request resolves to and to pin or clear the account's version
+- Add `api-version get`, `api-version set <date>` and `api-version clear` to read the version a request resolves to and to pin or clear the account's version. `set` rejects anything that is not a `YYYY-MM-DD` date, since the pin applies to every client on the account and nothing re-checks it afterwards
 - Add the `email` command group covering agent email: `domains` (list, add, remove, verify, set-primary, use-shared, test-email, dmarc), `blocked` (list, add, remove, auto-block-mode), `inbound` (status, rejections, cancel-queued, resume) and `optouts` (list, remove)
 - Add `agents disable` and `agents enable` to pause and resume an agent across every trigger path, and `agents callers` to list the live agents that call it via a `call_agent` step
 - Add `agents triggers email-config` to set the alias, sender allowlist and inbound-handling flags on an `EMAIL_RECEIVED` trigger
 - Add `me`, reporting the authenticated user's account ID and organization memberships
-- Add `docs search` for keyword or semantic search over the Seclai documentation
+- Add `docs search` for keyword or semantic search over the Seclai documentation. `--mode` accepts `keyword` or `semantic` and rejects anything else at parse time
 - Add `models tiers`, mapping each media-generation modality and tier to its model and cost
 - Add `--supports-input-media` and `--supports-output-media` filters to `models list`
 - Add `--paged` to `evals criteria list`, wrapping the results in `{data: [...]}` instead of a bare array so `.data` reads the same whatever `--api-version` is in effect. The `pagination` block appears only once the API sends one, from `2026-07-27`

@@ -1,4 +1,4 @@
-import { describe, expect, test, vi, beforeEach } from "vitest";
+import { describe, expect, test, vi, beforeEach, afterAll } from "vitest";
 import { PassThrough } from "node:stream";
 import { mkdtemp, writeFile, rm, readFile } from "node:fs/promises";
 import os from "node:os";
@@ -545,14 +545,22 @@ function makeRuntime() {
   };
 }
 
+// createClient is real code and reads this, so a developer or CI runner that
+// exports it — the variable this release introduces and documents — would
+// otherwise fail the "no --api-version leaves apiVersion unset" test. Captured
+// once and put back afterwards, like every other env var this file touches.
+const inheritedApiVersion = process.env.SECLAI_API_VERSION;
+
 beforeEach(() => {
   mockState.instances.length = 0;
   mockState.lastCtorArgs = undefined;
   mockState.nextListSourcesError = undefined;
-  // createClient is real code and reads this, so a developer or CI runner that
-  // exports it — the variable this release introduces and documents — would
-  // otherwise fail the "no --api-version leaves apiVersion unset" test.
   delete process.env.SECLAI_API_VERSION;
+});
+
+afterAll(() => {
+  if (inheritedApiVersion === undefined) delete process.env.SECLAI_API_VERSION;
+  else process.env.SECLAI_API_VERSION = inheritedApiVersion;
 });
 
 describe("seclai CLI", () => {
@@ -1407,9 +1415,12 @@ describe("seclai CLI", () => {
     expect(parsed.tools).toEqual(["copilot"]);
 
     // Derived, not a magic number: every file under skills/seclai-cli/ ships,
-    // so adding a reference must not require editing this assertion.
+    // so adding a reference must not require editing this assertion. Resolved
+    // against this file rather than the process cwd, which vitest does not
+    // promise to leave at the repo root.
     const { existsSync, readdirSync } = await import("node:fs");
-    const expectedFiles = 1 + readdirSync("skills/seclai-cli/references").filter((f) => f.endsWith(".md")).length;
+    const referencesDir = new URL("../skills/seclai-cli/references/", import.meta.url);
+    const expectedFiles = 1 + readdirSync(referencesDir).filter((f) => f.endsWith(".md")).length;
     expect(parsed.filesWritten).toBe(expectedFiles);
 
     // Verify files were written
@@ -1774,6 +1785,66 @@ describe("seclai CLI — SDK 1.5.0 surface", () => {
     } finally {
       delete process.env.SECLAI_API_VERSION;
     }
+  });
+
+  test("every valued global option rejects an empty value", async () => {
+    // A shell expanding an unset variable passes "", and each of these was
+    // treated as absent: `--api-key "$KEY"` fell through to SECLAI_API_KEY or a
+    // cached SSO session and ran as a different identity.
+    for (const flag of ["--api-key", "--profile", "--account-id", "--config-dir"]) {
+      const { runCli } = await importCli();
+      const io = makeRuntime();
+
+      const exitCode = await runCli(["node", "seclai", flag, "", "agents", "list"], io.rt);
+
+      expect(exitCode, `${flag} "" should fail`).not.toBe(0);
+      expect(io.stderr).toContain(flag);
+    }
+  });
+
+  test("a non-numeric --limit fails the parse instead of sending NaN", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    // `Number("abc")` is NaN and the SDK stringifies it, so this used to leave
+    // as `?limit=NaN` and come back a server 422 naming nothing.
+    const exitCode = await runCli(
+      ["node", "seclai", "--api-key", "k", "email", "blocked", "list", "--limit", "abc"],
+      io.rt
+    );
+
+    expect(exitCode).not.toBe(0);
+    expect(io.stderr).toContain("--limit");
+    // Rejected during parsing, so no request is even prepared.
+    expect(mockState.instances).toHaveLength(0);
+  });
+
+  test("api-version set rejects a malformed date", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    // The pin is account-wide and the CLI sends no header afterwards, so
+    // nothing downstream would catch the typo.
+    const exitCode = await runCli(
+      ["node", "seclai", "--api-key", "k", "api-version", "set", "2026-7-27"],
+      io.rt
+    );
+
+    expect(exitCode).not.toBe(0);
+    expect(mockState.instances).toHaveLength(0);
+  });
+
+  test("docs search rejects an unknown --mode", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    const exitCode = await runCli(
+      ["node", "seclai", "--api-key", "k", "docs", "search", "--query", "x", "--mode", "fuzzy"],
+      io.rt
+    );
+
+    expect(exitCode).not.toBe(0);
+    expect(mockState.instances).toHaveLength(0);
   });
 
   test("--allow-unknown-api-version reaches the SDK constructor", async () => {

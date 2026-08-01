@@ -46,14 +46,43 @@ const replacement =
 const target = path.join("src", "commands", "skills.ts");
 let code = fs.readFileSync(target, "utf8");
 
-const start = code.indexOf(MARKER_START);
-const end = code.indexOf(MARKER_END);
-if (start === -1 || end === -1) {
-  console.error(`Could not find markers in ${target}. start: ${start} end: ${end}`);
+/**
+ * Offset of the one and only occurrence of `marker`.
+ *
+ * Everything between the two markers is embedded markdown, so a skill file
+ * containing either marker's text would give `indexOf` a second candidate and
+ * splice the file at the wrong offset — quietly, since the substring calls
+ * below accept any indexes. Insisting on exactly one turns that into an error.
+ */
+function soleIndexOf(text, marker) {
+  const first = text.indexOf(marker);
+  if (first === -1) return { index: -1, count: 0 };
+  let count = 0;
+  for (let i = first; i !== -1; i = text.indexOf(marker, i + marker.length)) count++;
+  return { index: first, count };
+}
+
+const start = soleIndexOf(code, MARKER_START);
+const end = soleIndexOf(code, MARKER_END);
+if (start.count === 0 || end.count === 0) {
+  console.error(
+    `Could not find markers in ${target}. "${MARKER_START}": ${start.count}, "${MARKER_END}": ${end.count}`,
+  );
+  process.exit(1);
+}
+if (start.count > 1 || end.count > 1) {
+  console.error(
+    `Ambiguous markers in ${target} — a skill file under ${SKILL_DIR} contains marker text. ` +
+      `"${MARKER_START}": ${start.count}, "${MARKER_END}": ${end.count}`,
+  );
+  process.exit(1);
+}
+if (end.index <= start.index) {
+  console.error(`Markers out of order in ${target}: "${MARKER_END}" precedes "${MARKER_START}".`);
   process.exit(1);
 }
 
-code = code.substring(0, start) + replacement + code.substring(end);
+code = code.substring(0, start.index) + replacement + code.substring(end.index);
 fs.writeFileSync(target, code, "utf8");
 console.log(`Regenerated ${names.length} skill files into ${target}:`);
 for (const n of names) console.log(`  ${n}`);

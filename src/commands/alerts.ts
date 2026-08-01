@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import type { CliRuntime, GlobalOptions } from "../helpers.js";
-import { run, createClient, printJson, readJsonInput, listOpts } from "../helpers.js";
+import { run, createClient, printJson, readJsonInput, listOpts, parseNumber } from "../helpers.js";
 
 /** Register `alerts` commands: alert CRUD, configs, organization preferences. */
 export function register(program: Command, rt: CliRuntime): void {
@@ -11,8 +11,8 @@ export function register(program: Command, rt: CliRuntime): void {
   alerts
     .command("list")
     .description("List alerts.")
-    .option("--page <n>", "Page number.", (v: string) => Number(v))
-    .option("--limit <n>", "Page size.", (v: string) => Number(v))
+    .option("--page <n>", "Page number.", parseNumber)
+    .option("--limit <n>", "Page size.", parseNumber)
     .option("--status <status>", "Filter by status.")
     .action(async (opts) => {
       await run(rt, async () => {
@@ -91,8 +91,8 @@ export function register(program: Command, rt: CliRuntime): void {
   configs
     .command("list")
     .description("List alert configurations.")
-    .option("--page <n>", "Page number.", (v: string) => Number(v))
-    .option("--limit <n>", "Page size.", (v: string) => Number(v))
+    .option("--page <n>", "Page number.", parseNumber)
+    .option("--limit <n>", "Page size.", parseNumber)
     .action(async (opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());

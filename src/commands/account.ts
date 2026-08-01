@@ -37,6 +37,14 @@ export function register(program: Command, rt: CliRuntime): void {
     .argument("<date>", "API version as YYYY-MM-DD.")
     .action(async (date: string) => {
       await run(rt, async () => {
+        // The pin is account-wide and persistent, and nothing re-checks it
+        // afterwards: the CLI sends no version header of its own, so the SDK's
+        // unknown-version guard — which only inspects the header it sends —
+        // never sees it. A typo here would silently reshape responses for every
+        // client on the account, so the shape is checked before the request.
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+          throw new Error(`Expected an API version as YYYY-MM-DD, got "${date}".`);
+        }
         const client = createClient(program.opts<GlobalOptions>());
         printJson(rt, await client.updateApiVersion(date));
       });

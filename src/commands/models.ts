@@ -9,6 +9,7 @@ import {
   readJsonInput,
   withOffsetListOptions,
   offsetListOpts,
+  parseNumber,
 } from "../helpers.js";
 
 /** Register `models` commands: list, get, alerts, recommendations, playground experiments. */
@@ -62,8 +63,8 @@ export function register(program: Command, rt: CliRuntime): void {
   alerts
     .command("list")
     .description("List model alerts.")
-    .option("--page <n>", "Page number.", (v: string) => Number(v))
-    .option("--limit <n>", "Page size.", (v: string) => Number(v))
+    .option("--page <n>", "Page number.", parseNumber)
+    .option("--limit <n>", "Page size.", parseNumber)
     .action(async (opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
@@ -123,7 +124,7 @@ export function register(program: Command, rt: CliRuntime): void {
     experiments
       .command("list")
       .description("List model playground experiments.")
-      .option("--days <n>", "Filter to last N days.", (v: string) => Number(v))
+      .option("--days <n>", "Filter to last N days.", parseNumber)
       .option("--start-date <date>", "Start date (ISO 8601).")
       .option("--end-date <date>", "End date (ISO 8601)."),
   ).action(async (opts) => {

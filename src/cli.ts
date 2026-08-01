@@ -33,6 +33,24 @@ import { register as registerConfigure } from "./commands/configure.js";
 export type { CliRuntime, GlobalOptions };
 
 /**
+ * Global options that take a value, with the hint shown when one arrives empty.
+ *
+ * A shell expanding an unset variable hands us `""`, not an absent flag, and
+ * every consumer of these tests truthiness or falls back: `--api-key "$KEY"`
+ * with `KEY` unset would authenticate from `SECLAI_API_KEY` or a cached SSO
+ * session, silently acting as a different identity, and `--api-version ""`
+ * would send no version header and skip the SDK's unknown-version guard. An
+ * empty value is always a mistake, so it is rejected rather than ignored.
+ */
+const VALUED_GLOBAL_OPTIONS: ReadonlyArray<[keyof GlobalOptions, string, string]> = [
+  ["apiKey", "--api-key", "Pass a key, or omit the flag to use SECLAI_API_KEY or SSO."],
+  ["profile", "--profile", "Pass a profile name, or omit the flag to use the default profile."],
+  ["accountId", "--account-id", "Pass an account ID, or omit the flag."],
+  ["configDir", "--config-dir", "Pass a directory, or omit the flag to use ~/.seclai."],
+  ["apiVersion", "--api-version", "Pass a YYYY-MM-DD date, or omit the flag to use the account default."],
+];
+
+/**
  * Build the top-level Commander program with all command modules registered.
  * Pass a custom {@link CliRuntime} for testing; defaults to real process I/O.
  */
@@ -102,9 +120,15 @@ export function createProgram(rt: CliRuntime = defaultRuntime()): Command {
   });
   program.exitOverride();
 
-  // Propagate global flags to runtime before any command action
+  // Validate global flags and propagate them to the runtime before any action
   program.hook("preAction", (thisCommand) => {
     const globalOpts = thisCommand.opts<GlobalOptions>();
+    for (const [key, flag, hint] of VALUED_GLOBAL_OPTIONS) {
+      const value = globalOpts[key];
+      if (typeof value === "string" && value.length === 0) {
+        throw new Error(`${flag} was given an empty value. ${hint}`);
+      }
+    }
     rt.compact = Boolean(globalOpts.compact);
   });
 

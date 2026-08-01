@@ -10,6 +10,7 @@ import {
   listOpts,
   withOffsetListOptions,
   offsetListOpts,
+  parseNumber,
 } from "../helpers.js";
 
 /** Register `agents` commands: CRUD, run (basic/stream/events/poll), runs, definition, export, input uploads, AI assistant. */
@@ -23,8 +24,8 @@ export function register(program: Command, rt: CliRuntime): void {
   agents
     .command("list")
     .description("List agents.")
-    .option("--page <n>", "Page number.", (v: string) => Number(v))
-    .option("--limit <n>", "Page size.", (v: string) => Number(v))
+    .option("--page <n>", "Page number.", parseNumber)
+    .option("--limit <n>", "Page size.", parseNumber)
     .action(async (opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
@@ -154,8 +155,8 @@ export function register(program: Command, rt: CliRuntime): void {
     .option("--event-filter <types>", "Comma-separated event types to show (with --events).")
     .option("--output <mode>", "Output mode: 'full' prints entire event, 'data' prints only the data field, 'status' prints a one-line summary.", "full")
     .option("--poll", "Poll until completion instead of streaming.")
-    .option("--poll-interval-ms <n>", "Poll interval in ms (with --poll).", (v: string) => Number(v))
-    .option("--timeout-ms <n>", "Client-side timeout in ms.", (v: string) => Number(v))
+    .option("--poll-interval-ms <n>", "Poll interval in ms (with --poll).", parseNumber)
+    .option("--timeout-ms <n>", "Client-side timeout in ms.", parseNumber)
     .option("--include-step-outputs", "Include step outputs (with --poll).")
     .action(async (agentId: string, opts) => {
       await run(rt, async () => {
@@ -222,8 +223,8 @@ export function register(program: Command, rt: CliRuntime): void {
     .command("list")
     .description("List runs for an agent.")
     .argument("<agentId>", "Agent ID.")
-    .option("--page <n>", "Page number.", (v: string) => Number(v))
-    .option("--limit <n>", "Page size.", (v: string) => Number(v))
+    .option("--page <n>", "Page number.", parseNumber)
+    .option("--limit <n>", "Page size.", parseNumber)
     .option("--status <status>", "Filter by run status (e.g. queued, running, completed, failed, cancelled).")
     .action(async (agentId: string, opts) => {
       await run(rt, async () => {
@@ -512,8 +513,8 @@ export function register(program: Command, rt: CliRuntime): void {
     .description("List evaluation results for a run.")
     .argument("<agentId>", "Agent ID.")
     .argument("<runId>", "Run ID.")
-    .option("--page <n>", "Page number.", (v: string) => Number(v))
-    .option("--limit <n>", "Page size.", (v: string) => Number(v))
+    .option("--page <n>", "Page number.", parseNumber)
+    .option("--limit <n>", "Page size.", parseNumber)
     .action(async (agentId: string, runId: string, opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());

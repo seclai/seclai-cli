@@ -6,6 +6,7 @@ import {
   printJson,
   withOffsetListOptions,
   offsetListOpts,
+  parseNumber,
 } from "../helpers.js";
 
 /** Register `email` commands: sending domains, inbound blocklist, inbound health, and agent opt-outs. */
@@ -105,8 +106,8 @@ export function register(program: Command, rt: CliRuntime): void {
     .command("dmarc")
     .description("Get the DMARC aggregate-report summary for a domain.")
     .argument("<domainId>", "Domain ID.")
-    .option("--days <n>", "Reporting window in days.", (v: string) => Number(v))
-    .option("--top-sources <n>", "How many sending sources to include.", (v: string) => Number(v))
+    .option("--days <n>", "Reporting window in days.", parseNumber)
+    .option("--top-sources <n>", "How many sending sources to include.", parseNumber)
     .action(async (domainId: string, opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
@@ -195,7 +196,7 @@ export function register(program: Command, rt: CliRuntime): void {
     .command("rejections")
     .description("List recently rejected inbound emails and why they were rejected.")
     .option("--agent-id <id>", "Restrict to one agent.")
-    .option("--limit <n>", "Maximum rejections to return.", (v: string) => Number(v))
+    .option("--limit <n>", "Maximum rejections to return.", parseNumber)
     .action(async (opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
