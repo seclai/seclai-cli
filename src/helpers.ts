@@ -10,15 +10,30 @@ import {
   SeclaiConfigurationError,
 } from "@seclai/sdk";
 
-/** Global CLI options parsed from top-level flags (--api-key, --compact, --profile, --account-id, --config-dir, --api-version). */
+/**
+ * Global CLI options parsed from top-level flags (--api-key, --compact,
+ * --profile, --account-id, --config-dir, --api-version).
+ *
+ * The `?: T | undefined` spelling is deliberate. This repo sets
+ * `exactOptionalPropertyTypes`, which distinguishes an absent property from one
+ * present with the value `undefined` — a distinction that is meaningful for
+ * data we construct, and meaningless for a bag of CLI flags. Commander hands
+ * these over with unset flags either missing or `undefined` depending on how
+ * the option was declared, and every consumer here tests `!== undefined`, so
+ * both spellings already behave identically. Widening the input types says so,
+ * and lets callers spread a partial without a confusing assignability error.
+ *
+ * Values we build and hand onwards keep the strict `?: T` form, so the compiler
+ * flag still does its job where the distinction carries meaning.
+ */
 export type GlobalOptions = {
-  apiKey?: string;
-  compact?: boolean;
-  profile?: string;
-  accountId?: string;
-  configDir?: string;
-  apiVersion?: string;
-  allowUnknownApiVersion?: boolean;
+  apiKey?: string | undefined;
+  compact?: boolean | undefined;
+  profile?: string | undefined;
+  accountId?: string | undefined;
+  configDir?: string | undefined;
+  apiVersion?: string | undefined;
+  allowUnknownApiVersion?: boolean | undefined;
 };
 
 /** Runtime abstraction that decouples the CLI from Node globals, enabling testability. */
@@ -69,7 +84,7 @@ export async function readStdinText(rt: CliRuntime): Promise<string> {
  */
 export async function readJsonInput(
   rt: CliRuntime,
-  opts: { json?: string; jsonFile?: string }
+  opts: { json?: string | undefined; jsonFile?: string | undefined }
 ): Promise<unknown> {
   if (opts.json !== undefined && opts.jsonFile !== undefined) {
     throw new Error("Provide only one of --json or --json-file");
@@ -95,7 +110,7 @@ export async function readJsonInput(
  */
 export async function readJsonObjectInput(
   rt: CliRuntime,
-  opts: { json?: string; jsonFile?: string }
+  opts: { json?: string | undefined; jsonFile?: string | undefined }
 ): Promise<Record<string, unknown>> {
   const value = await readJsonInput(rt, opts);
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -226,7 +241,7 @@ export function withOffsetListOptions(cmd: Command): Command {
 }
 
 /** Pick the defined limit/offset values for an offset-paginated call. */
-export function offsetListOpts(opts: { limit?: number; offset?: number }): {
+export function offsetListOpts(opts: { limit?: number | undefined; offset?: number | undefined }): {
   limit?: number;
   offset?: number;
 } {
@@ -266,12 +281,13 @@ export async function buildUploadOpts(
   rt: CliRuntime,
   opts: {
     file: string;
-    title?: string;
-    metadata?: string;
-    metadataFile?: string;
-    fileName?: string;
-    mimeType?: string;
+    title?: string | undefined;
+    metadata?: string | undefined;
+    metadataFile?: string | undefined;
+    fileName?: string | undefined;
+    mimeType?: string | undefined;
   }
+  // The returned object is ours to construct, so it keeps the strict form.
 ): Promise<{
   file: Uint8Array;
   title?: string;
@@ -300,10 +316,10 @@ export async function buildUploadOpts(
 
 /** Pick defined values from opts for list calls */
 export function listOpts(opts: {
-  page?: number;
-  limit?: number;
-  sort?: string;
-  order?: string;
+  page?: number | undefined;
+  limit?: number | undefined;
+  sort?: string | undefined;
+  order?: string | undefined;
 }): Record<string, unknown> {
   const o: Record<string, unknown> = {};
   if (opts.page !== undefined) o.page = opts.page;
@@ -327,7 +343,7 @@ export function withAiInputOptions(cmd: Command): Command {
 /** Read AI assistant input: --user-input takes precedence, falls back to --json/--json-file */
 export async function readAiInput(
   rt: CliRuntime,
-  opts: { userInput?: string; json?: string; jsonFile?: string }
+  opts: { userInput?: string | undefined; json?: string | undefined; jsonFile?: string | undefined }
 ): Promise<unknown> {
   if (opts.userInput !== undefined) {
     return { user_input: opts.userInput };
