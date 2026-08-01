@@ -31,8 +31,9 @@ Run `npm test` after bumping the dependency and it will name what changed:
 | --- | --- |
 | SDK surface vs call sites | The SDK gained endpoints the CLI does not expose. Reads the installed `index.d.ts`, so it cannot go stale. |
 | Call sites vs SDK surface | The CLI calls a method the SDK removed or renamed. |
-| Commands vs completion scripts | A command exists that bash/zsh/fish do not complete. |
+| Commands vs completion scripts | A command or global option that bash/zsh/fish do not offer. It parses each script's completion word lists — a name merely *appearing* in the file is not enough, which is how a missing fish entry once passed. |
 | Commands vs docs | A command group with no `seclai <cmd>` example in `README.md` or the bundled skill. |
+| Embedded skill vs its sources | `src/commands/skills.ts` out of date with `skills/seclai-cli/`. This is the only guard that reads what `skills install` actually ships. |
 
 Deliberate omissions live in `NOT_COMMANDS` in that file, each with a reason. A
 second test asserts every exemption still corresponds to a real SDK method, so
@@ -94,9 +95,11 @@ not a preference: a CLI's output is a scripting interface.
    twenty email methods became `seclai email {domains,blocked,inbound,optouts}`.
 5. Add tests asserting the exact SDK call for each command, including which
    options are omitted when not passed.
-6. Update `completion.ts`, `README.md` and `skills/seclai-cli/SKILL.md`. The
-   drift tests enforce presence, not accuracy — they cannot tell you the example
-   is wrong.
+6. Update `completion.ts`, `README.md` and `skills/seclai-cli/SKILL.md`, then run
+   **`npm run sync:skills`** — the files `skills install` writes are string
+   constants compiled into `src/commands/skills.ts`, and editing the sources
+   alone changes nothing that ships. The drift tests enforce presence and
+   freshness, not accuracy: they cannot tell you an example is wrong.
 7. Gate: `npm run typecheck && npm test && npm run build && npm run docs`.
 
 ## Commander notes
