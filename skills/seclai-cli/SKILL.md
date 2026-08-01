@@ -90,10 +90,14 @@ version can reshape a response the CLI would then misread. Pass
 `YYYY-MM-DD` date and rejects anything else, because the pin applies to every
 client on the account.
 
-An empty value is an error, not a no-op, for every global option that takes one
-(`--api-key`, `--profile`, `--account-id`, `--config-dir`, `--api-version`).
-`--api-key "$KEY"` with an unset `KEY` fails rather than quietly falling back to
-`SECLAI_API_KEY` or a cached SSO session and running as a different identity.
+`--api-key`, `--profile`, `--account-id` and `--config-dir` reject an empty
+value. A shell expanding an unset variable passes `""`, which the SDK's
+credential chain discards, so each would silently resolve elsewhere — a
+different identity, another account's cached tokens, or the default org. Guard
+the flag rather than the value: `seclai ${KEY:+--api-key "$KEY"} agents list`.
+
+An empty `--api-version` is accepted with a warning, since it costs only the
+version header; a future release will reject it too.
 
 ## Common patterns
 

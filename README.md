@@ -157,10 +157,19 @@ version can reshape a response the CLI would then misread. Pass
 `YYYY-MM-DD` date and rejects anything else, because the pin applies to every
 client on the account and nothing re-checks it afterwards.
 
-Every global option that takes a value rejects an empty one rather than ignoring
-it. A shell expanding an unset variable passes `""`, so `--api-key "$KEY"` with
-`KEY` unset would otherwise fall back to `SECLAI_API_KEY` or a cached SSO session
-and run as a different identity.
+`--api-key`, `--profile`, `--account-id` and `--config-dir` reject an empty
+value. A shell expanding an unset variable passes `""`, which the SDK discards,
+so `--api-key "$KEY"` with `KEY` unset would fall back to `SECLAI_API_KEY` or a
+cached SSO session and run as a different identity — and `--account-id ""` would
+act on the default org rather than the one you named. Guard the flag instead of
+the value:
+
+```bash
+seclai ${KEY:+--api-key "$KEY"} agents list
+```
+
+An empty `--api-version` is still accepted, with a warning: it costs only the
+version header. A future release will reject that too.
 
 ---
 
@@ -448,6 +457,10 @@ seclai alerts comment <alertId> --json '{"comment":"Investigating"}'
 seclai alerts subscribe <alertId>
 seclai alerts unsubscribe <alertId>
 ```
+
+`--severity` is accepted for compatibility but ignored with a warning, and will
+be removed. `GET /alerts` declares no severity filter, so it never filtered.
+Filter client-side: `seclai alerts list | jq '[.data[] | select(.severity == "high")]'`.
 
 #### Alert Configurations
 

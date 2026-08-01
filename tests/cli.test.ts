@@ -759,6 +759,10 @@ describe("seclai CLI", () => {
     expect(client.cancelAgentRun).toHaveBeenCalledWith("run_1");
     expect(client.deleteAgentRun).not.toHaveBeenCalled();
     expect(io.stderr).toContain("deprecated");
+
+    // stdout keeps the 1.4.0 contract. `runs cancel` prints the run object, and
+    // matching it here would break every script doing `... delete | jq -e .ok`.
+    expect(JSON.parse(io.stdout)).toEqual({ ok: true });
   });
 
   test("agents attachment-references calls getAgentAttachmentReferences", async () => {
@@ -1201,18 +1205,26 @@ describe("seclai CLI", () => {
     expect(client.listAlerts).toHaveBeenCalledWith({ status: "open" });
   });
 
-  test("alerts list rejects --severity", async () => {
+  test("alerts list accepts --severity, warns, and does not send it", async () => {
     const { runCli } = await importCli();
     const io = makeRuntime();
 
-    // GET /alerts declares no severity filter, so the flag never filtered and
-    // becomes a 422 under api-version 2026-07-27. Fail loudly instead.
+    // GET /alerts declares no severity filter, so the flag never filtered.
+    // It still parses — removing it would break existing invocations — but it
+    // is dropped rather than sent, which also avoids the 422 it would become
+    // under api-version 2026-07-27.
     const exitCode = await runCli(
-      ["node", "seclai", "--api-key", "k", "alerts", "list", "--severity", "high"],
+      ["node", "seclai", "--api-key", "k", "alerts", "list", "--status", "open", "--severity", "high"],
       io.rt
     );
 
-    expect(exitCode).not.toBe(0);
+    expect(exitCode).toBe(0);
+    const client = mockState.instances[0];
+    expect(client.listAlerts).toHaveBeenCalledWith({ status: "open" });
+    expect(io.stderr).toContain("severity");
+    expect(io.stderr).toContain("rejected in a future release");
+    // stdout stays pure JSON so pipelines are unaffected.
+    expect(() => JSON.parse(io.stdout)).not.toThrow();
   });
 
   test("alerts configs create calls createAlertConfig", async () => {
@@ -1761,20 +1773,22 @@ describe("seclai CLI — SDK 1.5.0 surface", () => {
     }
   });
 
-  test("an empty --api-version is rejected, not ignored", async () => {
+  test("an empty --api-version is ignored with a warning", async () => {
     const { runCli } = await importCli();
     const io = makeRuntime();
 
-    // The SDK tests apiVersion for truthiness, so "" would send no header and
-    // skip the unknown-version guard — `--api-version "$VER"` with an unset VER
-    // would silently return default-version output.
+    // The SDK tests apiVersion for truthiness, so "" sends no header and skips
+    // the unknown-version guard. That is a mistake worth naming, but it is what
+    // the CLI has always done, so the value is dropped and the command runs.
     const exitCode = await runCli(
       ["node", "seclai", "--api-key", "k", "--api-version", "", "agents", "list"],
       io.rt
     );
 
-    expect(exitCode).not.toBe(0);
+    expect(exitCode).toBe(0);
+    expect(mockState.lastCtorArgs).not.toHaveProperty("apiVersion");
     expect(io.stderr).toContain("--api-version");
+    expect(io.stderr).toContain("rejected in a future release");
   });
 
   test("an empty SECLAI_API_VERSION is treated as unset", async () => {
@@ -1787,18 +1801,25 @@ describe("seclai CLI — SDK 1.5.0 surface", () => {
     }
   });
 
-  test("every valued global option rejects an empty value", async () => {
-    // A shell expanding an unset variable passes "", and each of these was
-    // treated as absent: `--api-key "$KEY"` fell through to SECLAI_API_KEY or a
-    // cached SSO session and ran as a different identity.
+  test("the identity-bearing global options reject an empty value", async () => {
+    // No empty value has a legitimate meaning for any of these, and each one
+    // silently resolves to a different identity or org: --api-key falls through
+    // to SECLAI_API_KEY then SSO, --config-dir to another account's cached
+    // tokens, --account-id drops the X-Account-Id header, --profile misses its
+    // config section. Failing is the only safe reading.
     for (const flag of ["--api-key", "--profile", "--account-id", "--config-dir"]) {
       const { runCli } = await importCli();
       const io = makeRuntime();
 
-      const exitCode = await runCli(["node", "seclai", flag, "", "agents", "list"], io.rt);
+      const exitCode = await runCli(
+        ["node", "seclai", "--api-key", "k", flag, "", "agents", "list"],
+        io.rt
+      );
 
       expect(exitCode, `${flag} "" should fail`).not.toBe(0);
-      expect(io.stderr).toContain(flag);
+      expect(io.stderr, `${flag} should be named in the error`).toContain(flag);
+      // No request is issued — the guard runs before any client is built.
+      expect(mockState.instances, `${flag} should not reach the SDK`).toHaveLength(0);
     }
   });
 

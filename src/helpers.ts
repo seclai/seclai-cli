@@ -173,6 +173,20 @@ export function printJson(rt: CliRuntime, value: unknown): void {
   rt.writeOut(`${JSON.stringify(value, null, indent)}\n`);
 }
 
+/**
+ * Warn on stderr about input that is accepted today and will stop being
+ * accepted later.
+ *
+ * Rejecting bad input outright is the better end state, but doing it in a
+ * single release breaks whatever was quietly relying on the old handling. These
+ * warnings are the deprecation period: the command still behaves exactly as it
+ * did, and the operator gets told what will change. stdout stays clean, so
+ * anything piping into `jq` is unaffected.
+ */
+export function warnDeprecated(rt: CliRuntime, message: string): void {
+  rt.writeErr(`warning: ${message} This will be rejected in a future release.\n`);
+}
+
 /** Print a human-readable error to stderr. Shows extra detail for SDK error types. */
 export function printError(rt: CliRuntime, err: unknown): void {
   if (err instanceof SeclaiAPIValidationError) {

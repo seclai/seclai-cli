@@ -16,7 +16,8 @@ seclai alerts subscribe <alertId>
 seclai alerts unsubscribe <alertId>
 ```
 
-`GET /alerts` declares no severity filter, so there is no `--severity`. Filter
+`GET /alerts` declares no severity filter. `--severity` still parses, but it is
+ignored with a warning and will be removed — it never filtered anything. Filter
 client-side instead:
 
 ```bash

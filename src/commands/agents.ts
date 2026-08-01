@@ -11,6 +11,7 @@ import {
   withOffsetListOptions,
   offsetListOpts,
   parseNumber,
+  warnDeprecated,
 } from "../helpers.js";
 
 /** Register `agents` commands: CRUD, run (basic/stream/events/poll), runs, definition, export, input uploads, AI assistant. */
@@ -256,12 +257,22 @@ export function register(program: Command, rt: CliRuntime): void {
     .argument("<runId>", "Run ID.")
     .action(async (runId: string) => {
       await run(rt, async () => {
-        // This never deleted anything: it called the cancel endpoint all along.
-        // Kept so existing scripts keep working, routed to the method that says
-        // what it does.
-        rt.writeErr("warning: 'runs delete' is deprecated and cancels the run. Use 'runs cancel'.\n");
+        // This never deleted anything: it called the cancel endpoint all along,
+        // so it is routed to the method that says what it does.
+        //
+        // stdout stays `{"ok": true}` as it was through 1.4.0. `runs cancel`
+        // prints the cancelled run, and switching this command to match would
+        // break every script piping it into `jq`, which is the opposite of what
+        // keeping a deprecated alias is for.
+        warnDeprecated(
+          rt,
+          "'agents runs delete' is deprecated and cancels the run rather than deleting it — " +
+            "the API has no delete-a-run operation. Use 'agents runs cancel', which also " +
+            "prints the cancelled run instead of {\"ok\": true}.",
+        );
         const client = createClient(program.opts<GlobalOptions>());
-        printJson(rt, await client.cancelAgentRun(runId));
+        await client.cancelAgentRun(runId);
+        printJson(rt, { ok: true });
       });
     });
 
