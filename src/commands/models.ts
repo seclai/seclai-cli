@@ -1,6 +1,16 @@
 import { Command } from "commander";
 import type { CliRuntime, GlobalOptions } from "../helpers.js";
-import { run, createClient, printJson, listOpts, withJsonInputOptions, readJsonInput } from "../helpers.js";
+import {
+  run,
+  createClient,
+  printJson,
+  listOpts,
+  withJsonInputOptions,
+  readJsonInput,
+  withOffsetListOptions,
+  offsetListOpts,
+  parseNumber,
+} from "../helpers.js";
 
 /** Register `models` commands: list, get, alerts, recommendations, playground experiments. */
 export function register(program: Command, rt: CliRuntime): void {
@@ -12,6 +22,8 @@ export function register(program: Command, rt: CliRuntime): void {
     .option("--provider <provider>", "Filter by provider name.")
     .option("--supports-tool-use", "Only models that support tool use.")
     .option("--supports-thinking", "Only models that support thinking.")
+    .option("--supports-input-media <media>", "Only models accepting this input modality (e.g. image, audio).")
+    .option("--supports-output-media <media>", "Only models producing this output modality (e.g. image, video).")
     .action(async (opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
@@ -19,7 +31,19 @@ export function register(program: Command, rt: CliRuntime): void {
         if (opts.provider !== undefined) o.provider = opts.provider;
         if (opts.supportsToolUse !== undefined) o.supportsToolUse = opts.supportsToolUse;
         if (opts.supportsThinking !== undefined) o.supportsThinking = opts.supportsThinking;
+        if (opts.supportsInputMedia !== undefined) o.supportsInputMedia = opts.supportsInputMedia;
+        if (opts.supportsOutputMedia !== undefined) o.supportsOutputMedia = opts.supportsOutputMedia;
         printJson(rt, await client.listModels(o));
+      });
+    });
+
+  models
+    .command("tiers")
+    .description("Show each media-generation modality and tier with its model and cost.")
+    .action(async () => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        printJson(rt, await client.getGenerationTiers());
       });
     });
 
@@ -39,8 +63,8 @@ export function register(program: Command, rt: CliRuntime): void {
   alerts
     .command("list")
     .description("List model alerts.")
-    .option("--page <n>", "Page number.", (v: string) => Number(v))
-    .option("--limit <n>", "Page size.", (v: string) => Number(v))
+    .option("--page <n>", "Page number.", parseNumber)
+    .option("--limit <n>", "Page size.", parseNumber)
     .action(async (opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
@@ -96,26 +120,23 @@ export function register(program: Command, rt: CliRuntime): void {
 
   const experiments = models.command("experiments").description("Model playground experiments.");
 
-  experiments
-    .command("list")
-    .description("List model playground experiments.")
-    .option("--days <n>", "Filter to last N days.", (v: string) => Number(v))
-    .option("--start-date <date>", "Start date (ISO 8601).")
-    .option("--end-date <date>", "End date (ISO 8601).")
-    .option("--limit <n>", "Page size.", (v: string) => Number(v))
-    .option("--offset <n>", "Offset.", (v: string) => Number(v))
-    .action(async (opts) => {
-      await run(rt, async () => {
-        const client = createClient(program.opts<GlobalOptions>());
-        const o: Parameters<typeof client.listExperiments>[0] = {};
-        if (opts.days !== undefined) o.days = opts.days;
-        if (opts.startDate !== undefined) o.startDate = opts.startDate;
-        if (opts.endDate !== undefined) o.endDate = opts.endDate;
-        if (opts.limit !== undefined) o.limit = opts.limit;
-        if (opts.offset !== undefined) o.offset = opts.offset;
-        printJson(rt, await client.listExperiments(o));
-      });
+  withOffsetListOptions(
+    experiments
+      .command("list")
+      .description("List model playground experiments.")
+      .option("--days <n>", "Filter to last N days.", parseNumber)
+      .option("--start-date <date>", "Start date (ISO 8601).")
+      .option("--end-date <date>", "End date (ISO 8601)."),
+  ).action(async (opts) => {
+    await run(rt, async () => {
+      const client = createClient(program.opts<GlobalOptions>());
+      const o: Parameters<typeof client.listExperiments>[0] = offsetListOpts(opts);
+      if (opts.days !== undefined) o.days = opts.days;
+      if (opts.startDate !== undefined) o.startDate = opts.startDate;
+      if (opts.endDate !== undefined) o.endDate = opts.endDate;
+      printJson(rt, await client.listExperiments(o));
     });
+  });
 
   withJsonInputOptions(experiments
     .command("create")

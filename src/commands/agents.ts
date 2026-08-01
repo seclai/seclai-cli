@@ -8,6 +8,10 @@ import {
   readAiInput,
   withAiInputOptions,
   listOpts,
+  withOffsetListOptions,
+  offsetListOpts,
+  parseNumber,
+  warnDeprecated,
 } from "../helpers.js";
 
 /** Register `agents` commands: CRUD, run (basic/stream/events/poll), runs, definition, export, input uploads, AI assistant. */
@@ -21,8 +25,8 @@ export function register(program: Command, rt: CliRuntime): void {
   agents
     .command("list")
     .description("List agents.")
-    .option("--page <n>", "Page number.", (v: string) => Number(v))
-    .option("--limit <n>", "Page size.", (v: string) => Number(v))
+    .option("--page <n>", "Page number.", parseNumber)
+    .option("--limit <n>", "Page size.", parseNumber)
     .action(async (opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
@@ -80,6 +84,65 @@ export function register(program: Command, rt: CliRuntime): void {
       });
     });
 
+  agents
+    .command("disable")
+    .description("Pause an agent across every trigger path (API, schedule, email, sub-agent calls).")
+    .argument("<agentId>", "Agent ID.")
+    .action(async (agentId: string) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        printJson(rt, await client.disableAgent(agentId));
+      });
+    });
+
+  agents
+    .command("enable")
+    .description("Resume a paused agent.")
+    .argument("<agentId>", "Agent ID.")
+    .action(async (agentId: string) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        printJson(rt, await client.enableAgent(agentId));
+      });
+    });
+
+  agents
+    .command("callers")
+    .description("List the live agents that call this agent via a call_agent step.")
+    .argument("<agentId>", "Agent ID.")
+    .action(async (agentId: string) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        printJson(rt, await client.getAgentCallers(agentId));
+      });
+    });
+
+  // --- Triggers ---
+
+  const triggers = agents.command("triggers").description("Agent trigger configuration.");
+
+  triggers
+    .command("email-config")
+    .description("Set the alias, sender allowlist, and inbound-handling flags on an EMAIL_RECEIVED trigger.")
+    .argument("<agentId>", "Agent ID.")
+    .argument("<triggerId>", "Trigger ID.")
+    .option("--json <json>", "Config body JSON. Use '-' for stdin.")
+    .option("--json-file <path>", "Config body JSON file. Use '-' for stdin.")
+    .action(async (agentId: string, triggerId: string, opts) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        const body = await readJsonInput(rt, { json: opts.json, jsonFile: opts.jsonFile });
+        printJson(
+          rt,
+          await client.setEmailTriggerConfig(
+            agentId,
+            triggerId,
+            body as Parameters<typeof client.setEmailTriggerConfig>[2],
+          ),
+        );
+      });
+    });
+
   // --- Run ---
 
   agents
@@ -93,8 +156,8 @@ export function register(program: Command, rt: CliRuntime): void {
     .option("--event-filter <types>", "Comma-separated event types to show (with --events).")
     .option("--output <mode>", "Output mode: 'full' prints entire event, 'data' prints only the data field, 'status' prints a one-line summary.", "full")
     .option("--poll", "Poll until completion instead of streaming.")
-    .option("--poll-interval-ms <n>", "Poll interval in ms (with --poll).", (v: string) => Number(v))
-    .option("--timeout-ms <n>", "Client-side timeout in ms.", (v: string) => Number(v))
+    .option("--poll-interval-ms <n>", "Poll interval in ms (with --poll).", parseNumber)
+    .option("--timeout-ms <n>", "Client-side timeout in ms.", parseNumber)
     .option("--include-step-outputs", "Include step outputs (with --poll).")
     .action(async (agentId: string, opts) => {
       await run(rt, async () => {
@@ -161,8 +224,8 @@ export function register(program: Command, rt: CliRuntime): void {
     .command("list")
     .description("List runs for an agent.")
     .argument("<agentId>", "Agent ID.")
-    .option("--page <n>", "Page number.", (v: string) => Number(v))
-    .option("--limit <n>", "Page size.", (v: string) => Number(v))
+    .option("--page <n>", "Page number.", parseNumber)
+    .option("--limit <n>", "Page size.", parseNumber)
     .option("--status <status>", "Filter by run status (e.g. queued, running, completed, failed, cancelled).")
     .action(async (agentId: string, opts) => {
       await run(rt, async () => {
@@ -190,12 +253,25 @@ export function register(program: Command, rt: CliRuntime): void {
 
   runs
     .command("delete")
-    .description("Delete a run.")
+    .description("Deprecated alias for 'runs cancel'. The API has no delete-a-run operation.")
     .argument("<runId>", "Run ID.")
     .action(async (runId: string) => {
       await run(rt, async () => {
+        // This never deleted anything: it called the cancel endpoint all along,
+        // so it is routed to the method that says what it does.
+        //
+        // stdout stays `{"ok": true}` as it was through 1.4.0. `runs cancel`
+        // prints the cancelled run, and switching this command to match would
+        // break every script piping it into `jq`, which is the opposite of what
+        // keeping a deprecated alias is for.
+        warnDeprecated(
+          rt,
+          "'agents runs delete' is deprecated and cancels the run rather than deleting it — " +
+            "the API has no delete-a-run operation. Use 'agents runs cancel', which also " +
+            "prints the cancelled run instead of {\"ok\": true}.",
+        );
         const client = createClient(program.opts<GlobalOptions>());
-        await client.deleteAgentRun(runId);
+        await client.cancelAgentRun(runId);
         printJson(rt, { ok: true });
       });
     });
@@ -404,15 +480,27 @@ export function register(program: Command, rt: CliRuntime): void {
       });
     });
 
-  ai.command("history")
-    .description("Get agent AI conversation history.")
-    .argument("<agentId>", "Agent ID.")
-    .action(async (agentId: string) => {
-      await run(rt, async () => {
-        const client = createClient(program.opts<GlobalOptions>());
-        printJson(rt, await client.getAgentAiConversationHistory(agentId));
-      });
+  withOffsetListOptions(
+    ai
+      .command("history")
+      .description("Get agent AI conversation history for one step type.")
+      .argument("<agentId>", "Agent ID.")
+      .requiredOption(
+        "--step-type <type>",
+        "Step type to read history for (e.g. llm). Required by the API.",
+      )
+      .option("--step-id <id>", "Restrict to a single step."),
+  ).action(async (agentId: string, opts) => {
+    await run(rt, async () => {
+      const client = createClient(program.opts<GlobalOptions>());
+      const o: Parameters<typeof client.getAgentAiConversationHistory>[1] = {
+        ...offsetListOpts(opts),
+        stepType: opts.stepType,
+      };
+      if (opts.stepId !== undefined) o.stepId = opts.stepId;
+      printJson(rt, await client.getAgentAiConversationHistory(agentId, o));
     });
+  });
 
   ai.command("mark")
     .description("Mark an AI suggestion (accept/reject).")
@@ -436,8 +524,8 @@ export function register(program: Command, rt: CliRuntime): void {
     .description("List evaluation results for a run.")
     .argument("<agentId>", "Agent ID.")
     .argument("<runId>", "Run ID.")
-    .option("--page <n>", "Page number.", (v: string) => Number(v))
-    .option("--limit <n>", "Page size.", (v: string) => Number(v))
+    .option("--page <n>", "Page number.", parseNumber)
+    .option("--limit <n>", "Page size.", parseNumber)
     .action(async (agentId: string, runId: string, opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());

@@ -1,4 +1,4 @@
-import { describe, expect, test, vi, beforeEach } from "vitest";
+import { describe, expect, test, vi, beforeEach, afterAll } from "vitest";
 import { PassThrough } from "node:stream";
 import { mkdtemp, writeFile, rm, readFile } from "node:fs/promises";
 import os from "node:os";
@@ -50,6 +50,10 @@ type SeclaiMock = {
   getAgentAiConversationHistory: ReturnType<typeof vi.fn>;
   markAgentAiSuggestion: ReturnType<typeof vi.fn>;
   listRunEvaluationResults: ReturnType<typeof vi.fn>;
+  disableAgent: ReturnType<typeof vi.fn>;
+  enableAgent: ReturnType<typeof vi.fn>;
+  getAgentCallers: ReturnType<typeof vi.fn>;
+  setEmailTriggerConfig: ReturnType<typeof vi.fn>;
   // contents
   uploadFileToContent: ReturnType<typeof vi.fn>;
   getContentDetail: ReturnType<typeof vi.fn>;
@@ -80,6 +84,7 @@ type SeclaiMock = {
   acceptMemoryBankAiSuggestion: ReturnType<typeof vi.fn>;
   // evals
   listEvaluationCriteria: ReturnType<typeof vi.fn>;
+  listEvaluationCriteriaPage: ReturnType<typeof vi.fn>;
   createEvaluationCriteria: ReturnType<typeof vi.fn>;
   getEvaluationCriteria: ReturnType<typeof vi.fn>;
   updateEvaluationCriteria: ReturnType<typeof vi.fn>;
@@ -139,6 +144,7 @@ type SeclaiMock = {
   markAllModelAlertsRead: ReturnType<typeof vi.fn>;
   getUnreadModelAlertCount: ReturnType<typeof vi.fn>;
   getModelRecommendations: ReturnType<typeof vi.fn>;
+  getGenerationTiers: ReturnType<typeof vi.fn>;
   listExperiments: ReturnType<typeof vi.fn>;
   createExperiment: ReturnType<typeof vi.fn>;
   getExperiment: ReturnType<typeof vi.fn>;
@@ -146,6 +152,31 @@ type SeclaiMock = {
   deleteExperiment: ReturnType<typeof vi.fn>;
   // search
   search: ReturnType<typeof vi.fn>;
+  searchDocs: ReturnType<typeof vi.fn>;
+  // account
+  getMe: ReturnType<typeof vi.fn>;
+  getApiVersion: ReturnType<typeof vi.fn>;
+  updateApiVersion: ReturnType<typeof vi.fn>;
+  // email domains
+  listEmailDomains: ReturnType<typeof vi.fn>;
+  addEmailDomain: ReturnType<typeof vi.fn>;
+  removeEmailDomain: ReturnType<typeof vi.fn>;
+  verifyEmailDomain: ReturnType<typeof vi.fn>;
+  setPrimaryEmailDomain: ReturnType<typeof vi.fn>;
+  useSharedEmailDomain: ReturnType<typeof vi.fn>;
+  sendEmailDomainTestEmail: ReturnType<typeof vi.fn>;
+  getDmarcSummary: ReturnType<typeof vi.fn>;
+  // inbound email
+  listBlockedEmailSenders: ReturnType<typeof vi.fn>;
+  blockEmailSender: ReturnType<typeof vi.fn>;
+  unblockEmailSender: ReturnType<typeof vi.fn>;
+  setAutoBlockMode: ReturnType<typeof vi.fn>;
+  listInboundEmailRejections: ReturnType<typeof vi.fn>;
+  getInboundEmailStatus: ReturnType<typeof vi.fn>;
+  cancelQueuedEmailRuns: ReturnType<typeof vi.fn>;
+  resumeInboundEmail: ReturnType<typeof vi.fn>;
+  listAgentEmailOptOuts: ReturnType<typeof vi.fn>;
+  removeAgentEmailOptOut: ReturnType<typeof vi.fn>;
   // ai
   submitAiFeedback: ReturnType<typeof vi.fn>;
   aiAssistantKnowledgeBase: ReturnType<typeof vi.fn>;
@@ -300,6 +331,10 @@ vi.mock("@seclai/sdk", () => {
     getAgentAiConversationHistory = vi.fn(async () => ({ ok: true }));
     markAgentAiSuggestion = vi.fn(async () => undefined);
     listRunEvaluationResults = vi.fn(async () => ({ ok: true }));
+    disableAgent = vi.fn(async () => ({ ok: true }));
+    enableAgent = vi.fn(async () => ({ ok: true }));
+    getAgentCallers = vi.fn(async () => []);
+    setEmailTriggerConfig = vi.fn(async () => ({ ok: true }));
 
     // contents
     uploadFileToContent = vi.fn(async () => ({ ok: true }));
@@ -334,6 +369,7 @@ vi.mock("@seclai/sdk", () => {
 
     // evals
     listEvaluationCriteria = vi.fn(async () => []);
+    listEvaluationCriteriaPage = vi.fn(async () => ({ data: [], pagination: {} }));
     createEvaluationCriteria = vi.fn(async () => ({ ok: true }));
     getEvaluationCriteria = vi.fn(async () => ({ ok: true }));
     updateEvaluationCriteria = vi.fn(async () => ({ ok: true }));
@@ -397,6 +433,7 @@ vi.mock("@seclai/sdk", () => {
     markAllModelAlertsRead = vi.fn(async () => undefined);
     getUnreadModelAlertCount = vi.fn(async () => ({ ok: true }));
     getModelRecommendations = vi.fn(async () => ({ ok: true }));
+    getGenerationTiers = vi.fn(async () => ({ ok: true }));
     listExperiments = vi.fn(async () => ({ ok: true }));
     createExperiment = vi.fn(async () => ({ ok: true }));
     getExperiment = vi.fn(async () => ({ ok: true }));
@@ -405,6 +442,34 @@ vi.mock("@seclai/sdk", () => {
 
     // search
     search = vi.fn(async () => ({ ok: true }));
+    searchDocs = vi.fn(async () => ({ ok: true }));
+
+    // account
+    getMe = vi.fn(async () => ({ ok: true }));
+    getApiVersion = vi.fn(async () => ({ ok: true }));
+    updateApiVersion = vi.fn(async () => ({ ok: true }));
+
+    // email domains
+    listEmailDomains = vi.fn(async () => ({ ok: true }));
+    addEmailDomain = vi.fn(async () => ({ ok: true }));
+    removeEmailDomain = vi.fn(async () => ({ ok: true }));
+    verifyEmailDomain = vi.fn(async () => ({ ok: true }));
+    setPrimaryEmailDomain = vi.fn(async () => ({ ok: true }));
+    useSharedEmailDomain = vi.fn(async () => undefined);
+    sendEmailDomainTestEmail = vi.fn(async () => ({ ok: true }));
+    getDmarcSummary = vi.fn(async () => ({ ok: true }));
+
+    // inbound email
+    listBlockedEmailSenders = vi.fn(async () => ({ ok: true }));
+    blockEmailSender = vi.fn(async () => ({ ok: true }));
+    unblockEmailSender = vi.fn(async () => undefined);
+    setAutoBlockMode = vi.fn(async () => ({ ok: true }));
+    listInboundEmailRejections = vi.fn(async () => ({ ok: true }));
+    getInboundEmailStatus = vi.fn(async () => ({ ok: true }));
+    cancelQueuedEmailRuns = vi.fn(async () => ({ ok: true }));
+    resumeInboundEmail = vi.fn(async () => ({ ok: true }));
+    listAgentEmailOptOuts = vi.fn(async () => ({ ok: true }));
+    removeAgentEmailOptOut = vi.fn(async () => undefined);
 
     // ai
     submitAiFeedback = vi.fn(async () => ({ ok: true }));
@@ -480,10 +545,22 @@ function makeRuntime() {
   };
 }
 
+// createClient is real code and reads this, so a developer or CI runner that
+// exports it — the variable this release introduces and documents — would
+// otherwise fail the "no --api-version leaves apiVersion unset" test. Captured
+// once and put back afterwards, like every other env var this file touches.
+const inheritedApiVersion = process.env.SECLAI_API_VERSION;
+
 beforeEach(() => {
   mockState.instances.length = 0;
   mockState.lastCtorArgs = undefined;
   mockState.nextListSourcesError = undefined;
+  delete process.env.SECLAI_API_VERSION;
+});
+
+afterAll(() => {
+  if (inheritedApiVersion === undefined) delete process.env.SECLAI_API_VERSION;
+  else process.env.SECLAI_API_VERSION = inheritedApiVersion;
 });
 
 describe("seclai CLI", () => {
@@ -670,7 +747,7 @@ describe("seclai CLI", () => {
     expect(client.getAgentRun).toHaveBeenCalledWith("run_1", { includeStepOutputs: true });
   });
 
-  test("agents runs delete by run id", async () => {
+  test("agents runs delete cancels the run and warns", async () => {
     const { runCli } = await importCli();
     const io = makeRuntime();
 
@@ -678,7 +755,14 @@ describe("seclai CLI", () => {
 
     expect(io.exitCode).toBe(0);
     const client = mockState.instances[0];
-    expect(client.deleteAgentRun).toHaveBeenCalledWith("run_1");
+    // The endpoint behind the old deleteAgentRun was always the cancel endpoint.
+    expect(client.cancelAgentRun).toHaveBeenCalledWith("run_1");
+    expect(client.deleteAgentRun).not.toHaveBeenCalled();
+    expect(io.stderr).toContain("deprecated");
+
+    // stdout keeps the 1.4.0 contract. `runs cancel` prints the run object, and
+    // matching it here would break every script doing `... delete | jq -e .ok`.
+    expect(JSON.parse(io.stdout)).toEqual({ ok: true });
   });
 
   test("agents attachment-references calls getAgentAttachmentReferences", async () => {
@@ -1114,14 +1198,33 @@ describe("seclai CLI", () => {
     const { runCli } = await importCli();
     const io = makeRuntime();
 
-    await runCli(
+    await runCli(["node", "seclai", "--api-key", "k", "alerts", "list", "--status", "open"], io.rt);
+
+    expect(io.exitCode).toBe(0);
+    const client = mockState.instances[0];
+    expect(client.listAlerts).toHaveBeenCalledWith({ status: "open" });
+  });
+
+  test("alerts list accepts --severity, warns, and does not send it", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    // GET /alerts declares no severity filter, so the flag never filtered.
+    // It still parses — removing it would break existing invocations — but it
+    // is dropped rather than sent, which also avoids the 422 it would become
+    // under api-version 2026-07-27.
+    const exitCode = await runCli(
       ["node", "seclai", "--api-key", "k", "alerts", "list", "--status", "open", "--severity", "high"],
       io.rt
     );
 
-    expect(io.exitCode).toBe(0);
+    expect(exitCode).toBe(0);
     const client = mockState.instances[0];
-    expect(client.listAlerts).toHaveBeenCalledWith({ status: "open", severity: "high" });
+    expect(client.listAlerts).toHaveBeenCalledWith({ status: "open" });
+    expect(io.stderr).toContain("severity");
+    expect(io.stderr).toContain("rejected in a future release");
+    // stdout stays pure JSON so pipelines are unaffected.
+    expect(() => JSON.parse(io.stdout)).not.toThrow();
   });
 
   test("alerts configs create calls createAlertConfig", async () => {
@@ -1322,12 +1425,21 @@ describe("seclai CLI", () => {
     const parsed = JSON.parse(io.stdout);
     expect(parsed.ok).toBe(true);
     expect(parsed.tools).toEqual(["copilot"]);
-    expect(parsed.filesWritten).toBe(4);
+
+    // Derived, not a magic number: every file under skills/seclai-cli/ ships,
+    // so adding a reference must not require editing this assertion. Resolved
+    // against this file rather than the process cwd, which vitest does not
+    // promise to leave at the repo root.
+    const { existsSync, readdirSync } = await import("node:fs");
+    const referencesDir = new URL("../skills/seclai-cli/references/", import.meta.url);
+    const expectedFiles = 1 + readdirSync(referencesDir).filter((f) => f.endsWith(".md")).length;
+    expect(parsed.filesWritten).toBe(expectedFiles);
 
     // Verify files were written
-    const { existsSync } = await import("node:fs");
-    expect(existsSync(path.join(tmpDir, ".github", "copilot", "seclai-cli", "SKILL.md"))).toBe(true);
-    expect(existsSync(path.join(tmpDir, ".github", "copilot", "seclai-cli", "references", "streaming.md"))).toBe(true);
+    const installed = path.join(tmpDir, ".github", "copilot", "seclai-cli");
+    expect(existsSync(path.join(installed, "SKILL.md"))).toBe(true);
+    expect(existsSync(path.join(installed, "references", "streaming.md"))).toBe(true);
+    expect(existsSync(path.join(installed, "references", "agents.md"))).toBe(true);
 
     // Clean up
     await rm(tmpDir, { recursive: true });
@@ -1611,5 +1723,433 @@ describe("seclai CLI", () => {
     } finally {
       await rm(tmpDir, { recursive: true });
     }
+  });
+});
+
+describe("seclai CLI — SDK 1.5.0 surface", () => {
+  /**
+   * Run a command with a stubbed API key and assert it succeeded. Returns the
+   * client this invocation constructed — the newest, since `mockState.instances`
+   * accumulates across every call in a test.
+   */
+  async function ok(argv: string[]) {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+    await runCli(["node", "seclai", "--api-key", "k", ...argv], io.rt);
+    expect(io.exitCode).toBe(0);
+    return { io, client: mockState.instances[mockState.instances.length - 1] };
+  }
+
+  // --- API version ---
+
+  test("--api-version reaches the SDK constructor", async () => {
+    await ok(["--api-version", "2026-07-27", "agents", "list"]);
+    expect(mockState.lastCtorArgs).toMatchObject({ apiVersion: "2026-07-27" });
+  });
+
+  test("no --api-version leaves apiVersion unset", async () => {
+    await ok(["agents", "list"]);
+    // Omitted by default: upgrading the CLI must not change a response shape.
+    expect(mockState.lastCtorArgs).not.toHaveProperty("apiVersion");
+  });
+
+  test("SECLAI_API_VERSION supplies the version when the flag is absent", async () => {
+    process.env.SECLAI_API_VERSION = "2026-07-01";
+    try {
+      await ok(["agents", "list"]);
+      expect(mockState.lastCtorArgs).toMatchObject({ apiVersion: "2026-07-01" });
+    } finally {
+      delete process.env.SECLAI_API_VERSION;
+    }
+  });
+
+  test("--api-version wins over SECLAI_API_VERSION", async () => {
+    process.env.SECLAI_API_VERSION = "2026-07-01";
+    try {
+      await ok(["--api-version", "2026-07-27", "agents", "list"]);
+      expect(mockState.lastCtorArgs).toMatchObject({ apiVersion: "2026-07-27" });
+    } finally {
+      delete process.env.SECLAI_API_VERSION;
+    }
+  });
+
+  test("an empty --api-version is ignored with a warning", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    // The SDK tests apiVersion for truthiness, so "" sends no header and skips
+    // the unknown-version guard. That is a mistake worth naming, but it is what
+    // the CLI has always done, so the value is dropped and the command runs.
+    const exitCode = await runCli(
+      ["node", "seclai", "--api-key", "k", "--api-version", "", "agents", "list"],
+      io.rt
+    );
+
+    expect(exitCode).toBe(0);
+    expect(mockState.lastCtorArgs).not.toHaveProperty("apiVersion");
+    expect(io.stderr).toContain("--api-version");
+    expect(io.stderr).toContain("rejected in a future release");
+  });
+
+  test("an empty SECLAI_API_VERSION is treated as unset", async () => {
+    process.env.SECLAI_API_VERSION = "";
+    try {
+      await ok(["agents", "list"]);
+      expect(mockState.lastCtorArgs).not.toHaveProperty("apiVersion");
+    } finally {
+      delete process.env.SECLAI_API_VERSION;
+    }
+  });
+
+  test("the identity-bearing global options reject an empty value", async () => {
+    // No empty value has a legitimate meaning for any of these, and each one
+    // silently resolves to a different identity or org: --api-key falls through
+    // to SECLAI_API_KEY then SSO, --config-dir to another account's cached
+    // tokens, --account-id drops the X-Account-Id header, --profile misses its
+    // config section. Failing is the only safe reading.
+    for (const flag of ["--api-key", "--profile", "--account-id", "--config-dir"]) {
+      const { runCli } = await importCli();
+      const io = makeRuntime();
+
+      const exitCode = await runCli(
+        ["node", "seclai", "--api-key", "k", flag, "", "agents", "list"],
+        io.rt
+      );
+
+      expect(exitCode, `${flag} "" should fail`).not.toBe(0);
+      expect(io.stderr, `${flag} should be named in the error`).toContain(flag);
+      // No request is issued — the guard runs before any client is built.
+      expect(mockState.instances, `${flag} should not reach the SDK`).toHaveLength(0);
+    }
+  });
+
+  test("a non-numeric --limit fails the parse instead of sending NaN", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    // `Number("abc")` is NaN and the SDK stringifies it, so this used to leave
+    // as `?limit=NaN` and come back a server 422 naming nothing.
+    const exitCode = await runCli(
+      ["node", "seclai", "--api-key", "k", "email", "blocked", "list", "--limit", "abc"],
+      io.rt
+    );
+
+    expect(exitCode).not.toBe(0);
+    expect(io.stderr).toContain("--limit");
+    // Rejected during parsing, so no request is even prepared.
+    expect(mockState.instances).toHaveLength(0);
+  });
+
+  test("api-version set rejects a malformed date", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    // The pin is account-wide and the CLI sends no header afterwards, so
+    // nothing downstream would catch the typo.
+    const exitCode = await runCli(
+      ["node", "seclai", "--api-key", "k", "api-version", "set", "2026-7-27"],
+      io.rt
+    );
+
+    expect(exitCode).not.toBe(0);
+    expect(mockState.instances).toHaveLength(0);
+  });
+
+  test("docs search rejects an unknown --mode", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    const exitCode = await runCli(
+      ["node", "seclai", "--api-key", "k", "docs", "search", "--query", "x", "--mode", "fuzzy"],
+      io.rt
+    );
+
+    expect(exitCode).not.toBe(0);
+    expect(mockState.instances).toHaveLength(0);
+  });
+
+  test("--allow-unknown-api-version reaches the SDK constructor", async () => {
+    await ok(["--api-version", "2027-01-01", "--allow-unknown-api-version", "agents", "list"]);
+    expect(mockState.lastCtorArgs).toMatchObject({ allowUnknownApiVersion: true });
+  });
+
+  test("api-version get", async () => {
+    const { client } = await ok(["api-version", "get"]);
+    expect(client.getApiVersion).toHaveBeenCalled();
+  });
+
+  test("api-version set", async () => {
+    const { client } = await ok(["api-version", "set", "2026-07-27"]);
+    expect(client.updateApiVersion).toHaveBeenCalledWith("2026-07-27");
+  });
+
+  test("api-version clear passes null", async () => {
+    const { client } = await ok(["api-version", "clear"]);
+    expect(client.updateApiVersion).toHaveBeenCalledWith(null);
+  });
+
+  test("me calls getMe", async () => {
+    const { client } = await ok(["me"]);
+    expect(client.getMe).toHaveBeenCalled();
+  });
+
+  // --- Agents ---
+
+  test("agents disable / enable / callers", async () => {
+    const disabled = await ok(["agents", "disable", "agent_1"]);
+    expect(disabled.client.disableAgent).toHaveBeenCalledWith("agent_1");
+
+    const enabled = await ok(["agents", "enable", "agent_1"]);
+    expect(enabled.client.enableAgent).toHaveBeenCalledWith("agent_1");
+
+    const callers = await ok(["agents", "callers", "agent_1"]);
+    expect(callers.client.getAgentCallers).toHaveBeenCalledWith("agent_1");
+  });
+
+  test("agents triggers email-config", async () => {
+    const { client } = await ok([
+      "agents",
+      "triggers",
+      "email-config",
+      "agent_1",
+      "trig_1",
+      "--json",
+      '{"alias":"support"}',
+    ]);
+    expect(client.setEmailTriggerConfig).toHaveBeenCalledWith("agent_1", "trig_1", {
+      alias: "support",
+    });
+  });
+
+  test("agents ai history sends step_type and paging", async () => {
+    const { client } = await ok([
+      "agents",
+      "ai",
+      "history",
+      "agent_1",
+      "--step-type",
+      "llm",
+      "--step-id",
+      "step_1",
+      "--limit",
+      "10",
+      "--offset",
+      "20",
+    ]);
+    expect(client.getAgentAiConversationHistory).toHaveBeenCalledWith("agent_1", {
+      stepType: "llm",
+      stepId: "step_1",
+      limit: 10,
+      offset: 20,
+    });
+  });
+
+  test("agents ai history requires --step-type", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    // The API marks step_type required; without it every call answered 422.
+    const exitCode = await runCli(
+      ["node", "seclai", "--api-key", "k", "agents", "ai", "history", "agent_1"],
+      io.rt
+    );
+
+    expect(exitCode).not.toBe(0);
+  });
+
+  // --- Email domains ---
+
+  test("email domains list", async () => {
+    const { client } = await ok(["email", "domains", "list"]);
+    expect(client.listEmailDomains).toHaveBeenCalled();
+  });
+
+  test("email domains add omits delegated unless passed", async () => {
+    const plain = await ok(["email", "domains", "add", "--kind", "custom", "--value", "mail.example.com"]);
+    expect(plain.client.addEmailDomain).toHaveBeenCalledWith({
+      kind: "custom",
+      value: "mail.example.com",
+    });
+
+    const delegated = await ok([
+      "email",
+      "domains",
+      "add",
+      "--kind",
+      "vanity",
+      "--value",
+      "acme",
+      "--delegated",
+    ]);
+    expect(delegated.client.addEmailDomain).toHaveBeenCalledWith({
+      kind: "vanity",
+      value: "acme",
+      delegated: true,
+    });
+  });
+
+  test("email domains lifecycle commands", async () => {
+    const removed = await ok(["email", "domains", "remove", "dom_1"]);
+    expect(removed.client.removeEmailDomain).toHaveBeenCalledWith("dom_1");
+
+    const verified = await ok(["email", "domains", "verify", "dom_1"]);
+    expect(verified.client.verifyEmailDomain).toHaveBeenCalledWith("dom_1");
+
+    const primary = await ok(["email", "domains", "set-primary", "dom_1"]);
+    expect(primary.client.setPrimaryEmailDomain).toHaveBeenCalledWith("dom_1");
+
+    const shared = await ok(["email", "domains", "use-shared"]);
+    expect(shared.client.useSharedEmailDomain).toHaveBeenCalled();
+
+    // Not `test` — that would shadow vitest's import for this whole body.
+    const tested = await ok(["email", "domains", "test-email", "dom_1"]);
+    expect(tested.client.sendEmailDomainTestEmail).toHaveBeenCalledWith("dom_1");
+  });
+
+  test("email domains dmarc passes days and top-sources", async () => {
+    const { client } = await ok([
+      "email",
+      "domains",
+      "dmarc",
+      "dom_1",
+      "--days",
+      "7",
+      "--top-sources",
+      "5",
+    ]);
+    expect(client.getDmarcSummary).toHaveBeenCalledWith("dom_1", { days: 7, topSources: 5 });
+  });
+
+  // --- Blocked senders ---
+
+  test("email blocked list", async () => {
+    const { client } = await ok(["email", "blocked", "list", "--limit", "10", "--offset", "5"]);
+    expect(client.listBlockedEmailSenders).toHaveBeenCalledWith({ limit: 10, offset: 5 });
+  });
+
+  test("email blocked add defaults match_type to address", async () => {
+    const { client } = await ok(["email", "blocked", "add", "--sender-email", "spam@example.com"]);
+    expect(client.blockEmailSender).toHaveBeenCalledWith({
+      sender_email: "spam@example.com",
+      match_type: "address",
+    });
+  });
+
+  test("email blocked add accepts match-type and note", async () => {
+    const { client } = await ok([
+      "email",
+      "blocked",
+      "add",
+      "--sender-email",
+      "example.com",
+      "--match-type",
+      "domain",
+      "--note",
+      "phishing",
+    ]);
+    expect(client.blockEmailSender).toHaveBeenCalledWith({
+      sender_email: "example.com",
+      match_type: "domain",
+      note: "phishing",
+    });
+  });
+
+  test("email blocked remove and auto-block-mode", async () => {
+    const removed = await ok(["email", "blocked", "remove", "blk_1"]);
+    expect(removed.client.unblockEmailSender).toHaveBeenCalledWith("blk_1");
+
+    // One of the three modes the API accepts: disabled, input, input_and_output.
+    const mode = await ok(["email", "blocked", "auto-block-mode", "input_and_output"]);
+    expect(mode.client.setAutoBlockMode).toHaveBeenCalledWith({ mode: "input_and_output" });
+  });
+
+  // --- Inbound health ---
+
+  test("email inbound commands", async () => {
+    const status = await ok(["email", "inbound", "status"]);
+    expect(status.client.getInboundEmailStatus).toHaveBeenCalled();
+
+    const rejections = await ok([
+      "email",
+      "inbound",
+      "rejections",
+      "--agent-id",
+      "agent_1",
+      "--limit",
+      "10",
+    ]);
+    expect(rejections.client.listInboundEmailRejections).toHaveBeenCalledWith({
+      agentId: "agent_1",
+      limit: 10,
+    });
+
+    const cancelled = await ok(["email", "inbound", "cancel-queued"]);
+    expect(cancelled.client.cancelQueuedEmailRuns).toHaveBeenCalled();
+
+    const resumed = await ok(["email", "inbound", "resume"]);
+    expect(resumed.client.resumeInboundEmail).toHaveBeenCalled();
+  });
+
+  // --- Opt-outs ---
+
+  test("email optouts list and remove", async () => {
+    const listed = await ok(["email", "optouts", "list", "--agent-id", "agent_1", "--limit", "10"]);
+    expect(listed.client.listAgentEmailOptOuts).toHaveBeenCalledWith({
+      agentId: "agent_1",
+      limit: 10,
+    });
+
+    const removed = await ok(["email", "optouts", "remove", "opt_1"]);
+    expect(removed.client.removeAgentEmailOptOut).toHaveBeenCalledWith("opt_1");
+  });
+
+  // --- Models / docs / evals ---
+
+  test("models tiers", async () => {
+    const { client } = await ok(["models", "tiers"]);
+    expect(client.getGenerationTiers).toHaveBeenCalled();
+  });
+
+  test("models list passes the media capability filters", async () => {
+    const { client } = await ok([
+      "models",
+      "list",
+      "--supports-input-media",
+      "image",
+      "--supports-output-media",
+      "video",
+    ]);
+    expect(client.listModels).toHaveBeenCalledWith({
+      supportsInputMedia: "image",
+      supportsOutputMedia: "video",
+    });
+  });
+
+  test("docs search", async () => {
+    const { client } = await ok([
+      "docs",
+      "search",
+      "--query",
+      "memory banks",
+      "--mode",
+      "semantic",
+      "--limit",
+      "5",
+    ]);
+    expect(client.searchDocs).toHaveBeenCalledWith({
+      query: "memory banks",
+      mode: "semantic",
+      limit: 5,
+    });
+  });
+
+  test("evals criteria list --paged uses the envelope method", async () => {
+    const paged = await ok(["evals", "criteria", "list", "agent_1", "--paged", "--limit", "10"]);
+    expect(paged.client.listEvaluationCriteriaPage).toHaveBeenCalledWith("agent_1", { limit: 10 });
+    expect(paged.client.listEvaluationCriteria).not.toHaveBeenCalled();
+
+    const bare = await ok(["evals", "criteria", "list", "agent_1", "--limit", "10"]);
+    expect(bare.client.listEvaluationCriteria).toHaveBeenCalledWith("agent_1", { limit: 10 });
+    expect(bare.client.listEvaluationCriteriaPage).not.toHaveBeenCalled();
   });
 });

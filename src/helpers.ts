@@ -1,4 +1,4 @@
-import { Command } from "commander";
+import { Command, InvalidArgumentError } from "commander";
 import { readFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import process from "node:process";
@@ -10,13 +10,30 @@ import {
   SeclaiConfigurationError,
 } from "@seclai/sdk";
 
-/** Global CLI options parsed from top-level flags (--api-key, --compact, --profile, --account-id, --config-dir). */
+/**
+ * Global CLI options parsed from top-level flags (--api-key, --compact,
+ * --profile, --account-id, --config-dir, --api-version).
+ *
+ * The `?: T | undefined` spelling is deliberate. This repo sets
+ * `exactOptionalPropertyTypes`, which distinguishes an absent property from one
+ * present with the value `undefined` — a distinction that is meaningful for
+ * data we construct, and meaningless for a bag of CLI flags. Commander hands
+ * these over with unset flags either missing or `undefined` depending on how
+ * the option was declared, and every consumer here tests `!== undefined`, so
+ * both spellings already behave identically. Widening the input types says so,
+ * and lets callers spread a partial without a confusing assignability error.
+ *
+ * Values we build and hand onwards keep the strict `?: T` form, so the compiler
+ * flag still does its job where the distinction carries meaning.
+ */
 export type GlobalOptions = {
-  apiKey?: string;
-  compact?: boolean;
-  profile?: string;
-  accountId?: string;
-  configDir?: string;
+  apiKey?: string | undefined;
+  compact?: boolean | undefined;
+  profile?: string | undefined;
+  accountId?: string | undefined;
+  configDir?: string | undefined;
+  apiVersion?: string | undefined;
+  allowUnknownApiVersion?: boolean | undefined;
 };
 
 /** Runtime abstraction that decouples the CLI from Node globals, enabling testability. */
@@ -67,7 +84,7 @@ export async function readStdinText(rt: CliRuntime): Promise<string> {
  */
 export async function readJsonInput(
   rt: CliRuntime,
-  opts: { json?: string; jsonFile?: string }
+  opts: { json?: string | undefined; jsonFile?: string | undefined }
 ): Promise<unknown> {
   if (opts.json !== undefined && opts.jsonFile !== undefined) {
     throw new Error("Provide only one of --json or --json-file");
@@ -93,7 +110,7 @@ export async function readJsonInput(
  */
 export async function readJsonObjectInput(
   rt: CliRuntime,
-  opts: { json?: string; jsonFile?: string }
+  opts: { json?: string | undefined; jsonFile?: string | undefined }
 ): Promise<Record<string, unknown>> {
   const value = await readJsonInput(rt, opts);
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -122,12 +139,27 @@ export function createClient(opts: GlobalOptions): Seclai {
     profile?: string;
     configDir?: string;
     accountId?: string;
+    apiVersion?: string;
+    allowUnknownApiVersion?: boolean;
   } = {};
 
   if (opts.apiKey !== undefined) seclaiOpts.apiKey = opts.apiKey;
   if (opts.profile !== undefined) seclaiOpts.profile = opts.profile;
   if (opts.configDir !== undefined) seclaiOpts.configDir = opts.configDir;
   if (opts.accountId !== undefined) seclaiOpts.accountId = opts.accountId;
+
+  // Omitted by default, so upgrading the CLI never changes a response shape;
+  // passing --api-version opts into the dated changes released up to that date.
+  //
+  // An empty --api-version is rejected before we get here, by the global
+  // empty-value guard in cli.ts: the SDK tests the option for truthiness, so ""
+  // would send no header and skip the unknown-version guard. An empty
+  // SECLAI_API_VERSION is treated as unset, which is the ordinary convention
+  // for an environment variable.
+  const envVersion = process.env.SECLAI_API_VERSION;
+  const version = opts.apiVersion ?? (envVersion && envVersion.length > 0 ? envVersion : undefined);
+  if (version !== undefined) seclaiOpts.apiVersion = version;
+  if (opts.allowUnknownApiVersion) seclaiOpts.allowUnknownApiVersion = true;
 
   const envUrl = process.env.SECLAI_API_URL;
   seclaiOpts.baseUrl = envUrl && envUrl.length > 0 ? envUrl : "https://api.seclai.com";
@@ -139,6 +171,20 @@ export function createClient(opts: GlobalOptions): Seclai {
 export function printJson(rt: CliRuntime, value: unknown): void {
   const indent = rt.compact ? undefined : 2;
   rt.writeOut(`${JSON.stringify(value, null, indent)}\n`);
+}
+
+/**
+ * Warn on stderr about input that is accepted today and will stop being
+ * accepted later.
+ *
+ * Rejecting bad input outright is the better end state, but doing it in a
+ * single release breaks whatever was quietly relying on the old handling. These
+ * warnings are the deprecation period: the command still behaves exactly as it
+ * did, and the operator gets told what will change. stdout stays clean, so
+ * anything piping into `jq` is unaffected.
+ */
+export function warnDeprecated(rt: CliRuntime, message: string): void {
+  rt.writeErr(`warning: ${message} This will be rejected in a future release.\n`);
 }
 
 /** Print a human-readable error to stderr. Shows extra detail for SDK error types. */
@@ -185,11 +231,50 @@ export async function run(rt: CliRuntime, main: () => Promise<void>): Promise<vo
   }
 }
 
+/**
+ * Argument parser for an option that takes a number, failing the parse instead
+ * of forwarding garbage. A bare `Number(v)` turns `--limit abc` into `NaN` and
+ * `--limit ""` into `0`, and the SDK stringifies whatever it is handed — so the
+ * request left as `?limit=NaN` and came back a server 422 naming nothing.
+ *
+ * Commander wraps an {@link InvalidArgumentError} with the offending flag and
+ * value, so the message here only has to say what was expected.
+ */
+export function parseNumber(value: string): number {
+  const parsed = value.trim() === "" ? Number.NaN : Number(value);
+  if (!Number.isFinite(parsed)) {
+    throw new InvalidArgumentError("Expected a number.");
+  }
+  return parsed;
+}
+
+/** The `--limit` declaration shared by the pagination helpers below. */
+function withLimitOption(cmd: Command): Command {
+  return cmd.option("--limit <n>", "Page size.", parseNumber);
+}
+
 /** Add common pagination options to a command */
 export function withListOptions(cmd: Command): Command {
-  return cmd
-    .option("--page <n>", "Page number (1-based).", (v: string) => Number(v))
-    .option("--limit <n>", "Page size.", (v: string) => Number(v));
+  return withLimitOption(cmd.option("--page <n>", "Page number (1-based).", parseNumber));
+}
+
+/**
+ * Add limit/offset options, for the endpoints that paginate by offset rather
+ * than by page number. Pairs with {@link offsetListOpts}.
+ */
+export function withOffsetListOptions(cmd: Command): Command {
+  return withLimitOption(cmd).option("--offset <n>", "Number of items to skip.", parseNumber);
+}
+
+/** Pick the defined limit/offset values for an offset-paginated call. */
+export function offsetListOpts(opts: { limit?: number | undefined; offset?: number | undefined }): {
+  limit?: number;
+  offset?: number;
+} {
+  const o: { limit?: number; offset?: number } = {};
+  if (opts.limit !== undefined) o.limit = opts.limit;
+  if (opts.offset !== undefined) o.offset = opts.offset;
+  return o;
 }
 
 /** Add sortable list options (page, limit, sort, order) */
@@ -222,12 +307,13 @@ export async function buildUploadOpts(
   rt: CliRuntime,
   opts: {
     file: string;
-    title?: string;
-    metadata?: string;
-    metadataFile?: string;
-    fileName?: string;
-    mimeType?: string;
+    title?: string | undefined;
+    metadata?: string | undefined;
+    metadataFile?: string | undefined;
+    fileName?: string | undefined;
+    mimeType?: string | undefined;
   }
+  // The returned object is ours to construct, so it keeps the strict form.
 ): Promise<{
   file: Uint8Array;
   title?: string;
@@ -256,10 +342,10 @@ export async function buildUploadOpts(
 
 /** Pick defined values from opts for list calls */
 export function listOpts(opts: {
-  page?: number;
-  limit?: number;
-  sort?: string;
-  order?: string;
+  page?: number | undefined;
+  limit?: number | undefined;
+  sort?: string | undefined;
+  order?: string | undefined;
 }): Record<string, unknown> {
   const o: Record<string, unknown> = {};
   if (opts.page !== undefined) o.page = opts.page;
@@ -283,7 +369,7 @@ export function withAiInputOptions(cmd: Command): Command {
 /** Read AI assistant input: --user-input takes precedence, falls back to --json/--json-file */
 export async function readAiInput(
   rt: CliRuntime,
-  opts: { userInput?: string; json?: string; jsonFile?: string }
+  opts: { userInput?: string | undefined; json?: string | undefined; jsonFile?: string | undefined }
 ): Promise<unknown> {
   if (opts.userInput !== undefined) {
     return { user_input: opts.userInput };
