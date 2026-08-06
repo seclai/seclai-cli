@@ -6,6 +6,7 @@ import {
   printJson,
   readJsonInput,
   buildUploadOpts,
+  parseNumber,
   withFileUploadOptions,
   listOpts,
 } from "../helpers.js";
@@ -22,8 +23,8 @@ export function register(program: Command, rt: CliRuntime): void {
   sources
     .command("list")
     .description("List sources.")
-    .option("--page <n>", "Page number.", (v: string) => Number(v))
-    .option("--limit <n>", "Page size.", (v: string) => Number(v))
+    .option("--page <n>", "Page number.", parseNumber)
+    .option("--limit <n>", "Page size.", parseNumber)
     .option("--sort <field>", "Sort field.")
     .option("--order <asc|desc>", "Sort direction.")
     .option("--account-id <id>", "Filter by account ID.")
@@ -123,8 +124,8 @@ export function register(program: Command, rt: CliRuntime): void {
     .command("list")
     .description("List exports for a source.")
     .argument("<sourceId>", "Source ID.")
-    .option("--page <n>", "Page number.", (v: string) => Number(v))
-    .option("--limit <n>", "Page size.", (v: string) => Number(v))
+    .option("--page <n>", "Page number.", parseNumber)
+    .option("--limit <n>", "Page size.", parseNumber)
     .action(async (sourceId: string, opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());

@@ -502,6 +502,14 @@ vi.mock("@seclai/sdk", () => {
     DEFAULT_SSO_DOMAIN: "auth.seclai.com",
     DEFAULT_SSO_CLIENT_ID: "test-client-id",
     DEFAULT_SSO_REGION: "us-west-2",
+    // `api-version set` checks the date against this, so the mock has to carry
+    // it — mirroring the real export rather than inventing values.
+    SeclaiApiVersion: {
+      V2026_07_01: "2026-07-01",
+      V2026_07_27: "2026-07-27",
+      Default: "2026-07-01",
+      Latest: "2026-07-27",
+    },
   };
 });
 
@@ -1205,26 +1213,21 @@ describe("seclai CLI", () => {
     expect(client.listAlerts).toHaveBeenCalledWith({ status: "open" });
   });
 
-  test("alerts list accepts --severity, warns, and does not send it", async () => {
+  test("alerts list rejects --severity", async () => {
     const { runCli } = await importCli();
     const io = makeRuntime();
 
-    // GET /alerts declares no severity filter, so the flag never filtered.
-    // It still parses — removing it would break existing invocations — but it
-    // is dropped rather than sent, which also avoids the 422 it would become
-    // under api-version 2026-07-27.
+    // `GET /alerts` declares no severity filter, so the flag could only ever
+    // return unfiltered rows that look filtered. An unknown-option error is the
+    // consistent outcome for input that cannot produce a correct result — the
+    // same rule as --mode, --kind, --match-type and --limit.
     const exitCode = await runCli(
-      ["node", "seclai", "--api-key", "k", "alerts", "list", "--status", "open", "--severity", "high"],
+      ["node", "seclai", "--api-key", "k", "alerts", "list", "--severity", "high"],
       io.rt
     );
 
-    expect(exitCode).toBe(0);
-    const client = mockState.instances[0];
-    expect(client.listAlerts).toHaveBeenCalledWith({ status: "open" });
-    expect(io.stderr).toContain("severity");
-    expect(io.stderr).toContain("rejected in a future release");
-    // stdout stays pure JSON so pipelines are unaffected.
-    expect(() => JSON.parse(io.stdout)).not.toThrow();
+    expect(exitCode).not.toBe(0);
+    expect(mockState.instances).toHaveLength(0);
   });
 
   test("alerts configs create calls createAlertConfig", async () => {
@@ -1789,6 +1792,118 @@ describe("seclai CLI — SDK 1.5.0 surface", () => {
     expect(mockState.lastCtorArgs).not.toHaveProperty("apiVersion");
     expect(io.stderr).toContain("--api-version");
     expect(io.stderr).toContain("rejected in a future release");
+  });
+
+  test("an empty --api-version does not fall through to SECLAI_API_VERSION", async () => {
+    // Regression: the guard used to `delete` the option, which made
+    // createClient adopt the environment's version — so the CLI warned that the
+    // flag was ignored and then sent a header anyway.
+    process.env.SECLAI_API_VERSION = "2026-07-27";
+    try {
+      const { runCli } = await importCli();
+      const io = makeRuntime();
+      await runCli(
+        ["node", "seclai", "--api-key", "k", "--api-version", "", "agents", "list"],
+        io.rt
+      );
+      expect(io.exitCode).toBe(0);
+      expect(mockState.lastCtorArgs).not.toHaveProperty("apiVersion");
+      expect(io.stderr).toContain("being ignored");
+    } finally {
+      delete process.env.SECLAI_API_VERSION;
+    }
+  });
+
+  test("a whitespace-only global value is treated as empty", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    // `--profile " "` is the same shell-expansion mistake as `--profile ""`.
+    const exitCode = await runCli(
+      ["node", "seclai", "--api-key", "k", "--profile", "   ", "agents", "list"],
+      io.rt
+    );
+
+    expect(exitCode).not.toBe(0);
+    expect(io.stderr).toContain("--profile");
+  });
+
+  test("parseNumber rejects non-integer and negative pagination values", async () => {
+    for (const value of ["0x10", "1e3", "-5", "1.5"]) {
+      const { runCli } = await importCli();
+      const io = makeRuntime();
+      const exitCode = await runCli(
+        ["node", "seclai", "--api-key", "k", "email", "blocked", "list", "--limit", value],
+        io.rt
+      );
+      // `0x10` used to be accepted as 16 — a plausible-looking wrong answer.
+      expect(exitCode, `--limit ${value} should fail`).not.toBe(0);
+      expect(mockState.instances).toHaveLength(0);
+    }
+  });
+
+  test("api-version set rejects a version this release does not know", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    // Shape-only validation let `2026-27-07` pin the whole account.
+    const exitCode = await runCli(
+      ["node", "seclai", "--api-key", "k", "api-version", "set", "2026-27-07"],
+      io.rt
+    );
+
+    expect(exitCode).not.toBe(0);
+    expect(io.stderr).toContain("--allow-unknown-api-version");
+  });
+
+  test("api-version set accepts an unknown version with the override", async () => {
+    const { client } = await ok([
+      "--allow-unknown-api-version",
+      "api-version",
+      "set",
+      "2027-01-01",
+    ]);
+    expect(client.updateApiVersion).toHaveBeenCalledWith("2027-01-01");
+  });
+
+  test("email enums reject a typo at parse time", async () => {
+    for (const argv of [
+      ["email", "blocked", "auto-block-mode", "input_and_ouput"],
+      ["email", "blocked", "add", "--sender-email", "a@b.com", "--match-type", "Domain"],
+      ["email", "domains", "add", "--kind", "vanty", "--value", "x.example.com"],
+    ]) {
+      const { runCli } = await importCli();
+      const io = makeRuntime();
+      const exitCode = await runCli(["node", "seclai", "--api-key", "k", ...argv], io.rt);
+      expect(exitCode, `${argv.join(" ")} should fail`).not.toBe(0);
+      expect(mockState.instances).toHaveLength(0);
+    }
+  });
+
+  test("an empty identity flag does not abort commands that build no client", async () => {
+    // Regression: the guard was a program-level preAction hook, so it aborted
+    // `completion`, `skills install` and `mcp show` — none of which resolve an
+    // identity. It now lives in createClient, which is the only place that does.
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await runCli(["node", "seclai", "--api-key", "", "completion", "bash"], io.rt);
+
+    expect(io.exitCode).toBe(0);
+    expect(io.stdout).toContain("complete -F _seclai_completions seclai");
+  });
+
+  test("--paged normalises the version-gated list keys", async () => {
+    const { toPagedEnvelope } = await import("../src/helpers.js");
+
+    // `configs` and `alerts` both become `data` from api-version 2026-07-27;
+    // a bare array becomes {data}. Reading `.data` works either way.
+    expect(toPagedEnvelope({ configs: [1], total: 1 }, "configs")).toEqual({ data: [1], total: 1 });
+    expect(toPagedEnvelope({ alerts: [2] }, "alerts")).toEqual({ data: [2] });
+    expect(toPagedEnvelope([3])).toEqual({ data: [3] });
+    // Already canonical, and unrecognised shapes, pass through untouched.
+    expect(toPagedEnvelope({ data: [4], pagination: {} })).toEqual({ data: [4], pagination: {} });
+    expect(toPagedEnvelope({ other: 5 })).toEqual({ other: 5 });
   });
 
   test("an empty SECLAI_API_VERSION is treated as unset", async () => {

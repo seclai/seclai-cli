@@ -34,41 +34,6 @@ import { register as registerConfigure } from "./commands/configure.js";
 export type { CliRuntime, GlobalOptions };
 
 /**
- * Global options that take a value, and what to do when one arrives empty.
- *
- * A shell expanding an unset variable hands us `""`, not an absent flag, and
- * every consumer in the SDK's credential chain tests truthiness, so an empty
- * value is silently discarded and something else is used instead.
- *
- * Four of these decide *who you are* or *what you act on*, and no empty value
- * has a legitimate meaning for any of them — `--api-key ""` cannot even express
- * "ignore the environment key", because the chain falls straight through to
- * `SECLAI_API_KEY` and then to a cached SSO session. So they are rejected:
- *
- *   --api-key      falls back to SECLAI_API_KEY, then SSO — a different identity
- *   --config-dir   falls back to ~/.seclai — another account's cached tokens
- *   --account-id   drops the X-Account-Id header — targets the default org
- *   --profile      misses its config section — built-in SSO defaults
- *
- * This can only break an invocation that was already resolving to the wrong
- * identity without saying so.
- *
- * `--api-version` is different: an empty value costs nothing but the version
- * header, so it keeps the old behaviour and warns.
- */
-type EmptyValuePolicy = "reject" | "warn";
-
-const VALUED_GLOBAL_OPTIONS: ReadonlyArray<
-  [keyof GlobalOptions, string, EmptyValuePolicy, string]
-> = [
-  ["apiKey", "--api-key", "reject", "Pass a key, or omit the flag to use SECLAI_API_KEY or SSO."],
-  ["profile", "--profile", "reject", "Pass a profile name, or omit the flag to use the default profile."],
-  ["accountId", "--account-id", "reject", "Pass an account ID, or omit the flag to use the default org."],
-  ["configDir", "--config-dir", "reject", "Pass a directory, or omit the flag to use ~/.seclai."],
-  ["apiVersion", "--api-version", "warn", "Pass a YYYY-MM-DD date, or omit the flag to use the account default."],
-];
-
-/**
  * Build the top-level Commander program with all command modules registered.
  * Pass a custom {@link CliRuntime} for testing; defaults to real process I/O.
  */
@@ -141,18 +106,20 @@ export function createProgram(rt: CliRuntime = defaultRuntime()): Command {
   // Validate global flags and propagate them to the runtime before any action
   program.hook("preAction", (thisCommand) => {
     const globalOpts = thisCommand.opts<GlobalOptions>();
-    for (const [key, flag, policy, hint] of VALUED_GLOBAL_OPTIONS) {
-      const value = globalOpts[key];
-      if (typeof value !== "string" || value.length > 0) continue;
 
-      if (policy === "reject") {
-        throw new Error(`${flag} was given an empty value. ${hint}`);
-      }
-      // Delete it so downstream code sees an absent flag rather than "", which
-      // is what it effectively saw before this warning existed.
-      delete globalOpts[key];
-      warnDeprecated(rt, `${flag} was given an empty value and is being ignored. ${hint}`);
+    // Only the warn case lives here. The rejections moved into createClient,
+    // which is where an identity is actually resolved — as a program-level
+    // hook they also aborted `completion`, `skills install`, `mcp show` and
+    // `configure`, none of which build a client or read a credential.
+    if (typeof globalOpts.apiVersion === "string" && globalOpts.apiVersion.trim().length === 0) {
+      warnDeprecated(
+        rt,
+        "--api-version was given an empty value and is being ignored. " +
+          "Pass a YYYY-MM-DD date, or omit the flag to use the account default.",
+        "rejected",
+      );
     }
+
     rt.compact = Boolean(globalOpts.compact);
   });
 

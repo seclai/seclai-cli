@@ -15,7 +15,9 @@ export function register(program: Command, rt: CliRuntime): void {
         const client = createClient(program.opts<GlobalOptions>());
         const o: Parameters<typeof client.search>[0] = { query: opts.query };
         if (opts.limit !== undefined) o.limit = opts.limit;
-        if (opts.entityType) o.entityType = opts.entityType;
+        // `!== undefined`, not truthiness: `--entity-type "$T"` with T unset
+        // would otherwise be dropped and silently return every entity type.
+        if (opts.entityType !== undefined) o.entityType = opts.entityType;
         printJson(rt, await client.search(o));
       });
     });

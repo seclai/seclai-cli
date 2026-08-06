@@ -1,4 +1,5 @@
 import { Command } from "commander";
+import { SeclaiApiVersion } from "@seclai/sdk";
 import type { CliRuntime, GlobalOptions } from "../helpers.js";
 import { run, createClient, printJson } from "../helpers.js";
 
@@ -40,10 +41,19 @@ export function register(program: Command, rt: CliRuntime): void {
         // The pin is account-wide and persistent, and nothing re-checks it
         // afterwards: the CLI sends no version header of its own, so the SDK's
         // unknown-version guard — which only inspects the header it sends —
-        // never sees it. A typo here would silently reshape responses for every
-        // client on the account, so the shape is checked before the request.
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-          throw new Error(`Expected an API version as YYYY-MM-DD, got "${date}".`);
+        // never sees it.
+        //
+        // A shape check alone let the likeliest typo through: `2026-27-07`
+        // matches `\d{4}-\d{2}-\d{2}` and pins every client on the account to a
+        // version that does not exist. The single-invocation `--api-version` is
+        // checked against the SDK's known set, so this — the far more dangerous
+        // path — is held to the same standard, with the same escape hatch.
+        const known = Object.values(SeclaiApiVersion) as string[];
+        if (!known.includes(date) && !program.opts<GlobalOptions>().allowUnknownApiVersion) {
+          throw new Error(
+            `Unknown API version "${date}". This release knows ${[...new Set(known)].sort().join(", ")}. ` +
+              `Pass --allow-unknown-api-version to pin it anyway.`,
+          );
         }
         const client = createClient(program.opts<GlobalOptions>());
         printJson(rt, await client.updateApiVersion(date));

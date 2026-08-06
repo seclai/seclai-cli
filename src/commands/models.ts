@@ -10,6 +10,7 @@ import {
   withOffsetListOptions,
   offsetListOpts,
   parseNumber,
+  toPagedEnvelope,
 } from "../helpers.js";
 
 /** Register `models` commands: list, get, alerts, recommendations, playground experiments. */
@@ -65,10 +66,15 @@ export function register(program: Command, rt: CliRuntime): void {
     .description("List model alerts.")
     .option("--page <n>", "Page number.", parseNumber)
     .option("--limit <n>", "Page size.", parseNumber)
+    .option(
+      "--paged",
+      "Wrap the results in {data: [...]}, the shape this endpoint moves to from --api-version 2026-07-27.",
+    )
     .action(async (opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
-        printJson(rt, await client.listModelAlerts(listOpts(opts)));
+        const res = await client.listModelAlerts(listOpts(opts));
+        printJson(rt, opts.paged ? toPagedEnvelope(res, "alerts") : res);
       });
     });
 

@@ -43,6 +43,7 @@ seclai agents runs list <agentId>
 | `models` | Model catalog, generation tiers, model alerts, recommendations, playground experiments | [references/models.md](references/models.md) |
 | `auth` `configure` `api-version` `mcp` `skills` `completion` | Authentication, profiles, API version pinning, editor integration | [references/setup.md](references/setup.md) |
 | `ai` | Top-level AI assistant for knowledge bases, sources, solutions and memory | [references/ai-assistant.md](references/ai-assistant.md) |
+| `search` `docs` `me` | Search across resources, search the documentation, show the authenticated account | below, under [Search and account](#search-and-account) |
 
 Cross-cutting topics: [streaming and event modes](references/streaming.md),
 [file uploads](references/uploads.md).

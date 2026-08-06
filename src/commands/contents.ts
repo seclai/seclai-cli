@@ -6,6 +6,7 @@ import {
   printJson,
   readJsonInput,
   buildUploadOpts,
+  parseNumber,
   withFileUploadOptions,
   listOpts,
 } from "../helpers.js";
@@ -20,8 +21,8 @@ export function register(program: Command, rt: CliRuntime): void {
     .command("get")
     .description("Get content version details.")
     .argument("<contentVersionId>", "Content version ID.")
-    .option("--start <n>", "Text start offset (0-based).", (v: string) => Number(v))
-    .option("--end <n>", "Text end offset (exclusive).", (v: string) => Number(v))
+    .option("--start <n>", "Text start offset (0-based).", parseNumber)
+    .option("--end <n>", "Text end offset (exclusive).", parseNumber)
     .action(async (contentVersionId: string, opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
@@ -73,8 +74,8 @@ export function register(program: Command, rt: CliRuntime): void {
     .command("embeddings")
     .description("List embeddings for a content version.")
     .argument("<contentVersionId>", "Content version ID.")
-    .option("--page <n>", "Page number.", (v: string) => Number(v))
-    .option("--limit <n>", "Page size.", (v: string) => Number(v))
+    .option("--page <n>", "Page number.", parseNumber)
+    .option("--limit <n>", "Page size.", parseNumber)
     .action(async (contentVersionId: string, opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());

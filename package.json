@@ -39,6 +39,8 @@
     "dev": "tsx src/cli.ts",
     "docs": "npm run build && node scripts/generate-docs.mjs",
     "sync:skills": "node scripts/sync-skills.cjs",
+    "pretest": "npm run sync:skills",
+    "prebuild": "npm run sync:skills",
     "build:versioned": "npm run version:apply && npm run build && npm run version:restore",
     "prepublishOnly": "npm run build",
     "publish:ci": "npm run version:apply && npm run build && npm publish --provenance --access public --ignore-scripts && npm run version:restore",
