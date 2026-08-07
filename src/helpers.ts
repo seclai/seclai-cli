@@ -187,10 +187,14 @@ export function createClient(opts: GlobalOptions): Seclai {
   // `??` alone is not enough — it only falls through on null/undefined — so the
   // empty case is handled before it.
   const envVersion = process.env.SECLAI_API_VERSION;
-  const version =
-    opts.apiVersion === ""
-      ? undefined
-      : (opts.apiVersion ?? (envVersion && envVersion.length > 0 ? envVersion : undefined));
+  const blank = (v: string | undefined) => v === undefined || v.trim().length === 0;
+  const version = blank(opts.apiVersion)
+    ? opts.apiVersion !== undefined
+      ? undefined // explicitly blank: no version at all, not the environment's
+      : blank(envVersion)
+        ? undefined
+        : envVersion
+    : opts.apiVersion;
   if (version !== undefined) seclaiOpts.apiVersion = version;
   if (opts.allowUnknownApiVersion) seclaiOpts.allowUnknownApiVersion = true;
 

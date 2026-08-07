@@ -1906,6 +1906,24 @@ describe("seclai CLI — SDK 1.5.0 surface", () => {
     expect(toPagedEnvelope({ other: 5 })).toEqual({ other: 5 });
   });
 
+  test("a whitespace-only --api-version is not sent", async () => {
+    // The first fix compared against "" exactly, so `--api-version "  "` still
+    // reached the SDK and put a blank Seclai-Version header on the wire.
+    process.env.SECLAI_API_VERSION = "2026-07-27";
+    try {
+      const { runCli } = await importCli();
+      const io = makeRuntime();
+      await runCli(
+        ["node", "seclai", "--api-key", "k", "--api-version", "   ", "agents", "list"],
+        io.rt
+      );
+      expect(io.exitCode).toBe(0);
+      expect(mockState.lastCtorArgs).not.toHaveProperty("apiVersion");
+    } finally {
+      delete process.env.SECLAI_API_VERSION;
+    }
+  });
+
   test("an empty SECLAI_API_VERSION is treated as unset", async () => {
     process.env.SECLAI_API_VERSION = "";
     try {
