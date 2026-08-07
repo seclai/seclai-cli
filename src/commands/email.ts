@@ -1,4 +1,4 @@
-import { Command } from "commander";
+import { Argument, Command, Option } from "commander";
 import type { CliRuntime, GlobalOptions } from "../helpers.js";
 import {
   run,
@@ -32,7 +32,11 @@ export function register(program: Command, rt: CliRuntime): void {
   domains
     .command("add")
     .description("Add and provision a new agent-email domain. Returns the DNS records to publish.")
-    .requiredOption("--kind <kind>", "'vanity' (a subdomain of seclai.com) or 'custom' (your own domain).")
+    .addOption(
+      new Option("--kind <kind>", "'vanity' (a subdomain of seclai.com) or 'custom' (your own domain).")
+        .choices(["vanity", "custom"])
+        .makeOptionMandatory(),
+    )
     .requiredOption("--value <domain>", "The domain to add.")
     .option("--delegated", "The domain's DNS is delegated to Seclai, so records are published automatically.")
     .action(async (opts) => {
@@ -137,7 +141,11 @@ export function register(program: Command, rt: CliRuntime): void {
     .command("add")
     .description("Block an inbound sender address or domain.")
     .requiredOption("--sender-email <email>", "Sender address, or the domain when --match-type is 'domain'.")
-    .option("--match-type <type>", "'address' or 'domain'.", "address")
+    .addOption(
+      new Option("--match-type <type>", "'address' or 'domain'.")
+        .choices(["address", "domain"])
+        .default("address"),
+    )
     .option("--note <text>", "Why the sender was blocked.")
     .action(async (opts) => {
       await run(rt, async () => {
@@ -170,7 +178,15 @@ export function register(program: Command, rt: CliRuntime): void {
   blocked
     .command("auto-block-mode")
     .description("Set whether a governance BLOCK on an authenticated sender auto-adds them to the blocklist.")
-    .argument("<mode>", "One of 'disabled', 'input', or 'input_and_output'.")
+    .addArgument(
+      // A closed set the API will only ever 422 on. Failing the parse names the
+      // accepted values; the server names nothing.
+      new Argument("<mode>", "How governance BLOCK verdicts feed the blocklist.").choices([
+        "disabled",
+        "input",
+        "input_and_output",
+      ]),
+    )
     .action(async (mode: string) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());

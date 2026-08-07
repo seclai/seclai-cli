@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import type { CliRuntime, GlobalOptions } from "../helpers.js";
-import { run, createClient, printJson, readJsonInput, readAiInput, withAiInputOptions, readJsonObjectInput, listOpts } from "../helpers.js";
+import { run, createClient, printJson, readJsonInput, readAiInput, withAiInputOptions, readJsonObjectInput, listOpts, parseNumber } from "../helpers.js";
 
 /** Register `memory` commands: CRUD, stats, utilities, test-compaction, AI assistant. */
 export function register(program: Command, rt: CliRuntime): void {
@@ -11,8 +11,8 @@ export function register(program: Command, rt: CliRuntime): void {
   memory
     .command("list")
     .description("List memory banks.")
-    .option("--page <n>", "Page number.", (v: string) => Number(v))
-    .option("--limit <n>", "Page size.", (v: string) => Number(v))
+    .option("--page <n>", "Page number.", parseNumber)
+    .option("--limit <n>", "Page size.", parseNumber)
     .option("--sort <field>", "Sort field.")
     .option("--order <asc|desc>", "Sort direction.")
     .action(async (opts) => {

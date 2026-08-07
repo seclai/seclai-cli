@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import type { CliRuntime, GlobalOptions } from "../helpers.js";
-import { run, createClient, printJson, readJsonInput, listOpts } from "../helpers.js";
+import { run, createClient, printJson, readJsonInput, listOpts, parseNumber } from "../helpers.js";
 
 /** Register `kb` (knowledge base) commands: list, create, get, update, delete. */
 export function register(program: Command, rt: CliRuntime): void {
@@ -8,8 +8,8 @@ export function register(program: Command, rt: CliRuntime): void {
 
   kb.command("list")
     .description("List knowledge bases.")
-    .option("--page <n>", "Page number.", (v: string) => Number(v))
-    .option("--limit <n>", "Page size.", (v: string) => Number(v))
+    .option("--page <n>", "Page number.", parseNumber)
+    .option("--limit <n>", "Page size.", parseNumber)
     .option("--sort <field>", "Sort field.")
     .option("--order <asc|desc>", "Sort direction.")
     .action(async (opts) => {

@@ -29,7 +29,9 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."
  * Private members appear in a `.d.ts` as `private name;` with no signature, so
  * matching on `name(` selects exactly the public surface.
  */
+let sdkMethodCache: string[] | undefined;
 function sdkClientMethods(): string[] {
+  if (sdkMethodCache) return sdkMethodCache;
   const dts = readFileSync(
     path.join(repoRoot, "node_modules/@seclai/sdk/dist/index.d.ts"),
     "utf8",
@@ -46,11 +48,13 @@ function sdkClientMethods(): string[] {
     const m = /^ {4}([a-zA-Z][A-Za-z0-9_]*)[(<]/.exec(line);
     if (m) names.add(m[1]);
   }
-  return [...names].sort();
+  return (sdkMethodCache = [...names].sort());
 }
 
 /** Every `client.<method>(` call site across the CLI sources. */
+let calledCache: Set<string> | undefined;
 function calledSdkMethods(): Set<string> {
+  if (calledCache) return calledCache;
   const names = new Set<string>();
 
   const walk = (dir: string) => {
@@ -68,7 +72,7 @@ function calledSdkMethods(): Set<string> {
   };
 
   walk(path.join(repoRoot, "src"));
-  return names;
+  return (calledCache = names);
 }
 
 /**
@@ -112,7 +116,39 @@ function completionScript(shell: string): string {
   return out;
 }
 
+describe("drift: numeric options use the shared parser", () => {
+  // The first attempt at this fix routed `parseNumber` through pagination
+  // helpers that nothing called, so six command modules kept the bare
+  // `(v) => Number(v)` and went on sending `?limit=NaN` while the changelog
+  // claimed otherwise. Grepping for the lambda is what would have caught it.
+  test("no command declares an inline Number() coercion", () => {
+    const offenders: string[] = [];
+    const dir = path.join(repoRoot, "src/commands");
+
+    for (const entry of readdirSync(dir)) {
+      if (!entry.endsWith(".ts")) continue;
+      const src = readFileSync(path.join(dir, entry), "utf8");
+      src.split("\n").forEach((line, i) => {
+        if (/=>\s*Number\(/.test(line)) offenders.push(`src/commands/${entry}:${i + 1}`);
+      });
+    }
+
+    expect(
+      offenders,
+      `These option parsers bypass parseNumber and will forward NaN:\n` +
+        offenders.map((o) => `  - ${o}`).join("\n"),
+    ).toEqual([]);
+  });
+});
+
 describe("drift: SDK surface vs CLI commands", () => {
+  test("the SDK type declarations actually parse", () => {
+    // Without this, a change to the SDK's dts emitter would make
+    // sdkClientMethods() return [] and the coverage test below would pass
+    // while checking nothing.
+    expect(sdkClientMethods().length).toBeGreaterThan(100);
+  });
+
   test("every SDK endpoint method has a CLI call site", () => {
     const called = calledSdkMethods();
     const uncovered = sdkClientMethods().filter(
@@ -163,12 +199,10 @@ function offeredWords(shell: string, script: string): Set<string> {
   };
 
   if (shell === "bash") {
-    for (const m of script.matchAll(/compgen -W "([^"]*)"/g)) add(m[1]);
-    for (const m of script.matchAll(/commands="([^"]*)"/g)) add(m[1]);
+    for (const m of script.matchAll(/__seclai_reply "([^"]*)"/g)) add(m[1]);
   } else if (shell === "zsh") {
-    // Top level is `'name:description'`; groups are `sub=(a b c)`.
-    for (const m of script.matchAll(/'([a-z-]+):[^']*'/g)) words.add(m[1]);
-    for (const m of script.matchAll(/sub=\(([^)]*)\)/g)) add(m[1]);
+    // Entries are `'name:description'` inside `sub=(...)`.
+    for (const m of script.matchAll(/'([a-z][a-z0-9-]*):[^']*'/g)) words.add(m[1]);
   } else {
     for (const m of script.matchAll(/-a "([^"]*)"/g)) add(m[1]);
   }
@@ -203,14 +237,11 @@ describe("drift: commands vs completion scripts", () => {
     test(`${shell} completion offers every command`, () => {
       const offered = offeredWords(shell, completionScript(shell));
 
-      // All three scripts complete two levels — a top-level group and its
-      // direct subcommands. Bash goes a level deeper for some groups, but that
-      // is a bonus rather than a contract, so depth 3 is not asserted here.
-      const names = new Set(
-        commandPaths(program())
-          .filter((p) => p.length <= 2)
-          .map((p) => p[p.length - 1]),
-      );
+      // Every depth, not just the first two. The previous version capped at
+      // `p.length <= 2` and called depth 3 "a bonus rather than a contract",
+      // which is exactly why zsh and fish offered none of the twenty-odd
+      // `email` leaf commands while the suite stayed green.
+      const names = new Set(commandPaths(program()).map((p) => p[p.length - 1]));
       const missing = [...names].filter((n) => !offered.has(n)).sort();
 
       expect(
@@ -240,14 +271,25 @@ describe("drift: commands vs completion scripts", () => {
   }
 });
 
-/** Every file in the skill directory, SKILL.md first — the order sync-skills.cjs uses. */
-function skillFileNames(): string[] {
-  const dir = path.join(repoRoot, "skills/seclai-cli");
-  const refs = readdirSync(path.join(dir, "references"))
-    .filter((f) => f.endsWith(".md"))
-    .sort()
-    .map((f) => `references/${f}`);
-  return ["SKILL.md", ...refs];
+/**
+ * Every markdown file in the skill directory, SKILL.md first — the order
+ * sync-skills.cjs uses.
+ *
+ * Recursive, matching the generator. Both used to assume "SKILL.md plus
+ * references/*.md at one level", so a file outside that shape was invisible to
+ * the generator *and* to this guard — the guard was blind in exactly the
+ * generator's blind spot.
+ */
+function skillFileNames(dir = path.join(repoRoot, "skills/seclai-cli"), prefix = ""): string[] {
+  const found: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) found.push(...skillFileNames(path.join(dir, entry.name), rel));
+    else if (entry.isFile() && entry.name.endsWith(".md")) found.push(rel);
+  }
+  return prefix === ""
+    ? [...found.filter((f) => f === "SKILL.md"), ...found.filter((f) => f !== "SKILL.md").sort()]
+    : found;
 }
 
 describe("drift: shipped skill content vs its source files", () => {

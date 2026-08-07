@@ -11,6 +11,7 @@ import {
   withOffsetListOptions,
   offsetListOpts,
   parseNumber,
+  toPagedEnvelope,
   warnDeprecated,
 } from "../helpers.js";
 
@@ -269,6 +270,9 @@ export function register(program: Command, rt: CliRuntime): void {
           "'agents runs delete' is deprecated and cancels the run rather than deleting it — " +
             "the API has no delete-a-run operation. Use 'agents runs cancel', which also " +
             "prints the cancelled run instead of {\"ok\": true}.",
+          // Kept, not scheduled for removal — the whole point of the alias is
+          // that existing scripts keep working.
+          "kept",
         );
         const client = createClient(program.opts<GlobalOptions>());
         await client.cancelAgentRun(runId);
@@ -526,10 +530,15 @@ export function register(program: Command, rt: CliRuntime): void {
     .argument("<runId>", "Run ID.")
     .option("--page <n>", "Page number.", parseNumber)
     .option("--limit <n>", "Page size.", parseNumber)
+    .option(
+      "--paged",
+      "Wrap the results in {data: [...]}, the shape this endpoint moves to from --api-version 2026-07-27.",
+    )
     .action(async (agentId: string, runId: string, opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
-        printJson(rt, await client.listRunEvaluationResults(agentId, runId, listOpts(opts)));
+        const res = await client.listRunEvaluationResults(agentId, runId, listOpts(opts));
+        printJson(rt, opts.paged ? toPagedEnvelope(res) : res);
       });
     });
 }

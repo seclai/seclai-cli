@@ -153,9 +153,10 @@ seclai api-version clear    # revert to the default
 
 An `--api-version` this CLI was not built against is rejected, because a newer
 version can reshape a response the CLI would then misread. Pass
-`--allow-unknown-api-version` to send it anyway. `api-version set` takes a
-`YYYY-MM-DD` date and rejects anything else, because the pin applies to every
-client on the account and nothing re-checks it afterwards.
+`--allow-unknown-api-version` to send it anyway. `api-version set` is held to
+the same standard — it rejects a version this release was not built against,
+with the same override — because the pin applies to every client on the account
+and nothing re-checks it afterwards.
 
 `--api-key`, `--profile`, `--account-id` and `--config-dir` reject an empty
 value. A shell expanding an unset variable passes `""`, which the SDK discards,
@@ -229,7 +230,7 @@ seclai agents runs get <runId> [--include-step-outputs]
 seclai agents runs cancel <runId>
 seclai agents runs delete <runId>   # deprecated alias for `runs cancel`
 seclai agents runs search [--page N] [--limit N] [--json '...']
-seclai agents runs eval-results <agentId> <runId> [--page N] [--limit N]
+seclai agents runs eval-results <agentId> <runId> [--page N] [--limit N] [--paged]
 # Download a file attachment emitted by a run step. attachmentId is the
 # URL-safe-base64 storage_key from run output manifests / webhooks.
 seclai agents runs download-attachment <runId> <attachmentId> [--download-name <name>] [--output <path>]
@@ -382,7 +383,9 @@ seclai evals criteria summary <criteriaId>
 
 `--paged` wraps the results in `{"data": [...]}` instead of returning a bare
 array, so `.data` is a stable path to read whatever `--api-version` is in
-effect. Nothing is invented: the `pagination` block appears only once the API
+effect. The same flag is on `alerts configs list`, `models alerts list` and
+`agents runs eval-results`, whose top-level keys (`configs`, `alerts`) also
+become `data` from `2026-07-27`. Nothing is invented: the `pagination` block appears only once the API
 sends one, from `--api-version 2026-07-27`. Migrate scripts to `.data` first,
 then opt in to get `.pagination`.
 
@@ -458,9 +461,9 @@ seclai alerts subscribe <alertId>
 seclai alerts unsubscribe <alertId>
 ```
 
-`--severity` is accepted for compatibility but ignored with a warning, and will
-be removed. `GET /alerts` declares no severity filter, so it never filtered.
-Filter client-side: `seclai alerts list | jq '[.data[] | select(.severity == "high")]'`.
+There is no `--severity`: `GET /alerts` declares no such filter, so it never
+filtered — it returned unfiltered rows that looked filtered. Filter client-side:
+`seclai alerts list | jq '[.data[] | select(.severity == "high")]'`.
 
 #### Alert Configurations
 

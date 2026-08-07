@@ -143,6 +143,31 @@ export function createClient(opts: GlobalOptions): Seclai {
     allowUnknownApiVersion?: boolean;
   } = {};
 
+  // Rejected here rather than in a Commander hook, because this is where an
+  // identity is actually resolved: a hook fired for every command, including
+  // `completion`, `skills install` and `mcp show`, which never build a client.
+  //
+  // A shell expanding an unset variable hands us `""`, not an absent flag, and
+  // the SDK's credential chain tests truthiness — so each of these silently
+  // resolves to something else, and none has a legitimate empty meaning:
+  //
+  //   --api-key      falls back to SECLAI_API_KEY, then SSO — a different identity
+  //   --config-dir   falls back to ~/.seclai — another account's cached tokens
+  //   --account-id   drops the X-Account-Id header — targets the default org
+  //   --profile      misses its config section — built-in SSO defaults
+  const identityFlags: ReadonlyArray<[keyof GlobalOptions, string, string]> = [
+    ["apiKey", "--api-key", "Pass a key, or omit the flag to use SECLAI_API_KEY or SSO."],
+    ["profile", "--profile", "Pass a profile name, or omit the flag to use the default profile."],
+    ["accountId", "--account-id", "Pass an account ID, or omit the flag to use the default org."],
+    ["configDir", "--config-dir", "Pass a directory, or omit the flag to use ~/.seclai."],
+  ];
+  for (const [key, flag, hint] of identityFlags) {
+    const value = opts[key];
+    if (typeof value === "string" && value.trim().length === 0) {
+      throw new Error(`${flag} was given an empty value. ${hint}`);
+    }
+  }
+
   if (opts.apiKey !== undefined) seclaiOpts.apiKey = opts.apiKey;
   if (opts.profile !== undefined) seclaiOpts.profile = opts.profile;
   if (opts.configDir !== undefined) seclaiOpts.configDir = opts.configDir;
@@ -156,8 +181,20 @@ export function createClient(opts: GlobalOptions): Seclai {
   // would send no header and skip the unknown-version guard. An empty
   // SECLAI_API_VERSION is treated as unset, which is the ordinary convention
   // for an environment variable.
+  // An explicitly empty --api-version means "no version", not "fall back to the
+  // environment": cli.ts has already warned that the flag is being ignored, and
+  // quietly adopting SECLAI_API_VERSION would make that warning false. Note
+  // `??` alone is not enough — it only falls through on null/undefined — so the
+  // empty case is handled before it.
   const envVersion = process.env.SECLAI_API_VERSION;
-  const version = opts.apiVersion ?? (envVersion && envVersion.length > 0 ? envVersion : undefined);
+  const blank = (v: string | undefined) => v === undefined || v.trim().length === 0;
+  const version = blank(opts.apiVersion)
+    ? opts.apiVersion !== undefined
+      ? undefined // explicitly blank: no version at all, not the environment's
+      : blank(envVersion)
+        ? undefined
+        : envVersion
+    : opts.apiVersion;
   if (version !== undefined) seclaiOpts.apiVersion = version;
   if (opts.allowUnknownApiVersion) seclaiOpts.allowUnknownApiVersion = true;
 
@@ -183,8 +220,23 @@ export function printJson(rt: CliRuntime, value: unknown): void {
  * did, and the operator gets told what will change. stdout stays clean, so
  * anything piping into `jq` is unaffected.
  */
-export function warnDeprecated(rt: CliRuntime, message: string): void {
-  rt.writeErr(`warning: ${message} This will be rejected in a future release.\n`);
+export function warnDeprecated(
+  rt: CliRuntime,
+  message: string,
+  fate: "rejected" | "removed" | "kept" = "rejected",
+): void {
+  // The consequence is a parameter because it genuinely differs. `--severity`
+  // will be *removed*; an empty global value will be *rejected*; and
+  // `agents runs delete` is a permanent alias that is going nowhere — telling
+  // its users to migrate against a deadline nobody set would be a lie, and one
+  // the tests would then pin in place.
+  const suffix =
+    fate === "kept"
+      ? ""
+      : fate === "removed"
+        ? " This will be removed in a future release."
+        : " This will be rejected in a future release.";
+  rt.writeErr(`warning: ${message}${suffix}\n`);
 }
 
 /** Print a human-readable error to stderr. Shows extra detail for SDK error types. */
@@ -208,7 +260,16 @@ export function printError(rt: CliRuntime, err: unknown): void {
 
   if (err instanceof SeclaiConfigurationError) {
     rt.writeErr(`${err.name}: ${err.message}\n`);
-    rt.writeErr(`hint: Set the SECLAI_API_KEY environment variable or pass --api-key.\n`);
+    // The hint has to match the failure. This error covers both missing
+    // credentials and an unknown API version, and the version case used to be
+    // answered with "set your API key" — advice for a problem the caller does
+    // not have. The SDK also names its own option (`allowUnknownApiVersion`),
+    // which is not something you can type at a terminal.
+    if (/api version/i.test(err.message)) {
+      rt.writeErr(`hint: Pass --allow-unknown-api-version to send it anyway.\n`);
+    } else {
+      rt.writeErr(`hint: Set the SECLAI_API_KEY environment variable or pass --api-key.\n`);
+    }
     return;
   }
 
@@ -241,21 +302,25 @@ export async function run(rt: CliRuntime, main: () => Promise<void>): Promise<vo
  * value, so the message here only has to say what was expected.
  */
 export function parseNumber(value: string): number {
-  const parsed = value.trim() === "" ? Number.NaN : Number(value);
-  if (!Number.isFinite(parsed)) {
-    throw new InvalidArgumentError("Expected a number.");
+  // Matched against the literal text rather than `Number()`'s result, because
+  // `Number` is far more permissive than these parameters are: it reads hex
+  // (`0x10` -> 16), exponents (`1e3` -> 1000), fractions and negatives, and
+  // `Number.isInteger` waves the first two through. Every consumer here is a
+  // page, limit or offset, all of which the API constrains to non-negative
+  // integers — and `--limit 0x10` quietly returning 16 rows is worse than the
+  // NaN this function replaced, because it looks like it worked.
+  if (!/^\d+$/.test(value.trim())) {
+    throw new InvalidArgumentError("Expected a non-negative whole number.");
   }
-  return parsed;
+  return Number(value.trim());
 }
 
-/** The `--limit` declaration shared by the pagination helpers below. */
-function withLimitOption(cmd: Command): Command {
-  return cmd.option("--limit <n>", "Page size.", parseNumber);
-}
-
-/** Add common pagination options to a command */
-export function withListOptions(cmd: Command): Command {
-  return withLimitOption(cmd.option("--page <n>", "Page number (1-based).", parseNumber));
+/**
+ * The `--limit` declaration shared by the pagination helpers, and by the
+ * commands that take a limit without a page or offset.
+ */
+export function withLimitOption(cmd: Command, description = "Page size."): Command {
+  return cmd.option("--limit <n>", description, parseNumber);
 }
 
 /**
@@ -264,6 +329,34 @@ export function withListOptions(cmd: Command): Command {
  */
 export function withOffsetListOptions(cmd: Command): Command {
   return withLimitOption(cmd).option("--offset <n>", "Number of items to skip.", parseNumber);
+}
+
+/**
+ * Normalise a version-gated list response to `{data, ...}`.
+ *
+ * Several endpoints rename their top-level array once the caller opts into
+ * `--api-version 2026-07-27`: `configs` and `alerts` both become `data`, and a
+ * bare array becomes `{data, pagination}`. A script reading `.configs[]` gets
+ * `null` and exit 0 the day someone opts in — the silent-wrong-answer class
+ * this release exists to close.
+ *
+ * This is what `--paged` prints. The default output is left exactly as the API
+ * sent it, so opting in is still the only thing that changes a shape.
+ */
+export function toPagedEnvelope(res: unknown, ...legacyKeys: string[]): unknown {
+  if (Array.isArray(res)) return { data: res };
+  if (res === null || typeof res !== "object") return res;
+
+  const obj = res as Record<string, unknown>;
+  if (Array.isArray(obj.data)) return obj;
+
+  for (const key of legacyKeys) {
+    if (Array.isArray(obj[key])) {
+      const { [key]: rows, ...rest } = obj;
+      return { data: rows, ...rest };
+    }
+  }
+  return res;
 }
 
 /** Pick the defined limit/offset values for an offset-paginated call. */
@@ -275,13 +368,6 @@ export function offsetListOpts(opts: { limit?: number | undefined; offset?: numb
   if (opts.limit !== undefined) o.limit = opts.limit;
   if (opts.offset !== undefined) o.offset = opts.offset;
   return o;
-}
-
-/** Add sortable list options (page, limit, sort, order) */
-export function withSortableListOptions(cmd: Command): Command {
-  return withListOptions(cmd)
-    .option("--sort <field>", "Sort field.")
-    .option("--order <asc|desc>", "Sort direction.");
 }
 
 /** Add --json / --json-file options to a command */

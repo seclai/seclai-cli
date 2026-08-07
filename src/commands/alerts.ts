@@ -7,7 +7,7 @@ import {
   readJsonInput,
   listOpts,
   parseNumber,
-  warnDeprecated,
+  toPagedEnvelope,
 } from "../helpers.js";
 
 /** Register `alerts` commands: alert CRUD, configs, organization preferences. */
@@ -22,26 +22,11 @@ export function register(program: Command, rt: CliRuntime): void {
     .option("--page <n>", "Page number.", parseNumber)
     .option("--limit <n>", "Page size.", parseNumber)
     .option("--status <status>", "Filter by status.")
-    .option(
-      "--severity <severity>",
-      "Deprecated and ignored — GET /alerts declares no severity filter. Filter with jq instead.",
-    )
     .action(async (opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
         const o: Record<string, unknown> = listOpts(opts);
         if (opts.status) o.status = opts.status;
-        if (opts.severity !== undefined) {
-          // Accepted so existing invocations keep parsing, but not sent: the
-          // endpoint declares no such parameter, so it never filtered, and it
-          // becomes a 422 once --api-version is 2026-07-27 or later. Dropping
-          // it here returns the same rows as before, minus the future 422.
-          warnDeprecated(
-            rt,
-            "'alerts list --severity' is ignored — the API has no severity filter, so it never " +
-              "filtered anything. Filter client-side, e.g. | jq '[.data[] | select(.severity == \"high\")]'.",
-          );
-        }
         printJson(rt, await client.listAlerts(o));
       });
     });
@@ -116,10 +101,15 @@ export function register(program: Command, rt: CliRuntime): void {
     .description("List alert configurations.")
     .option("--page <n>", "Page number.", parseNumber)
     .option("--limit <n>", "Page size.", parseNumber)
+    .option(
+      "--paged",
+      "Wrap the results in {data: [...]}, the shape this endpoint moves to from --api-version 2026-07-27.",
+    )
     .action(async (opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
-        printJson(rt, await client.listAlertConfigs(listOpts(opts)));
+        const res = await client.listAlertConfigs(listOpts(opts));
+        printJson(rt, opts.paged ? toPagedEnvelope(res, "configs") : res);
       });
     });
 
