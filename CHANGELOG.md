@@ -1,6 +1,10 @@
 # Changelog
 
-## [1.7.0] - 2026-10-04
+## [1.7.0] - 2026-10-05
+
+_No functional changes since 1.6.1, which added commands and should have been published as a minor version._
+
+## [1.6.1] - 2026-10-04
 
 ### Changed
 
@@ -177,6 +181,7 @@ _Stable release. No functional changes since 0.0.2._
 _Initial release._
 
 [1.7.0]: https://github.com/seclai/seclai-cli/releases/tag/1.7.0
+[1.6.1]: https://github.com/seclai/seclai-cli/releases/tag/1.6.1
 [1.6.0]: https://github.com/seclai/seclai-cli/releases/tag/1.6.0
 [1.5.0]: https://github.com/seclai/seclai-cli/releases/tag/1.5.0
 [1.4.0]: https://github.com/seclai/seclai-cli/releases/tag/1.4.0
