@@ -12,6 +12,18 @@ seclai sources upload <sourceId> --file ./doc.pdf --metadata-file ./meta.json
 seclai sources upload-text <sourceId> --json '{"text":"Article content here...","title":"My Article"}'
 ```
 
+## Check that an upload finished indexing
+```bash
+# content_version_id comes from the upload's output
+seclai sources contents status <sourceId> <contentVersionId>
+
+# several uploads in one request (about 100 ids at most)
+seclai sources contents list <sourceId> --content-version-id <id> --content-version-id <id>
+
+# everything in the source that could not be indexed
+seclai sources contents list <sourceId> --status failed
+```
+
 ## Upload input for agent runs
 ```bash
 # Check what files (if any) the agent expects before uploading. requires_uploads

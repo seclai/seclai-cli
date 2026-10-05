@@ -1,21 +1,51 @@
 # Changelog
 
-## [1.5.0] - 2026-08-06
+## [1.7.0] - 2026-10-04
+
+### Changed
+
+- Require `@seclai/sdk` 1.6.1
+- Print a list in its usual place when `--api-version` is `2026-07-27` or later. The commands whose output is an array, such as `models list` and `agents callers`, print that array again rather than a `{data, pagination}` object, and listings keyed by resource, such as `alerts configs list` and `kb list`, print their usual key and counters beside `data` and `pagination`. A script that opted in and reads `.data` from one of the array commands must read the array itself. Output without `--api-version` is unchanged
+
+### Added
+
+- Add the `cloud-drives` command group for cloud-drive connections: `providers`, `list`, `get`, `update`, `agents`, `rejections`, `disconnect` and `delete`. The listings print a plain array on every API version. `update` takes `--name`, `--folder-path` or `--whole-drive` and refuses an empty `--folder-path`, which the API would read as the whole drive. `rejections` lists the files a connection skipped and why, which is where to look when an agent did not run for a file
+- Add `sources contents list` and `sources contents status` to read whether a source's content has finished indexing. `list` filters with `--status` and a repeatable `--content-version-id`, which polls a batch of uploads in one request; an empty id is refused rather than dropped, so it cannot widen the listing
+- Add `models embedders` and `models rerankers`, listing the embedding models a source can index with — and the dimensions each supports — and the rerankers a knowledge base can use. Both print the list under `models` on every API version, and `--paged` prints it under `data`
+- Accept `2026-08-03`, `2026-08-21`, `2026-09-28`, `2026-09-30` and `2026-10-03` for `--api-version`, `SECLAI_API_VERSION` and `api-version set`. `api-version --help` and the README list what each version changes
+
+## [1.6.0] - 2026-08-06
+
+### Changed
+
+- Reject a `--page`, `--limit` or `--offset` that is not a non-negative whole number at parse time. 1.5.0 rejected only a non-numeric value, so hex and exponent literals were still read as numbers: `--limit 0x10` meant 16
+- Reject a version this release was not built against in `api-version set`, unless `--allow-unknown-api-version` is given. It accepted any `YYYY-MM-DD` date; the pin applies to every client on the account and nothing re-checks it afterwards
+- Reject an empty `--api-key`, `--profile`, `--account-id` or `--config-dir` only when a command builds a client, rather than for every command — `completion`, `skills install`, `mcp show` and `configure` resolve no identity and are unaffected
+- Generate the shell completion scripts from the command tree rather than three hand-maintained copies, so every command is offered at every depth in bash, zsh and fish
+
+### Added
+
+- Add `--paged` to `alerts configs list`, `models alerts list` and `agents runs eval-results`, as `evals criteria list` already had. It wraps the results in `{data: [...]}` so `.data` reads the same whatever `--api-version` is in effect
+
+### Removed
+
+- **Breaking:** Remove `--severity` from `alerts list`. `GET /alerts` declares no such filter, so it never filtered; 1.5.0 warned and stopped sending it, and the flag is now an unknown option. Filter client-side: `seclai alerts list | jq '[.data[] | select(.severity == "high")]'`
+
+## [1.5.0] - 2026-07-31
 
 ### Changed
 
 - Require `--step-type` on `agents ai history`. The API marks the parameter required and the command had no way to supply it, so every call answered 422 — the command could not succeed before and the requirement breaks nothing. `--step-id`, `--limit` and `--offset` are now accepted as well
 - Deprecate `agents runs delete`. It never deleted anything — the endpoint it calls is the cancel endpoint, and the API has no delete-a-run operation — so it now warns on stderr and cancels. stdout stays `{"ok": true}`; use `agents runs cancel`, which prints the cancelled run
-- Reject a `--page`, `--limit` or `--offset` that is not a non-negative whole number at parse time, instead of sending `NaN` and reporting the server's 422. Hex and exponent literals are rejected too: `--limit 0x10` used to be read as 16
-- Split the installed skill into a short index plus per-domain references, so an agent loads a command map rather than every command. `skills install` now writes 12 files instead of 4, and the set is discovered from disk rather than hard-coded
-- Generate the shell completion scripts from the command tree rather than three hand-maintained copies, so every command is offered at every depth in bash, zsh and fish
-- Reject an empty `--api-key`, `--profile`, `--account-id` or `--config-dir` when a command builds a client, rather than for every command — `completion`, `skills install`, `mcp show` and `configure` resolve no identity and are unaffected
+- Warn on an empty `--api-version` and ignore it as before. Unlike the four above it costs only the version header, so it keeps working; a future release will reject it
+- Warn on a `--severity` passed to `alerts list` and stop sending it. `GET /alerts` declares no such filter, so it never filtered, and sending it becomes a 422 once `--api-version` is `2026-07-27` or later. The flag still parses and a future release will remove it
+- Reject a non-numeric `--page`, `--limit` or `--offset` at parse time instead of sending `NaN` and reporting the server's 422
 - Require `@seclai/sdk` 1.5.0
 
 ### Added
 
-- Add an `--api-version <date>` global option, sent as the `Seclai-Version` header, opting into dated API changes released on or before that date. Omitted by default, so upgrading the CLI alone never changes a command's output. `SECLAI_API_VERSION` sets it for a shell, and `--allow-unknown-api-version` permits a date this release was not built against. An empty value is warned about and ignored rather than silently adopting `SECLAI_API_VERSION`
-- Add `api-version get`, `api-version set <date>` and `api-version clear` to read the version a request resolves to and to pin or clear the account's version. `set` rejects a version this release was not built against — the pin applies to every client on the account and nothing re-checks it afterwards, so it is held to the same standard as the `--api-version` header, with `--allow-unknown-api-version` as the same escape hatch
+- Add an `--api-version <date>` global option, sent as the `Seclai-Version` header, opting into dated API changes released on or before that date. Omitted by default, so upgrading the CLI alone never changes a command's output. `SECLAI_API_VERSION` sets it for a shell, and `--allow-unknown-api-version` permits a date this release was not built against
+- Add `api-version get`, `api-version set <date>` and `api-version clear` to read the version a request resolves to and to pin or clear the account's version. `set` rejects anything that is not a `YYYY-MM-DD` date, since the pin applies to every client on the account and nothing re-checks it afterwards
 - Add the `email` command group covering agent email: `domains` (list, add, remove, verify, set-primary, use-shared, test-email, dmarc), `blocked` (list, add, remove, auto-block-mode), `inbound` (status, rejections, cancel-queued, resume) and `optouts` (list, remove)
 - Add `agents disable` and `agents enable` to pause and resume an agent across every trigger path, and `agents callers` to list the live agents that call it via a `call_agent` step
 - Add `agents triggers email-config` to set the alias, sender allowlist and inbound-handling flags on an `EMAIL_RECEIVED` trigger
@@ -23,21 +53,18 @@
 - Add `docs search` for keyword or semantic search over the Seclai documentation. `--mode` accepts `keyword` or `semantic` and rejects anything else at parse time
 - Add `models tiers`, mapping each media-generation modality and tier to its model and cost
 - Add `--supports-input-media` and `--supports-output-media` filters to `models list`
-- Add `--paged` to every list whose shape is version-gated — `evals criteria list`, `alerts configs list`, `models alerts list` and `agents runs eval-results` — wrapping the results in `{data: [...]}` so `.data` reads the same whatever `--api-version` is in effect. Without it, opting into `2026-07-27` renames `configs` and `alerts` to `data` and a script reading the old key gets `null` with exit 0
-
-### Removed
-
-- Remove `--severity` from `alerts list`. `GET /alerts` declares no such filter, so it never filtered — it returned unfiltered rows that looked filtered, and became a 422 once `--api-version` was `2026-07-27` or later. Filter client-side: `seclai alerts list | jq '[.data[] | select(.severity == "high")]'`
+- Add `--paged` to `evals criteria list`, wrapping the results in `{data: [...]}` instead of a bare array so `.data` reads the same whatever `--api-version` is in effect. The `pagination` block appears only once the API sends one, from `2026-07-27`
 
 ### Fixed
 
 - Reject an empty `--api-key`, `--profile`, `--account-id` or `--config-dir` instead of acting as an identity the caller never named. A shell expanding an unset variable passes `""`, which the SDK's credential chain discards, so each silently resolved elsewhere: `--api-key` to `SECLAI_API_KEY` and then a cached SSO session, `--config-dir` to another account's cached tokens, `--account-id` to the default org, `--profile` to the built-in SSO defaults. The command then exited 0, having read or written somewhere other than where it was pointed. Guard the flag rather than the value — `seclai ${KEY:+--api-key "$KEY"} …`
 - Ship current skill content from `skills install`. The files it writes are string constants compiled into the CLI, regenerated by a script that nothing ran, so since March it had been installing a skill that documented a since-removed flag and none of the commands added after 1.1.0
+- Split the installed skill into a short index plus per-domain references, so an agent loads a command map rather than every command. `skills install` now writes 12 files instead of 4, and the set is discovered from disk rather than hard-coded
+- Complete the `auth` and `configure` groups and their subcommands, and `models list` / `models get`, in bash, zsh and fish. All were reachable but absent from the generated completion scripts — including `configure sso`, the first command a new user runs
+- Offer `--profile`, `--account-id` and `--config-dir` in the zsh and fish completions. They have been accepted as global options since 1.2.0 but were never suggested
 - Cancel a run. `agents runs cancel` posted to a path the API has never exposed, so it failed in every release since 1.0.4 — including for callers following this release's advice to use it instead of `agents runs delete`
 - Return results from `agents runs eval-results`, which decoded a shape the endpoint does not send and so returned nothing
 - Paginate `models alerts list`. It sent a page parameter the endpoint does not accept, so every page after the first repeated page 1
-- Complete the `auth` and `configure` groups and their subcommands, and `models list` / `models get`, in bash, zsh and fish. All were reachable but absent from the generated completion scripts — including `configure sso`, the first command a new user runs
-- Offer `--profile`, `--account-id` and `--config-dir` in the zsh and fish completions. They have been accepted as global options since 1.2.0 but were never suggested
 
 ## [1.4.0] - 2026-06-05
 
@@ -149,6 +176,8 @@ _Stable release. No functional changes since 0.0.2._
 
 _Initial release._
 
+[1.7.0]: https://github.com/seclai/seclai-cli/releases/tag/1.7.0
+[1.6.0]: https://github.com/seclai/seclai-cli/releases/tag/1.6.0
 [1.5.0]: https://github.com/seclai/seclai-cli/releases/tag/1.5.0
 [1.4.0]: https://github.com/seclai/seclai-cli/releases/tag/1.4.0
 [1.3.0]: https://github.com/seclai/seclai-cli/releases/tag/1.3.0

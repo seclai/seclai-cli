@@ -13,7 +13,21 @@ import {
   toPagedEnvelope,
 } from "../helpers.js";
 
-/** Register `models` commands: list, get, alerts, recommendations, playground experiments. */
+/**
+ * Shape an embedder/reranker listing so it reads the same on every API version.
+ *
+ * From 2026-07-27 the API adds `data` and `pagination` beside the `models` the
+ * SDK always fills. The default drops both; `--paged` moves the list to `data`.
+ */
+function modelListOutput(res: unknown, paged: boolean): unknown {
+  if (res === null || typeof res !== "object" || Array.isArray(res)) return res;
+  const { models, data, pagination, ...rest } = res as Record<string, unknown>;
+  const list = models ?? data;
+  if (!paged) return { models: list, ...rest };
+  return { data: list, ...(pagination !== undefined ? { pagination } : {}), ...rest };
+}
+
+/** Register `models` commands: catalog, embedders, rerankers, alerts, recommendations, experiments. */
 export function register(program: Command, rt: CliRuntime): void {
   const models = program.command("models").description("Models, model alerts, recommendations, and playground experiments.");
 
@@ -45,6 +59,39 @@ export function register(program: Command, rt: CliRuntime): void {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
         printJson(rt, await client.getGenerationTiers());
+      });
+    });
+
+  const pagedHelp =
+    "Print the list under `data` instead of `models`, with the pagination block when the API sends one.";
+
+  models
+    .command("embedders")
+    .description(
+      "List the embedding models a source can index with, their supported dimensions and pricing.",
+    )
+    .option(
+      "--supports-input-media <media>",
+      "Only embedders that can index this input: text, image, video, audio, or a full MIME type.",
+    )
+    .option("--paged", pagedHelp)
+    .action(async (opts) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        const o: Parameters<typeof client.listEmbeddingModels>[0] = {};
+        if (opts.supportsInputMedia !== undefined) o.supportsInputMedia = opts.supportsInputMedia;
+        printJson(rt, modelListOutput(await client.listEmbeddingModels(o), Boolean(opts.paged)));
+      });
+    });
+
+  models
+    .command("rerankers")
+    .description("List the reranker models a knowledge base can use, and their pricing.")
+    .option("--paged", pagedHelp)
+    .action(async (opts) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        printJson(rt, modelListOutput(await client.listRerankerModels(), Boolean(opts.paged)));
       });
     });
 

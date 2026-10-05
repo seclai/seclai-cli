@@ -3,6 +3,33 @@ import { SeclaiApiVersion } from "@seclai/sdk";
 import type { CliRuntime, GlobalOptions } from "../helpers.js";
 import { run, createClient, printJson } from "../helpers.js";
 
+/**
+ * What each dated API version changes, in CLI terms. Keyed by every version the
+ * SDK accepts — a drift test fails when the SDK gains one this map lacks.
+ */
+export const API_VERSION_NOTES: Record<string, string> = {
+  "2026-07-01": "The baseline, applied when no version is sent and the account is not pinned.",
+  "2026-07-27":
+    "List responses move to {data, pagination}, and a query parameter the endpoint does not declare is rejected with a 422.",
+  "2026-08-03":
+    "`memory create` and `memory update` reject a non-zero max_age_days, which reads as null; an omitted retention_days on create resolves per bank type.",
+  "2026-08-21":
+    "`sources create` rejects an embedding dimension its embedder does not support. `models embedders` reports the supported ones.",
+  "2026-09-28":
+    "Agent-definition writes such as `agents def update` use the current file-list grammar for a step's attachments.",
+  "2026-09-30":
+    "A run's and a step's output, and a step's input, are the text rather than a JSON manifest. Files are in attachments on every version.",
+  "2026-10-03": "A new LLM step written without attachments takes its parent's files.",
+};
+
+/** The versions and their notes as a help block, oldest first. */
+function apiVersionHelp(): string {
+  const rows = Object.keys(API_VERSION_NOTES)
+    .sort()
+    .map((v) => `  ${v}  ${API_VERSION_NOTES[v]}`);
+  return `\nVersions (each includes the changes of the ones before it):\n${rows.join("\n")}\n`;
+}
+
 /** Register account-level commands: `me` and the dated API version pin. */
 export function register(program: Command, rt: CliRuntime): void {
   program
@@ -17,7 +44,8 @@ export function register(program: Command, rt: CliRuntime): void {
 
   const version = program
     .command("api-version")
-    .description("Read or pin the account's dated API version.");
+    .description("Read or pin the account's dated API version.")
+    .addHelpText("after", apiVersionHelp());
 
   version
     .command("get")

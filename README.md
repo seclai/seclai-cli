@@ -158,6 +158,23 @@ the same standard — it rejects a version this release was not built against,
 with the same override — because the pin applies to every client on the account
 and nothing re-checks it afterwards.
 
+Each version includes the changes of the ones before it. `seclai api-version --help`
+prints the same list.
+
+| Version | What it changes |
+|---|---|
+| `2026-07-01` | The baseline, applied when no version is sent and the account is not pinned |
+| `2026-07-27` | List responses move to `{data, pagination}`, and a query parameter the endpoint does not declare is rejected with a 422 |
+| `2026-08-03` | `memory create` and `memory update` reject a non-zero `max_age_days`, which reads as `null`; an omitted `retention_days` on create resolves per bank type |
+| `2026-08-21` | `sources create` rejects an embedding dimension its embedder does not support — `models embedders` reports the supported ones |
+| `2026-09-28` | Agent-definition writes such as `agents def update` use the current file-list grammar for a step's `attachments` |
+| `2026-09-30` | A run's and a step's `output`, and a step's `input`, are the text rather than a JSON manifest. Files are in `attachments` on every version |
+| `2026-10-03` | A new LLM step written without `attachments` takes its parent's files |
+
+`2026-09-30` changes what `agents run` and `agents runs get` print: a script
+that parses `.output` as JSON to find a run's files should read `.attachments`
+instead, which is present whichever version is in effect.
+
 `--api-key`, `--profile`, `--account-id` and `--config-dir` reject an empty
 value. A shell expanding an unset variable passes `""`, which the SDK discards,
 so `--api-key "$KEY"` with `KEY` unset would fall back to `SECLAI_API_KEY` or a
@@ -296,6 +313,24 @@ seclai sources delete <sourceId>
 seclai sources upload <sourceId> --file ./doc.pdf [--title "Doc"] [--mime-type application/pdf] [--metadata '{}']
 seclai sources upload-text <sourceId> --json '{"title":"Note","text":"Hello world"}'
 ```
+
+#### Content Status
+
+Whether what you uploaded has finished indexing. Both uploads return a
+`content_version_id`; pass it back to poll.
+
+```bash
+seclai sources contents list <sourceId> [--page N] [--limit N] [--sort created_at|title|status] [--order asc|desc]
+seclai sources contents list <sourceId> --status failed
+seclai sources contents list <sourceId> --content-version-id <id> --content-version-id <id>
+seclai sources contents status <sourceId> <contentVersionId>
+```
+
+`list` prints `{data, pagination}` on every API version. Repeat
+`--content-version-id` to poll a batch in one request, and keep a request to
+about 100 ids: they travel in the URL, and one over 8,192 bytes is rejected with
+a 414. An empty id is refused rather than dropped, so an unset shell variable
+cannot widen the listing.
 
 #### Exports
 
@@ -491,7 +526,15 @@ seclai models get <modelId>
 
 # Each media-generation modality and tier, with its model and cost
 seclai models tiers
+
+# Embedding models a source can index with, and rerankers a knowledge base can use
+seclai models embedders [--supports-input-media text|image|video|audio] [--paged]
+seclai models rerankers [--paged]
 ```
+
+`embedders` and `rerankers` print the list under `models`, with the defaults and
+pricing beside it, on every API version. `--paged` prints it under `data`
+instead, plus the `pagination` block once the API sends one.
 
 #### Model Alerts
 
@@ -580,6 +623,38 @@ seclai email inbound resume                   # lift the account-wide pause
 seclai email optouts list [--agent-id <id>] [--limit N] [--offset N]
 seclai email optouts remove <optoutId>
 ```
+
+### Cloud Drives
+
+The cloud-drive connections that file triggers, drive steps and `cloud_drive`
+sources read from. Connecting a drive happens in the app; these commands inspect
+and maintain the connections that exist.
+
+```bash
+seclai cloud-drives providers                 # providers that can be connected
+seclai cloud-drives list
+seclai cloud-drives get <connectionId>
+seclai cloud-drives update <connectionId> [--name <name>] [--folder-path <path>]
+seclai cloud-drives update <connectionId> --whole-drive
+seclai cloud-drives agents <connectionId>     # agents using the connection
+seclai cloud-drives rejections <connectionId> [--limit N]   # skipped files, newest first
+seclai cloud-drives disconnect <connectionId> # revoke tokens, keep the connection
+seclai cloud-drives delete <connectionId>
+```
+
+The listings print a plain array on every API version.
+
+`update` changes only what you pass. Changing the folder resets the sync cursor,
+so files already in the new folder do not fire triggers. An empty
+`--folder-path` is refused, because the API reads it as the whole drive — say
+`--whole-drive` when that is what you mean.
+
+`delete` is refused with a 409 while an agent trigger or a content source still
+depends on the connection. `agents` does not list content sources, so an empty
+result does not mean the delete will go through.
+
+`rejections` is where to look when an agent did not run for a file: a skipped
+file fires no trigger. `--limit` takes 1 to 200 and defaults to 50.
 
 ### AI Assistant
 

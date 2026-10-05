@@ -1,4 +1,4 @@
-import { Command } from "commander";
+import { Command, InvalidArgumentError } from "commander";
 import type { CliRuntime, GlobalOptions } from "../helpers.js";
 import {
   run,
@@ -11,7 +11,19 @@ import {
   listOpts,
 } from "../helpers.js";
 
-/** Register `sources` commands: CRUD, file/text upload, exports, embedding migration. */
+/**
+ * Collect a repeatable `--content-version-id`, refusing a blank value: dropping
+ * one would turn a filtered listing into a wider one, or into every item.
+ */
+function collectContentVersionId(value: string, previous: string[] | undefined): string[] {
+  const id = value.trim();
+  if (id.length === 0) {
+    throw new InvalidArgumentError("Expected a content version ID, not an empty value.");
+  }
+  return [...(previous ?? []), id];
+}
+
+/** Register `sources` commands: CRUD, file/text upload, content status, exports, embedding migration. */
 export function register(program: Command, rt: CliRuntime): void {
   const sources = program
     .command("sources")
@@ -113,6 +125,52 @@ export function register(program: Command, rt: CliRuntime): void {
         const client = createClient(program.opts<GlobalOptions>());
         const body = await readJsonInput(rt, { json: opts.json, jsonFile: opts.jsonFile });
         printJson(rt, await client.uploadInlineTextToSource(sourceId, body as any));
+      });
+    });
+
+  // --- Content indexing status ---
+
+  const contents = sources
+    .command("contents")
+    .description("Indexing status of a source's content items.");
+
+  contents
+    .command("list")
+    .description("List a source's content items and their indexing status.")
+    .argument("<sourceId>", "Source ID.")
+    .option("--page <n>", "Page number.", parseNumber)
+    .option("--limit <n>", "Page size (1-100, default 20).", parseNumber)
+    .option("--sort <field>", "Sort field: created_at, title or status.")
+    .option("--order <asc|desc>", "Sort direction.")
+    .option(
+      "--status <status>",
+      "Only items in one status: pending, fetching, transcribing, scanning, indexing, completed or failed.",
+    )
+    .option(
+      "--content-version-id <id>",
+      "Only this item, by the content_version_id an upload returned. Repeat to poll a batch; " +
+        "keep one request to about 100 ids, because they travel in the URL and one over 8,192 bytes is rejected with a 414.",
+      collectContentVersionId,
+    )
+    .action(async (sourceId: string, opts) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        const o: Parameters<typeof client.listSourceContents>[1] = listOpts(opts);
+        if (opts.status !== undefined) o.status = opts.status;
+        if (opts.contentVersionId !== undefined) o.contentVersionIds = opts.contentVersionId;
+        printJson(rt, await client.listSourceContents(sourceId, o));
+      });
+    });
+
+  contents
+    .command("status")
+    .description("Get one content item's indexing status.")
+    .argument("<sourceId>", "Source ID.")
+    .argument("<contentVersionId>", "The content_version_id an upload returned.")
+    .action(async (sourceId: string, contentVersionId: string) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        printJson(rt, await client.getSourceContentStatus(sourceId, contentVersionId));
       });
     });
 

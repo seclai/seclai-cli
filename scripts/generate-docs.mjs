@@ -91,6 +91,9 @@ const sections = [
   { title: "sources delete", args: ["sources", "delete", "--help"] },
   { title: "sources upload", args: ["sources", "upload", "--help"] },
   { title: "sources upload-text", args: ["sources", "upload-text", "--help"] },
+  { title: "sources contents", args: ["sources", "contents", "--help"] },
+  { title: "sources contents list", args: ["sources", "contents", "list", "--help"] },
+  { title: "sources contents status", args: ["sources", "contents", "status", "--help"] },
   { title: "sources exports", args: ["sources", "exports", "--help"] },
   { title: "sources exports list", args: ["sources", "exports", "list", "--help"] },
   { title: "sources exports create", args: ["sources", "exports", "create", "--help"] },
@@ -205,12 +208,25 @@ const sections = [
 
   // models
   { title: "models", args: ["models", "--help"] },
+  { title: "models embedders", args: ["models", "embedders", "--help"] },
+  { title: "models rerankers", args: ["models", "rerankers", "--help"] },
   { title: "models alerts", args: ["models", "alerts", "--help"] },
   { title: "models alerts list", args: ["models", "alerts", "list", "--help"] },
   { title: "models alerts mark-read", args: ["models", "alerts", "mark-read", "--help"] },
   { title: "models alerts mark-all-read", args: ["models", "alerts", "mark-all-read", "--help"] },
   { title: "models alerts unread-count", args: ["models", "alerts", "unread-count", "--help"] },
   { title: "models recommendations", args: ["models", "recommendations", "--help"] },
+
+  // cloud drives
+  { title: "cloud-drives", args: ["cloud-drives", "--help"] },
+  { title: "cloud-drives providers", args: ["cloud-drives", "providers", "--help"] },
+  { title: "cloud-drives list", args: ["cloud-drives", "list", "--help"] },
+  { title: "cloud-drives get", args: ["cloud-drives", "get", "--help"] },
+  { title: "cloud-drives update", args: ["cloud-drives", "update", "--help"] },
+  { title: "cloud-drives disconnect", args: ["cloud-drives", "disconnect", "--help"] },
+  { title: "cloud-drives delete", args: ["cloud-drives", "delete", "--help"] },
+  { title: "cloud-drives agents", args: ["cloud-drives", "agents", "--help"] },
+  { title: "cloud-drives rejections", args: ["cloud-drives", "rejections", "--help"] },
 
   // search
   { title: "search", args: ["search", "--help"] },
@@ -226,6 +242,9 @@ const sections = [
   { title: "ai accept", args: ["ai", "accept", "--help"] },
   { title: "ai decline", args: ["ai", "decline", "--help"] },
   { title: "ai memory-accept", args: ["ai", "memory-accept", "--help"] },
+
+  // account
+  { title: "api-version", args: ["api-version", "--help"] },
 
   // skills
   { title: "skills", args: ["skills", "--help"] },

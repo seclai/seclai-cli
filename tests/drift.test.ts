@@ -18,7 +18,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { Command } from "commander";
+import { SeclaiApiVersion } from "@seclai/sdk";
 import { createProgram } from "../src/cli.js";
+import { API_VERSION_NOTES } from "../src/commands/account.js";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -330,6 +332,22 @@ describe("drift: shipped skill content vs its source files", () => {
       orphans,
       `SKILL_FILES still ships files deleted from skills/seclai-cli: ${orphans.join(", ")}`,
     ).toEqual([]);
+  });
+});
+
+describe("drift: API versions vs their descriptions", () => {
+  // The SDK decides which versions --api-version accepts; nothing else tells
+  // this repo that it gained one whose effect is described nowhere.
+  const known = [...new Set(Object.values(SeclaiApiVersion) as string[])].sort();
+
+  test("every version the SDK accepts has a note in `api-version --help`", () => {
+    expect(Object.keys(API_VERSION_NOTES).sort()).toEqual(known);
+  });
+
+  test.each([["README.md"], ["skills/seclai-cli/SKILL.md"]])("%s describes every version", (file) => {
+    const text = readFileSync(path.join(repoRoot, file), "utf8");
+    const missing = known.filter((v) => !text.includes(`\`${v}\``));
+    expect(missing, `${file} never mentions: ${missing.join(", ")}`).toEqual([]);
   });
 });
 
