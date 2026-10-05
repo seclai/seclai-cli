@@ -25,6 +25,32 @@ seclai sources upload <sourceId> --file ./doc.pdf [--title "My Doc"] [--metadata
 seclai sources upload-text <sourceId> --json '{"text":"Article content here...","title":"My Article"}'
 ```
 
+## Indexing status
+
+An upload returns before the content is searchable. Both upload commands return
+a `content_version_id`; poll it until `content_status` is `completed` or
+`failed`.
+
+```bash
+seclai sources contents status <sourceId> <contentVersionId>
+seclai sources contents list <sourceId> [--page N] [--limit N] [--sort created_at|title|status] [--order asc|desc]
+seclai sources contents list <sourceId> --status failed
+seclai sources contents list <sourceId> --content-version-id <id> --content-version-id <id>
+```
+
+`content_status` is one of `pending`, `fetching`, `transcribing`, `scanning`,
+`indexing`, `completed` or `failed`; a failed item carries the reason in
+`error`. `list` prints `{data, pagination}` on every API version, with `--limit`
+from 1 to 100.
+
+Repeat `--content-version-id` to poll a batch of uploads in one request. Keep a
+request to about 100 ids — they travel in the URL, and one over 8,192 bytes is
+rejected with a 414 — and split a larger batch across calls. An empty id is
+refused rather than dropped, so build the flags from ids you actually hold.
+
+`source_connection_content_version_id` in the result is the id `contents get`
+takes. It is `null` until the item has finished indexing.
+
 ## Source exports
 
 ```bash

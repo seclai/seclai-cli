@@ -150,6 +150,20 @@ type SeclaiMock = {
   getExperiment: ReturnType<typeof vi.fn>;
   cancelExperiment: ReturnType<typeof vi.fn>;
   deleteExperiment: ReturnType<typeof vi.fn>;
+  listEmbeddingModels: ReturnType<typeof vi.fn>;
+  listRerankerModels: ReturnType<typeof vi.fn>;
+  // source content status
+  listSourceContents: ReturnType<typeof vi.fn>;
+  getSourceContentStatus: ReturnType<typeof vi.fn>;
+  // cloud drives
+  listCloudDriveProviders: ReturnType<typeof vi.fn>;
+  listCloudDrives: ReturnType<typeof vi.fn>;
+  getCloudDrive: ReturnType<typeof vi.fn>;
+  updateCloudDrive: ReturnType<typeof vi.fn>;
+  disconnectCloudDrive: ReturnType<typeof vi.fn>;
+  deleteCloudDrive: ReturnType<typeof vi.fn>;
+  getAgentsUsingCloudDrive: ReturnType<typeof vi.fn>;
+  listCloudDriveRejections: ReturnType<typeof vi.fn>;
   // search
   search: ReturnType<typeof vi.fn>;
   searchDocs: ReturnType<typeof vi.fn>;
@@ -204,6 +218,7 @@ const mockState = vi.hoisted(() => {
     instances: [] as SeclaiMock[],
     lastCtorArgs: undefined as unknown,
     nextListSourcesError: undefined as unknown,
+    modelListResponse: { models: [] } as unknown,
   };
 });
 
@@ -439,6 +454,22 @@ vi.mock("@seclai/sdk", () => {
     getExperiment = vi.fn(async () => ({ ok: true }));
     cancelExperiment = vi.fn(async () => ({ ok: true }));
     deleteExperiment = vi.fn(async () => undefined);
+    listEmbeddingModels = vi.fn(async () => mockState.modelListResponse);
+    listRerankerModels = vi.fn(async () => mockState.modelListResponse);
+
+    // source content status
+    listSourceContents = vi.fn(async () => ({ data: [], pagination: { page: 1, limit: 20, total: 0 } }));
+    getSourceContentStatus = vi.fn(async () => ({ content_status: "completed" }));
+
+    // cloud drives
+    listCloudDriveProviders = vi.fn(async () => [{ key: "dropbox" }]);
+    listCloudDrives = vi.fn(async () => [{ id: "cd_1" }]);
+    getCloudDrive = vi.fn(async () => ({ id: "cd_1" }));
+    updateCloudDrive = vi.fn(async () => ({ id: "cd_1" }));
+    disconnectCloudDrive = vi.fn(async () => ({ id: "cd_1", status: "disconnected" }));
+    deleteCloudDrive = vi.fn(async () => undefined);
+    getAgentsUsingCloudDrive = vi.fn(async () => []);
+    listCloudDriveRejections = vi.fn(async () => []);
 
     // search
     search = vi.fn(async () => ({ ok: true }));
@@ -507,8 +538,13 @@ vi.mock("@seclai/sdk", () => {
     SeclaiApiVersion: {
       V2026_07_01: "2026-07-01",
       V2026_07_27: "2026-07-27",
+      V2026_08_03: "2026-08-03",
+      V2026_08_21: "2026-08-21",
+      V2026_09_28: "2026-09-28",
+      V2026_09_30: "2026-09-30",
+      V2026_10_03: "2026-10-03",
       Default: "2026-07-01",
-      Latest: "2026-07-27",
+      Latest: "2026-10-03",
     },
   };
 });
@@ -563,6 +599,7 @@ beforeEach(() => {
   mockState.instances.length = 0;
   mockState.lastCtorArgs = undefined;
   mockState.nextListSourcesError = undefined;
+  mockState.modelListResponse = { models: [] };
   delete process.env.SECLAI_API_VERSION;
 });
 
@@ -2285,4 +2322,219 @@ describe("seclai CLI — SDK 1.5.0 surface", () => {
     expect(bare.client.listEvaluationCriteria).toHaveBeenCalledWith("agent_1", { limit: 10 });
     expect(bare.client.listEvaluationCriteriaPage).not.toHaveBeenCalled();
   });
+});
+
+describe("seclai CLI — SDK 1.6.0 surface", () => {
+  async function invoke(argv: string[]) {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+    const before = mockState.instances.length;
+    await runCli(["node", "seclai", "--api-key", "k", ...argv], io.rt);
+    // Undefined when the command failed before building a client.
+    const client = mockState.instances.slice(before).pop();
+    return { io, client };
+  }
+
+  async function ok(argv: string[]) {
+    const { io, client } = await invoke(argv);
+    expect(io.stderr).toBe("");
+    expect(io.exitCode).toBe(0);
+    return { io, client: client as SeclaiMock };
+  }
+
+  // --- Cloud drives ---
+
+  test("cloud-drives providers and list print the SDK's array", async () => {
+    const providers = await ok(["cloud-drives", "providers"]);
+    expect(providers.client.listCloudDriveProviders).toHaveBeenCalledWith();
+    expect(JSON.parse(providers.io.stdout)).toEqual([{ key: "dropbox" }]);
+
+    const listed = await ok(["cloud-drives", "list"]);
+    expect(listed.client.listCloudDrives).toHaveBeenCalledWith();
+    expect(JSON.parse(listed.io.stdout)).toEqual([{ id: "cd_1" }]);
+  });
+
+  test("cloud-drives get, disconnect and agents pass the connection id", async () => {
+    const got = await ok(["cloud-drives", "get", "cd_1"]);
+    expect(got.client.getCloudDrive).toHaveBeenCalledWith("cd_1");
+
+    const disconnected = await ok(["cloud-drives", "disconnect", "cd_1"]);
+    expect(disconnected.client.disconnectCloudDrive).toHaveBeenCalledWith("cd_1");
+    expect(JSON.parse(disconnected.io.stdout)).toEqual({ id: "cd_1", status: "disconnected" });
+
+    const agents = await ok(["cloud-drives", "agents", "cd_1"]);
+    expect(agents.client.getAgentsUsingCloudDrive).toHaveBeenCalledWith("cd_1");
+  });
+
+  test("cloud-drives delete prints ok for the SDK's void", async () => {
+    const { client, io } = await ok(["cloud-drives", "delete", "cd_1"]);
+    expect(client.deleteCloudDrive).toHaveBeenCalledWith("cd_1");
+    expect(JSON.parse(io.stdout)).toEqual({ ok: true });
+  });
+
+  test("cloud-drives rejections omits limit unless passed", async () => {
+    const bare = await ok(["cloud-drives", "rejections", "cd_1"]);
+    expect(bare.client.listCloudDriveRejections).toHaveBeenCalledWith("cd_1", {});
+
+    const limited = await ok(["cloud-drives", "rejections", "cd_1", "--limit", "200"]);
+    expect(limited.client.listCloudDriveRejections).toHaveBeenCalledWith("cd_1", { limit: 200 });
+  });
+
+  test("cloud-drives update sends only the fields passed", async () => {
+    const renamed = await ok(["cloud-drives", "update", "cd_1", "--name", "Contracts"]);
+    expect(renamed.client.updateCloudDrive).toHaveBeenCalledWith("cd_1", { name: "Contracts" });
+
+    const moved = await ok(["cloud-drives", "update", "cd_1", "--folder-path", "/Inbox"]);
+    expect(moved.client.updateCloudDrive).toHaveBeenCalledWith("cd_1", { folder_path: "/Inbox" });
+
+    const both = await ok([
+      "cloud-drives",
+      "update",
+      "cd_1",
+      "--name",
+      "Contracts",
+      "--folder-path",
+      "/Shared drives/Legal/Inbox",
+    ]);
+    expect(both.client.updateCloudDrive).toHaveBeenCalledWith("cd_1", {
+      name: "Contracts",
+      folder_path: "/Shared drives/Legal/Inbox",
+    });
+  });
+
+  test("cloud-drives update --whole-drive sends an empty folder_path", async () => {
+    const { client } = await ok(["cloud-drives", "update", "cd_1", "--whole-drive"]);
+    expect(client.updateCloudDrive).toHaveBeenCalledWith("cd_1", { folder_path: "" });
+  });
+
+  test.each([
+    [["cloud-drives", "update", "cd_1"], "Nothing to update"],
+    [["cloud-drives", "update", "cd_1", "--folder-path", ""], "--whole-drive"],
+    [["cloud-drives", "update", "cd_1", "--folder-path", "  "], "--whole-drive"],
+    [["cloud-drives", "update", "cd_1", "--name", ""], "--name was given an empty value"],
+    [
+      ["cloud-drives", "update", "cd_1", "--folder-path", "/Inbox", "--whole-drive"],
+      "only one of",
+    ],
+  ])("cloud-drives update refuses %j", async (argv, message) => {
+    const { io, client } = await invoke(argv);
+    expect(io.exitCode).toBe(1);
+    expect(io.stderr).toContain(message);
+    expect(client).toBeUndefined();
+  });
+
+  // --- Source content status ---
+
+  test("sources contents list omits every option not passed", async () => {
+    const { client, io } = await ok(["sources", "contents", "list", "src_1"]);
+    expect(client.listSourceContents).toHaveBeenCalledWith("src_1", {});
+    expect(JSON.parse(io.stdout)).toEqual({
+      data: [],
+      pagination: { page: 1, limit: 20, total: 0 },
+    });
+  });
+
+  test("sources contents list maps its options", async () => {
+    const { client } = await ok([
+      "sources",
+      "contents",
+      "list",
+      "src_1",
+      "--page",
+      "2",
+      "--limit",
+      "50",
+      "--sort",
+      "title",
+      "--order",
+      "asc",
+      "--status",
+      "failed",
+      "--content-version-id",
+      "cv_1",
+      "--content-version-id",
+      " cv_2 ",
+    ]);
+    expect(client.listSourceContents).toHaveBeenCalledWith("src_1", {
+      page: 2,
+      limit: 50,
+      sort: "title",
+      order: "asc",
+      status: "failed",
+      contentVersionIds: ["cv_1", "cv_2"],
+    });
+  });
+
+  test.each([
+    [["--content-version-id", ""]],
+    [["--content-version-id", "   "]],
+    [["--content-version-id", "cv_1", "--content-version-id", ""]],
+  ])("sources contents list refuses a blank id: %j", async (flags) => {
+    const { io, client } = await invoke(["sources", "contents", "list", "src_1", ...flags]);
+    expect(io.exitCode).not.toBe(0);
+    expect(io.stderr).toContain("--content-version-id");
+    expect(client).toBeUndefined();
+  });
+
+  test("sources contents status", async () => {
+    const { client, io } = await ok(["sources", "contents", "status", "src_1", "cv_1"]);
+    expect(client.getSourceContentStatus).toHaveBeenCalledWith("src_1", "cv_1");
+    expect(JSON.parse(io.stdout)).toEqual({ content_status: "completed" });
+  });
+
+  // --- Embedders and rerankers ---
+
+  test("models embedders omits the filter unless passed", async () => {
+    const bare = await ok(["models", "embedders"]);
+    expect(bare.client.listEmbeddingModels).toHaveBeenCalledWith({});
+
+    const filtered = await ok(["models", "embedders", "--supports-input-media", "image"]);
+    expect(filtered.client.listEmbeddingModels).toHaveBeenCalledWith({
+      supportsInputMedia: "image",
+    });
+  });
+
+  test("models rerankers takes no arguments", async () => {
+    const { client } = await ok(["models", "rerankers"]);
+    expect(client.listRerankerModels).toHaveBeenCalledWith();
+  });
+
+  // What the SDK returns on the default version, and once the caller has opted
+  // into 2026-07-27: data and pagination arrive beside the models it fills.
+  const legacy = { models: [{ id: "m1" }], default_model_type: "m1" };
+  const pagination = { page: 1, limit: 1, total: 1 };
+  const versioned = { data: legacy.models, pagination, default_model_type: "m1", models: legacy.models };
+
+  test.each([["embedders"], ["rerankers"]])(
+    "models %s prints the same shape on either API version",
+    async (command) => {
+      mockState.modelListResponse = legacy;
+      const before = await ok(["models", command]);
+      mockState.modelListResponse = versioned;
+      const after = await ok(["models", command]);
+
+      expect(JSON.parse(before.io.stdout)).toEqual(legacy);
+      expect(JSON.parse(after.io.stdout)).toEqual(legacy);
+    },
+  );
+
+  test.each([["embedders"], ["rerankers"]])(
+    "models %s --paged reads from data on either API version",
+    async (command) => {
+      mockState.modelListResponse = legacy;
+      const before = await ok(["models", command, "--paged"]);
+      mockState.modelListResponse = versioned;
+      const after = await ok(["models", command, "--paged"]);
+
+      expect(JSON.parse(before.io.stdout)).toEqual({
+        data: [{ id: "m1" }],
+        default_model_type: "m1",
+      });
+      expect(JSON.parse(after.io.stdout)).toEqual({
+        data: [{ id: "m1" }],
+        pagination,
+        default_model_type: "m1",
+      });
+    },
+  );
 });

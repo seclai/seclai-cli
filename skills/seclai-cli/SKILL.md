@@ -2,7 +2,7 @@
 name: seclai-cli
 description: >-
   Manage Seclai agents, knowledge bases, sources, memory banks, evaluations,
-  solutions, governance, alerts, agent email, and models via the CLI. Use when
+  solutions, governance, alerts, agent email, cloud drives, and models via the CLI. Use when
   working with the Seclai platform or when the user mentions Seclai CLI commands.
 ---
 
@@ -10,7 +10,7 @@ description: >-
 
 The Seclai CLI (`seclai` / `npx @seclai/cli`) manages agents, knowledge bases,
 sources, memory banks, evaluations, solutions, governance, alerts, agent email,
-and models from the terminal.
+cloud drives, and models from the terminal.
 
 Every command writes JSON to stdout. Pipe into `jq` for filtering. Errors go to
 stderr and set a non-zero exit code, so `set -e` scripts fail as expected.
@@ -35,12 +35,13 @@ seclai agents runs list <agentId>
 | Group | What it covers | Reference |
 | --- | --- | --- |
 | `agents` | Agents, runs, definitions, export/import, input uploads, triggers, agent AI | [references/agents.md](references/agents.md) |
-| `sources` `contents` `kb` `memory` | Sources and uploads, exports, embedding migration, indexed content, knowledge bases, memory banks | [references/knowledge.md](references/knowledge.md) |
+| `sources` `contents` `kb` `memory` | Sources and uploads, indexing status, exports, embedding migration, indexed content, knowledge bases, memory banks | [references/knowledge.md](references/knowledge.md) |
 | `evals` | Evaluation criteria, results, runs, agent-level summaries | [references/evaluations.md](references/evaluations.md) |
 | `solutions` `governance` | Solutions, resource links, conversations, solution and governance AI | [references/solutions.md](references/solutions.md) |
 | `alerts` | Alerts, alert configurations, organization preferences | [references/alerts.md](references/alerts.md) |
 | `email` | Agent email: sending domains, inbound blocklist, inbound health, opt-outs | [references/email.md](references/email.md) |
-| `models` | Model catalog, generation tiers, model alerts, recommendations, playground experiments | [references/models.md](references/models.md) |
+| `cloud-drives` | Cloud-drive connections: providers, rename and re-point, dependent agents, skipped files, disconnect and delete | [references/cloud-drives.md](references/cloud-drives.md) |
+| `models` | Model catalog, embedders and rerankers, generation tiers, model alerts, recommendations, playground experiments | [references/models.md](references/models.md) |
 | `auth` `configure` `api-version` `mcp` `skills` `completion` | Authentication, profiles, API version pinning, editor integration | [references/setup.md](references/setup.md) |
 | `ai` | Top-level AI assistant for knowledge bases, sources, solutions and memory | [references/ai-assistant.md](references/ai-assistant.md) |
 | `search` `docs` `me` | Search across resources, search the documentation, show the authenticated account | below, under [Search and account](#search-and-account) |
@@ -90,6 +91,21 @@ version can reshape a response the CLI would then misread. Pass
 `--allow-unknown-api-version` to send it anyway. `api-version set` takes a
 `YYYY-MM-DD` date and rejects anything else, because the pin applies to every
 client on the account.
+
+Each version includes the changes of the ones before it:
+
+| Version | What it changes |
+| --- | --- |
+| `2026-07-01` | The baseline, applied when no version is sent and the account is not pinned |
+| `2026-07-27` | List responses move to `{data, pagination}`, and a query parameter the endpoint does not declare is rejected with a 422 |
+| `2026-08-03` | `memory create` and `memory update` reject a non-zero `max_age_days`, which reads as `null`; an omitted `retention_days` on create resolves per bank type |
+| `2026-08-21` | `sources create` rejects an embedding dimension its embedder does not support — `models embedders` reports the supported ones |
+| `2026-09-28` | Agent-definition writes such as `agents def update` use the current file-list grammar for a step's `attachments` |
+| `2026-09-30` | A run's and a step's `output`, and a step's `input`, are the text rather than a JSON manifest. Files are in `attachments` on every version |
+| `2026-10-03` | A new LLM step written without `attachments` takes its parent's files |
+
+To find a run's files, read `.attachments` rather than parsing `.output`: it is
+present on every version, and `.output` stops being JSON at `2026-09-30`.
 
 `--api-key`, `--profile`, `--account-id` and `--config-dir` reject an empty
 value. A shell expanding an unset variable passes `""`, which the SDK's

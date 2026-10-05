@@ -18,6 +18,22 @@ The capability flags compose, so `--supports-tool-use --supports-thinking`
 returns only models with both. `--supports-input-media` / `--supports-output-media`
 take a modality such as `image`, `audio` or `video`.
 
+## Embedders and rerankers
+
+```bash
+seclai models embedders [--supports-input-media text|image|video|audio] [--paged]
+seclai models rerankers [--paged]
+```
+
+`embedders` lists the embedding models a source can index with. Each entry's
+`model_type` is the value `sources create` takes as `embedding_model`, and
+`dimensions` lists the dimension counts that model supports. `rerankers` lists
+the models a knowledge base can rerank with.
+
+Both print the list under `models`, with the defaults and pricing beside it,
+whatever API version is in effect. `--paged` prints the list under `data`
+instead, with the `pagination` block once the API sends one.
+
 ## Model alerts
 
 ```bash

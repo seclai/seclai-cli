@@ -21,6 +21,7 @@ import { register as registerSolutions } from "./commands/solutions.js";
 import { register as registerGovernance } from "./commands/governance.js";
 import { register as registerAlerts } from "./commands/alerts.js";
 import { register as registerEmail } from "./commands/email.js";
+import { register as registerCloudDrives } from "./commands/cloud-drives.js";
 import { register as registerAccount } from "./commands/account.js";
 import { register as registerModels } from "./commands/models.js";
 import { register as registerSearch } from "./commands/search.js";
@@ -67,7 +68,7 @@ export function createProgram(rt: CliRuntime = defaultRuntime()): Command {
     )
     .option(
       "--api-version <date>",
-      "Opt into dated API changes released on or before this YYYY-MM-DD (defaults to SECLAI_API_VERSION; omitted means the account default)."
+      "Opt into dated API changes released on or before this YYYY-MM-DD (defaults to SECLAI_API_VERSION; omitted means the account default). 'seclai api-version --help' lists the versions."
     )
     .option(
       "--allow-unknown-api-version",
@@ -134,6 +135,7 @@ export function createProgram(rt: CliRuntime = defaultRuntime()): Command {
   registerGovernance(program, rt);
   registerAlerts(program, rt);
   registerEmail(program, rt);
+  registerCloudDrives(program, rt);
   registerAccount(program, rt);
   registerModels(program, rt);
   registerSearch(program, rt);

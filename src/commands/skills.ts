@@ -14,7 +14,7 @@ const SKILL_FILES: Array<{ name: string; content: string }> = [
 name: seclai-cli
 description: >-
   Manage Seclai agents, knowledge bases, sources, memory banks, evaluations,
-  solutions, governance, alerts, agent email, and models via the CLI. Use when
+  solutions, governance, alerts, agent email, cloud drives, and models via the CLI. Use when
   working with the Seclai platform or when the user mentions Seclai CLI commands.
 ---
 
@@ -22,7 +22,7 @@ description: >-
 
 The Seclai CLI (\`seclai\` / \`npx @seclai/cli\`) manages agents, knowledge bases,
 sources, memory banks, evaluations, solutions, governance, alerts, agent email,
-and models from the terminal.
+cloud drives, and models from the terminal.
 
 Every command writes JSON to stdout. Pipe into \`jq\` for filtering. Errors go to
 stderr and set a non-zero exit code, so \`set -e\` scripts fail as expected.
@@ -47,12 +47,13 @@ seclai agents runs list <agentId>
 | Group | What it covers | Reference |
 | --- | --- | --- |
 | \`agents\` | Agents, runs, definitions, export/import, input uploads, triggers, agent AI | [references/agents.md](references/agents.md) |
-| \`sources\` \`contents\` \`kb\` \`memory\` | Sources and uploads, exports, embedding migration, indexed content, knowledge bases, memory banks | [references/knowledge.md](references/knowledge.md) |
+| \`sources\` \`contents\` \`kb\` \`memory\` | Sources and uploads, indexing status, exports, embedding migration, indexed content, knowledge bases, memory banks | [references/knowledge.md](references/knowledge.md) |
 | \`evals\` | Evaluation criteria, results, runs, agent-level summaries | [references/evaluations.md](references/evaluations.md) |
 | \`solutions\` \`governance\` | Solutions, resource links, conversations, solution and governance AI | [references/solutions.md](references/solutions.md) |
 | \`alerts\` | Alerts, alert configurations, organization preferences | [references/alerts.md](references/alerts.md) |
 | \`email\` | Agent email: sending domains, inbound blocklist, inbound health, opt-outs | [references/email.md](references/email.md) |
-| \`models\` | Model catalog, generation tiers, model alerts, recommendations, playground experiments | [references/models.md](references/models.md) |
+| \`cloud-drives\` | Cloud-drive connections: providers, rename and re-point, dependent agents, skipped files, disconnect and delete | [references/cloud-drives.md](references/cloud-drives.md) |
+| \`models\` | Model catalog, embedders and rerankers, generation tiers, model alerts, recommendations, playground experiments | [references/models.md](references/models.md) |
 | \`auth\` \`configure\` \`api-version\` \`mcp\` \`skills\` \`completion\` | Authentication, profiles, API version pinning, editor integration | [references/setup.md](references/setup.md) |
 | \`ai\` | Top-level AI assistant for knowledge bases, sources, solutions and memory | [references/ai-assistant.md](references/ai-assistant.md) |
 | \`search\` \`docs\` \`me\` | Search across resources, search the documentation, show the authenticated account | below, under [Search and account](#search-and-account) |
@@ -102,6 +103,21 @@ version can reshape a response the CLI would then misread. Pass
 \`--allow-unknown-api-version\` to send it anyway. \`api-version set\` takes a
 \`YYYY-MM-DD\` date and rejects anything else, because the pin applies to every
 client on the account.
+
+Each version includes the changes of the ones before it:
+
+| Version | What it changes |
+| --- | --- |
+| \`2026-07-01\` | The baseline, applied when no version is sent and the account is not pinned |
+| \`2026-07-27\` | List responses move to \`{data, pagination}\`, and a query parameter the endpoint does not declare is rejected with a 422 |
+| \`2026-08-03\` | \`memory create\` and \`memory update\` reject a non-zero \`max_age_days\`, which reads as \`null\`; an omitted \`retention_days\` on create resolves per bank type |
+| \`2026-08-21\` | \`sources create\` rejects an embedding dimension its embedder does not support — \`models embedders\` reports the supported ones |
+| \`2026-09-28\` | Agent-definition writes such as \`agents def update\` use the current file-list grammar for a step's \`attachments\` |
+| \`2026-09-30\` | A run's and a step's \`output\`, and a step's \`input\`, are the text rather than a JSON manifest. Files are in \`attachments\` on every version |
+| \`2026-10-03\` | A new LLM step written without \`attachments\` takes its parent's files |
+
+To find a run's files, read \`.attachments\` rather than parsing \`.output\`: it is
+present on every version, and \`.output\` stops being JSON at \`2026-09-30\`.
 
 \`--api-key\`, \`--profile\`, \`--account-id\` and \`--config-dir\` reject an empty
 value. A shell expanding an unset variable passes \`""\`, which the SDK's
@@ -353,6 +369,64 @@ seclai alerts prefs update <organizationId> <alertType> --json '{"enabled":true}
 
 Preferences are per organization and per alert type, so \`update\` takes both.
 ` },
+  { name: "references/cloud-drives.md", content: `# Cloud drives
+
+The cloud-drive connections that file triggers, drive steps and \`cloud_drive\`
+sources read from. Connecting a drive is an OAuth flow in the app, so there is
+no \`create\` here — these commands inspect and maintain connections that exist.
+
+## Connections
+
+\`\`\`bash
+seclai cloud-drives providers            # providers that can be connected, with their access levels
+seclai cloud-drives list
+seclai cloud-drives get <connectionId>
+\`\`\`
+
+The listings print a plain array on every API version. A connection's \`status\`
+is one of \`active\`, \`pending_auth\`, \`error\` or \`disconnected\`, and \`last_error\`
+holds the most recent sync or authorization failure.
+
+## Rename or re-point
+
+\`\`\`bash
+seclai cloud-drives update <connectionId> --name "Contracts"
+seclai cloud-drives update <connectionId> --folder-path "/Inbox"
+seclai cloud-drives update <connectionId> --folder-path "/Shared drives/Legal/Inbox"
+seclai cloud-drives update <connectionId> --whole-drive
+\`\`\`
+
+Only the fields you pass change. Changing the folder resets the sync cursor, so
+files already in the new folder do not fire triggers — only later changes do.
+An empty \`--folder-path\` is refused, because the API reads it as the whole
+drive; pass \`--whole-drive\` when that is what you mean.
+
+## Why did my agent not run for a file?
+
+\`\`\`bash
+seclai cloud-drives rejections <connectionId> [--limit N]
+\`\`\`
+
+A skipped file fires no trigger and appears nowhere else. Each rejection carries
+a \`reason\`: \`too_large\`, \`download_failed\` or \`flood\`. Newest first; \`--limit\`
+takes 1 to 200 and defaults to 50.
+
+## Disconnect or delete
+
+\`\`\`bash
+seclai cloud-drives agents <connectionId>      # agents using the connection
+seclai cloud-drives disconnect <connectionId>  # revoke tokens, keep the connection
+seclai cloud-drives delete <connectionId>
+\`\`\`
+
+\`disconnect\` prints the connection in its disconnected state; agents bound to it
+stop firing until it is reconnected from the app.
+
+\`delete\` is refused with a 409 while an agent trigger or a content source still
+depends on the connection. \`agents\` lists the agents but not the content
+sources, so an empty result does not mean the delete will go through — the 409
+is the authoritative answer.
+` },
   { name: "references/email.md", content: `# Agent email
 
 The domains agents send from, the inbound blocklist, inbound health, and
@@ -499,6 +573,32 @@ seclai sources upload <sourceId> --file ./doc.pdf [--title "My Doc"] [--metadata
 seclai sources upload-text <sourceId> --json '{"text":"Article content here...","title":"My Article"}'
 \`\`\`
 
+## Indexing status
+
+An upload returns before the content is searchable. Both upload commands return
+a \`content_version_id\`; poll it until \`content_status\` is \`completed\` or
+\`failed\`.
+
+\`\`\`bash
+seclai sources contents status <sourceId> <contentVersionId>
+seclai sources contents list <sourceId> [--page N] [--limit N] [--sort created_at|title|status] [--order asc|desc]
+seclai sources contents list <sourceId> --status failed
+seclai sources contents list <sourceId> --content-version-id <id> --content-version-id <id>
+\`\`\`
+
+\`content_status\` is one of \`pending\`, \`fetching\`, \`transcribing\`, \`scanning\`,
+\`indexing\`, \`completed\` or \`failed\`; a failed item carries the reason in
+\`error\`. \`list\` prints \`{data, pagination}\` on every API version, with \`--limit\`
+from 1 to 100.
+
+Repeat \`--content-version-id\` to poll a batch of uploads in one request. Keep a
+request to about 100 ids — they travel in the URL, and one over 8,192 bytes is
+rejected with a 414 — and split a larger batch across calls. An empty id is
+refused rather than dropped, so build the flags from ids you actually hold.
+
+\`source_connection_content_version_id\` in the result is the id \`contents get\`
+takes. It is \`null\` until the item has finished indexing.
+
 ## Source exports
 
 \`\`\`bash
@@ -606,6 +706,22 @@ seclai models tiers
 The capability flags compose, so \`--supports-tool-use --supports-thinking\`
 returns only models with both. \`--supports-input-media\` / \`--supports-output-media\`
 take a modality such as \`image\`, \`audio\` or \`video\`.
+
+## Embedders and rerankers
+
+\`\`\`bash
+seclai models embedders [--supports-input-media text|image|video|audio] [--paged]
+seclai models rerankers [--paged]
+\`\`\`
+
+\`embedders\` lists the embedding models a source can index with. Each entry's
+\`model_type\` is the value \`sources create\` takes as \`embedding_model\`, and
+\`dimensions\` lists the dimension counts that model supports. \`rerankers\` lists
+the models a knowledge base can rerank with.
+
+Both print the list under \`models\`, with the defaults and pricing beside it,
+whatever API version is in effect. \`--paged\` prints the list under \`data\`
+instead, with the \`pagination\` block once the API sends one.
 
 ## Model alerts
 
@@ -842,6 +958,18 @@ seclai sources upload <sourceId> --file ./doc.pdf --metadata-file ./meta.json
 ## Upload text directly
 \`\`\`bash
 seclai sources upload-text <sourceId> --json '{"text":"Article content here...","title":"My Article"}'
+\`\`\`
+
+## Check that an upload finished indexing
+\`\`\`bash
+# content_version_id comes from the upload's output
+seclai sources contents status <sourceId> <contentVersionId>
+
+# several uploads in one request (about 100 ids at most)
+seclai sources contents list <sourceId> --content-version-id <id> --content-version-id <id>
+
+# everything in the source that could not be indexed
+seclai sources contents list <sourceId> --status failed
 \`\`\`
 
 ## Upload input for agent runs
