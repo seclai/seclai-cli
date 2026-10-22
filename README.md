@@ -225,7 +225,7 @@ seclai agents triggers email-config <agentId> <triggerId> --json '{"alias":"supp
 # Named input attachments a dynamic_input or email_received trigger accepts.
 # Steps reference them as {{agent.attachments.<name>}}; min defaults to 0, and null accepts any files.
 seclai agents triggers accepted-attachments <agentId> <triggerId> \
-  --json '[{"name":"invoice","content_types":["application/pdf"],"min":1,"max":1}]'
+  --json '{"accepted_attachments":[{"name":"invoice","content_types":["application/pdf"],"min":1,"max":1}]}'
 ```
 
 #### Running Agents

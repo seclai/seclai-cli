@@ -149,8 +149,8 @@ export function register(program: Command, rt: CliRuntime): void {
     .command("accepted-attachments")
     .description(
       "Replace the named input attachments a dynamic_input or email_received trigger accepts. " +
-        "The body is {\"accepted_attachments\": [...]} or the bare list; each slot takes name, " +
-        "label, content_types, min (default 0) and max. Pass null to accept any files.",
+        "Each slot in accepted_attachments takes name, label, content_types, min (default 0) and max; " +
+        "set accepted_attachments to null to accept any files.",
     )
     .argument("<agentId>", "Agent ID.")
     .argument("<triggerId>", "Trigger ID, as 'agents get' returns it.")
@@ -159,13 +159,7 @@ export function register(program: Command, rt: CliRuntime): void {
     .action(async (agentId: string, triggerId: string, opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
-        const input = await readJsonInput(rt, { json: opts.json, jsonFile: opts.jsonFile });
-        // A bare list (or null) is the slots themselves; anything else is the request body.
-        if (input !== null && typeof input !== "object") {
-          throw new Error("Expected a JSON object, a list of attachment slots, or null.");
-        }
-        const body =
-          input === null || Array.isArray(input) ? { accepted_attachments: input } : input;
+        const body = await readJsonInput(rt, { json: opts.json, jsonFile: opts.jsonFile });
         printJson(
           rt,
           await client.setAcceptedAttachments(

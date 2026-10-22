@@ -2622,35 +2622,12 @@ describe("seclai CLI — SDK 1.7.0 surface", () => {
 
   // --- Accepted attachments ---
 
-  test("agents triggers accepted-attachments wraps a bare list", async () => {
-    const slots = [{ name: "invoice", content_types: ["application/pdf"], max: 1 }];
+  test("agents triggers accepted-attachments passes the body through", async () => {
+    const body = { accepted_attachments: [{ name: "invoice", content_types: ["application/pdf"], max: 1 }] };
     const { client } = await ok([
-      "agents", "triggers", "accepted-attachments", "agent_1", "trig_1", "--json", JSON.stringify(slots),
-    ]);
-    expect(client.setAcceptedAttachments).toHaveBeenCalledWith("agent_1", "trig_1", {
-      accepted_attachments: slots,
-    });
-  });
-
-  test("agents triggers accepted-attachments passes a full body and null through", async () => {
-    const body = { accepted_attachments: [{ name: "files" }] };
-    const full = await ok([
       "agents", "triggers", "accepted-attachments", "agent_1", "trig_1", "--json", JSON.stringify(body),
     ]);
-    expect(full.client.setAcceptedAttachments).toHaveBeenCalledWith("agent_1", "trig_1", body);
-
-    const any = await ok(["agents", "triggers", "accepted-attachments", "agent_1", "trig_1", "--json", "null"]);
-    expect(any.client.setAcceptedAttachments).toHaveBeenCalledWith("agent_1", "trig_1", {
-      accepted_attachments: null,
-    });
-  });
-
-  test("agents triggers accepted-attachments rejects a scalar body", async () => {
-    const { io, client } = await invoke([
-      "agents", "triggers", "accepted-attachments", "agent_1", "trig_1", "--json", "5",
-    ]);
-    expect(io.exitCode).not.toBe(0);
-    expect(client?.setAcceptedAttachments).not.toHaveBeenCalled();
+    expect(client.setAcceptedAttachments).toHaveBeenCalledWith("agent_1", "trig_1", body);
   });
 
   // --- Email source rejections ---
