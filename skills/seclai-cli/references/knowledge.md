@@ -51,6 +51,17 @@ refused rather than dropped, so build the flags from ids you actually hold.
 `source_connection_content_version_id` in the result is the id `contents get`
 takes. It is `null` until the item has finished indexing.
 
+## Email sources
+
+```bash
+# Mail an email source refused: sender and reason, never subject or body
+seclai sources email-rejections <sourceId> [--page N] [--limit N]
+```
+
+To accept a refused sender, add its address or domain to the source's
+`email_allowed_senders` with `sources update` — which only helps when the
+rejection says `authenticated` is true.
+
 ## Source exports
 
 ```bash
@@ -85,6 +96,22 @@ seclai contents embeddings <contentVersionId> [--page N] [--limit N]
 
 `--start` / `--end` on `contents get` slice the returned text by character
 offset, which is how you inspect a long document without pulling all of it.
+
+## Content attachments
+
+Files attached to a content item — email attachments, RSS enclosures from
+`feed_attachments`, web page media, the images inside a document — each with
+whether it is indexed and, when indexing failed, why.
+
+```bash
+seclai contents attachments list <contentVersionId> [--page N] [--limit N]
+seclai contents attachments get <contentVersionId> <attachmentId> [--start N] [--end N]
+seclai contents attachments embeddings <contentVersionId> <attachmentId> [--page N] [--limit N]
+seclai contents attachments download <contentVersionId> <attachmentId> [--output <path>]
+```
+
+`download` answers 403 for a file withheld by a governance policy or still
+being indexed; `get` reports `file_withheld` first.
 
 ## Knowledge bases
 

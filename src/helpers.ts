@@ -464,3 +464,30 @@ export async function readAiInput(
   const jsonFileArg = opts.jsonFile !== undefined ? { jsonFile: opts.jsonFile } : {};
   return readJsonInput(rt, { ...jsonArg, ...jsonFileArg });
 }
+
+/**
+ * Write a download response to `output`, streaming so large files are never
+ * buffered whole, and print `{saved, bytes}`. With no `output`, write the raw
+ * bytes to stdout.
+ */
+export async function writeDownload(rt: CliRuntime, res: Response, output?: string): Promise<void> {
+  if (!output) {
+    rt.writeOutBytes(new Uint8Array(await res.arrayBuffer()));
+    return;
+  }
+  const { createWriteStream } = await import("node:fs");
+  const { stat, writeFile } = await import("node:fs/promises");
+  if (res.body) {
+    const { Readable } = await import("node:stream");
+    const { pipeline } = await import("node:stream/promises");
+    await pipeline(
+      Readable.fromWeb(res.body as Parameters<typeof Readable.fromWeb>[0]),
+      createWriteStream(output),
+    );
+  } else {
+    // Fallback for runtimes/mocks without a streamable body.
+    await writeFile(output, Buffer.from(await res.arrayBuffer()));
+  }
+  const { size } = await stat(output);
+  printJson(rt, { saved: output, bytes: size });
+}

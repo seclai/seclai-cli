@@ -13,6 +13,7 @@ import {
   parseNumber,
   toPagedEnvelope,
   warnDeprecated,
+  writeDownload,
 } from "../helpers.js";
 
 /** Register `agents` commands: CRUD, run (basic/stream/events/poll), runs, definition, export, input uploads, AI assistant. */
@@ -139,6 +140,38 @@ export function register(program: Command, rt: CliRuntime): void {
             agentId,
             triggerId,
             body as Parameters<typeof client.setEmailTriggerConfig>[2],
+          ),
+        );
+      });
+    });
+
+  triggers
+    .command("accepted-attachments")
+    .description(
+      "Replace the named input attachments a dynamic_input or email_received trigger accepts. " +
+        "The body is {\"accepted_attachments\": [...]} or the bare list; each slot takes name, " +
+        "label, content_types, min (default 0) and max. Pass null to accept any files.",
+    )
+    .argument("<agentId>", "Agent ID.")
+    .argument("<triggerId>", "Trigger ID, as 'agents get' returns it.")
+    .option("--json <json>", "Accepted attachments JSON. Use '-' for stdin.")
+    .option("--json-file <path>", "Accepted attachments JSON file. Use '-' for stdin.")
+    .action(async (agentId: string, triggerId: string, opts) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        const input = await readJsonInput(rt, { json: opts.json, jsonFile: opts.jsonFile });
+        // A bare list (or null) is the slots themselves; anything else is the request body.
+        if (input !== null && typeof input !== "object") {
+          throw new Error("Expected a JSON object, a list of attachment slots, or null.");
+        }
+        const body =
+          input === null || Array.isArray(input) ? { accepted_attachments: input } : input;
+        printJson(
+          rt,
+          await client.setAcceptedAttachments(
+            agentId,
+            triggerId,
+            body as Parameters<typeof client.setAcceptedAttachments>[2],
           ),
         );
       });
@@ -322,28 +355,7 @@ export function register(program: Command, rt: CliRuntime): void {
           attachmentId,
           opts.downloadName ? { downloadName: opts.downloadName } : {},
         );
-        if (opts.output) {
-          const { createWriteStream } = await import("node:fs");
-          const { stat } = await import("node:fs/promises");
-          if (res.body) {
-            // Stream the body straight to disk so large attachments never get
-            // buffered fully in memory.
-            const { Readable } = await import("node:stream");
-            const { pipeline } = await import("node:stream/promises");
-            await pipeline(
-              Readable.fromWeb(res.body as Parameters<typeof Readable.fromWeb>[0]),
-              createWriteStream(opts.output),
-            );
-          } else {
-            // Fallback for runtimes/mocks without a streamable body.
-            const { writeFile } = await import("node:fs/promises");
-            await writeFile(opts.output, Buffer.from(await res.arrayBuffer()));
-          }
-          const { size } = await stat(opts.output);
-          printJson(rt, { saved: opts.output, bytes: size });
-        } else {
-          rt.writeOutBytes(new Uint8Array(await res.arrayBuffer()));
-        }
+        await writeDownload(rt, res, opts.output);
       });
     });
 

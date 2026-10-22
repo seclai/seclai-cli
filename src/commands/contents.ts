@@ -9,9 +9,10 @@ import {
   parseNumber,
   withFileUploadOptions,
   listOpts,
+  writeDownload,
 } from "../helpers.js";
 
-/** Register `contents` commands: get, delete, upload/replace, replace-text, embeddings. */
+/** Register `contents` commands: get, delete, upload/replace, replace-text, embeddings, attachments. */
 export function register(program: Command, rt: CliRuntime): void {
   const contents = program
     .command("contents")
@@ -80,6 +81,76 @@ export function register(program: Command, rt: CliRuntime): void {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
         printJson(rt, await client.listContentEmbeddings(contentVersionId, listOpts(opts)));
+      });
+    });
+
+  // --- Attachments ---
+
+  const attachments = contents
+    .command("attachments")
+    .description("Files attached to a content item: email attachments, feed enclosures, page media, document images.");
+
+  attachments
+    .command("list")
+    .description("List a content item's attachments with their indexing status.")
+    .argument("<contentVersionId>", "Content version ID.")
+    .option("--page <n>", "Page number.", parseNumber)
+    .option("--limit <n>", "Page size.", parseNumber)
+    .action(async (contentVersionId: string, opts) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        printJson(rt, await client.listContentAttachments(contentVersionId, listOpts(opts)));
+      });
+    });
+
+  attachments
+    .command("get")
+    .description("Get one attachment: its status, metadata, and the text it is indexed by.")
+    .argument("<contentVersionId>", "Content version ID.")
+    .argument("<attachmentId>", "Attachment ID, from 'contents attachments list'.")
+    .option("--start <n>", "Text start offset (0-based, server default 0).", parseNumber)
+    .option("--end <n>", "Text end offset (exclusive, server default 5000; 0 returns no text).", parseNumber)
+    .action(async (contentVersionId: string, attachmentId: string, opts) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        const o: { start?: number; end?: number } = {};
+        if (opts.start !== undefined) o.start = opts.start;
+        if (opts.end !== undefined) o.end = opts.end;
+        printJson(rt, await client.getContentAttachment(contentVersionId, attachmentId, o));
+      });
+    });
+
+  attachments
+    .command("embeddings")
+    .description("List the embeddings an attachment is indexed by.")
+    .argument("<contentVersionId>", "Content version ID.")
+    .argument("<attachmentId>", "Attachment ID.")
+    .option("--page <n>", "Page number.", parseNumber)
+    .option("--limit <n>", "Page size (1-100).", parseNumber)
+    .action(async (contentVersionId: string, attachmentId: string, opts) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        printJson(
+          rt,
+          await client.listContentAttachmentEmbeddings(contentVersionId, attachmentId, listOpts(opts)),
+        );
+      });
+    });
+
+  attachments
+    .command("download")
+    .description(
+      "Download an attachment's bytes. The API answers 403 for a file withheld by governance " +
+        "or still being indexed; the attachment's file_withheld field says which.",
+    )
+    .argument("<contentVersionId>", "Content version ID.")
+    .argument("<attachmentId>", "Attachment ID.")
+    .option("--output <path>", "Write the bytes to this file. If omitted, raw bytes are written to stdout.")
+    .action(async (contentVersionId: string, attachmentId: string, opts) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        const res = await client.downloadContentAttachment(contentVersionId, attachmentId);
+        await writeDownload(rt, res, opts.output);
       });
     });
 }

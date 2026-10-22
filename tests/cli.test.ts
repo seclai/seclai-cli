@@ -54,12 +54,18 @@ type SeclaiMock = {
   enableAgent: ReturnType<typeof vi.fn>;
   getAgentCallers: ReturnType<typeof vi.fn>;
   setEmailTriggerConfig: ReturnType<typeof vi.fn>;
+  setAcceptedAttachments: ReturnType<typeof vi.fn>;
+  listEmailSourceRejections: ReturnType<typeof vi.fn>;
   // contents
   uploadFileToContent: ReturnType<typeof vi.fn>;
   getContentDetail: ReturnType<typeof vi.fn>;
   deleteContent: ReturnType<typeof vi.fn>;
   listContentEmbeddings: ReturnType<typeof vi.fn>;
   replaceContentWithInlineText: ReturnType<typeof vi.fn>;
+  listContentAttachments: ReturnType<typeof vi.fn>;
+  getContentAttachment: ReturnType<typeof vi.fn>;
+  listContentAttachmentEmbeddings: ReturnType<typeof vi.fn>;
+  downloadContentAttachment: ReturnType<typeof vi.fn>;
   // kb
   listKnowledgeBases: ReturnType<typeof vi.fn>;
   createKnowledgeBase: ReturnType<typeof vi.fn>;
@@ -350,6 +356,8 @@ vi.mock("@seclai/sdk", () => {
     enableAgent = vi.fn(async () => ({ ok: true }));
     getAgentCallers = vi.fn(async () => []);
     setEmailTriggerConfig = vi.fn(async () => ({ ok: true }));
+    setAcceptedAttachments = vi.fn(async () => ({ accepted_attachments: [] }));
+    listEmailSourceRejections = vi.fn(async () => ({ data: [], pagination: {} }));
 
     // contents
     uploadFileToContent = vi.fn(async () => ({ ok: true }));
@@ -357,6 +365,10 @@ vi.mock("@seclai/sdk", () => {
     deleteContent = vi.fn(async () => undefined);
     listContentEmbeddings = vi.fn(async () => ({ ok: true }));
     replaceContentWithInlineText = vi.fn(async () => ({ ok: true }));
+    listContentAttachments = vi.fn(async () => ({ data: [], pagination: {} }));
+    getContentAttachment = vi.fn(async () => ({ id: "att_1" }));
+    listContentAttachmentEmbeddings = vi.fn(async () => ({ data: [], pagination: {} }));
+    downloadContentAttachment = vi.fn(async () => new Response("attachment-bytes"));
 
     // kb
     listKnowledgeBases = vi.fn(async () => ({ data: [] }));
@@ -2537,4 +2549,106 @@ describe("seclai CLI — SDK 1.6.0 surface", () => {
       });
     },
   );
+});
+
+describe("seclai CLI — SDK 1.7.0 surface", () => {
+  async function invoke(argv: string[]) {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+    const before = mockState.instances.length;
+    await runCli(["node", "seclai", "--api-key", "k", ...argv], io.rt);
+    const client = mockState.instances.slice(before).pop();
+    return { io, client };
+  }
+
+  async function ok(argv: string[]) {
+    const { io, client } = await invoke(argv);
+    expect(io.stderr).toBe("");
+    expect(io.exitCode).toBe(0);
+    return { io, client: client as SeclaiMock };
+  }
+
+  // --- Content attachments ---
+
+  test("contents attachments list passes paging only when given", async () => {
+    const bare = await ok(["contents", "attachments", "list", "cv_1"]);
+    expect(bare.client.listContentAttachments).toHaveBeenCalledWith("cv_1", {});
+
+    const paged = await ok(["contents", "attachments", "list", "cv_1", "--page", "2", "--limit", "5"]);
+    expect(paged.client.listContentAttachments).toHaveBeenCalledWith("cv_1", { page: 2, limit: 5 });
+  });
+
+  test("contents attachments get sends start and end as given, including end 0", async () => {
+    const bare = await ok(["contents", "attachments", "get", "cv_1", "att_1"]);
+    expect(bare.client.getContentAttachment).toHaveBeenCalledWith("cv_1", "att_1", {});
+
+    const ranged = await ok(["contents", "attachments", "get", "cv_1", "att_1", "--start", "0", "--end", "0"]);
+    expect(ranged.client.getContentAttachment).toHaveBeenCalledWith("cv_1", "att_1", { start: 0, end: 0 });
+  });
+
+  test("contents attachments embeddings", async () => {
+    const { client } = await ok(["contents", "attachments", "embeddings", "cv_1", "att_1", "--limit", "10"]);
+    expect(client.listContentAttachmentEmbeddings).toHaveBeenCalledWith("cv_1", "att_1", { limit: 10 });
+  });
+
+  test("contents attachments download writes raw bytes to stdout", async () => {
+    const { io, client } = await ok(["contents", "attachments", "download", "cv_1", "att_1"]);
+    expect(client.downloadContentAttachment).toHaveBeenCalledWith("cv_1", "att_1");
+    expect(io.stdoutBytes.toString("utf8")).toBe("attachment-bytes");
+  });
+
+  test("contents attachments download --output saves the file", async () => {
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), "seclai-cli-"));
+    const outPath = path.join(tmpDir, "att.bin");
+    try {
+      const { io } = await ok(["contents", "attachments", "download", "cv_1", "att_1", "--output", outPath]);
+      expect(await readFile(outPath, "utf8")).toBe("attachment-bytes");
+      expect(JSON.parse(io.stdout)).toEqual({ saved: outPath, bytes: 16 });
+    } finally {
+      await rm(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  // --- Accepted attachments ---
+
+  test("agents triggers accepted-attachments wraps a bare list", async () => {
+    const slots = [{ name: "invoice", content_types: ["application/pdf"], max: 1 }];
+    const { client } = await ok([
+      "agents", "triggers", "accepted-attachments", "agent_1", "trig_1", "--json", JSON.stringify(slots),
+    ]);
+    expect(client.setAcceptedAttachments).toHaveBeenCalledWith("agent_1", "trig_1", {
+      accepted_attachments: slots,
+    });
+  });
+
+  test("agents triggers accepted-attachments passes a full body and null through", async () => {
+    const body = { accepted_attachments: [{ name: "files" }] };
+    const full = await ok([
+      "agents", "triggers", "accepted-attachments", "agent_1", "trig_1", "--json", JSON.stringify(body),
+    ]);
+    expect(full.client.setAcceptedAttachments).toHaveBeenCalledWith("agent_1", "trig_1", body);
+
+    const any = await ok(["agents", "triggers", "accepted-attachments", "agent_1", "trig_1", "--json", "null"]);
+    expect(any.client.setAcceptedAttachments).toHaveBeenCalledWith("agent_1", "trig_1", {
+      accepted_attachments: null,
+    });
+  });
+
+  test("agents triggers accepted-attachments rejects a scalar body", async () => {
+    const { io, client } = await invoke([
+      "agents", "triggers", "accepted-attachments", "agent_1", "trig_1", "--json", "5",
+    ]);
+    expect(io.exitCode).not.toBe(0);
+    expect(client?.setAcceptedAttachments).not.toHaveBeenCalled();
+  });
+
+  // --- Email source rejections ---
+
+  test("sources email-rejections", async () => {
+    const bare = await ok(["sources", "email-rejections", "src_1"]);
+    expect(bare.client.listEmailSourceRejections).toHaveBeenCalledWith("src_1", {});
+
+    const paged = await ok(["sources", "email-rejections", "src_1", "--limit", "25"]);
+    expect(paged.client.listEmailSourceRejections).toHaveBeenCalledWith("src_1", { limit: 25 });
+  });
 });

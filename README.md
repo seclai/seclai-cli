@@ -170,6 +170,12 @@ prints the same list.
 | `2026-09-28` | Agent-definition writes such as `agents def update` use the current file-list grammar for a step's `attachments` |
 | `2026-09-30` | A run's and a step's `output`, and a step's `input`, are the text rather than a JSON manifest. Files are in `attachments` on every version |
 | `2026-10-03` | A new LLM step written without `attachments` takes its parent's files |
+| `2026-10-05` | An item held for review by a governance policy reports `content_status` `completed` instead of `failed`; read `held_for_review` to find holds |
+| `2026-10-13` | `sources create` and `sources update` reject a `media_types` value other than `images` or `video`, or any value on a source that is not a website or RSS feed, with a 400 where it was dropped |
+| `2026-10-16` | An upload of any type is `ready` at once, and its extracted text is no longer written into a run's `input` |
+| `2026-10-18` | A source's `document_images` defaults to `true` on a text-only embedder |
+| `2026-10-19` | `sources create` rejects `polling_max_items` on any source but an RSS feed with a 400 where it was stored |
+| `2026-10-21` | An evaluation result whose evaluator returned no verdict (`status` `error`) is left out of the failed counts, rates and average scores, and `evals test-draft` returns its `score` and `passed` as `null` instead of 0.5 and `false` |
 
 `2026-09-30` changes what `agents run` and `agents runs get` print: a script
 that parses `.output` as JSON to find a run's files should read `.attachments`
@@ -215,6 +221,11 @@ seclai agents callers <agentId>
 ```bash
 # Alias, sender allowlist, and inbound-handling flags for an EMAIL_RECEIVED trigger
 seclai agents triggers email-config <agentId> <triggerId> --json '{"alias":"support"}'
+
+# Named input attachments a dynamic_input or email_received trigger accepts.
+# Steps reference them as {{agent.attachments.<name>}}; min defaults to 0, and null accepts any files.
+seclai agents triggers accepted-attachments <agentId> <triggerId> \
+  --json '[{"name":"invoice","content_types":["application/pdf"],"min":1,"max":1}]'
 ```
 
 #### Running Agents
@@ -234,6 +245,7 @@ seclai agents run <agentId> --json '{"input":"Hi"}' --stream --timeout-ms 60000
 seclai agents run <agentId> --json '{"input":"Hi"}' --events
 seclai agents run <agentId> --json '{"input":"Hi"}' --events --event-filter status
 seclai agents run <agentId> --json '{"input":"Hi"}' --events --output data
+seclai agents run <agentId> --json '{"input":"Hi","include_reasoning":true}' --events   # adds stream_reasoning events
 
 # Polling (submit then poll until complete)
 seclai agents run <agentId> --json '{"input":"Hi"}' --poll --poll-interval-ms 2000
@@ -332,6 +344,17 @@ about 100 ids: they travel in the URL, and one over 8,192 bytes is rejected with
 a 414. An empty id is refused rather than dropped, so an unset shell variable
 cannot widen the listing.
 
+#### Email sources
+
+```bash
+# Mail an email source refused: sender and reason, never subject or body
+seclai sources email-rejections <sourceId> [--page N] [--limit N]
+```
+
+To accept a refused sender, add its address or domain to the source's
+`email_allowed_senders` with `sources update` — which only helps when the
+rejection says `authenticated` is true.
+
 #### Exports
 
 ```bash
@@ -359,6 +382,22 @@ seclai contents get <contentVersionId> [--start N] [--end N]
 seclai contents delete <contentVersionId>
 seclai contents embeddings <contentVersionId> [--page N] [--limit N]
 ```
+
+#### Attachments
+
+Files attached to a content item — email attachments, RSS enclosures from
+`feed_attachments`, web page media, the images inside a document — each with
+whether it is indexed and, when indexing failed, why.
+
+```bash
+seclai contents attachments list <contentVersionId> [--page N] [--limit N]
+seclai contents attachments get <contentVersionId> <attachmentId> [--start N] [--end N]
+seclai contents attachments embeddings <contentVersionId> <attachmentId> [--page N] [--limit N]
+seclai contents attachments download <contentVersionId> <attachmentId> [--output <path>]
+```
+
+`download` answers 403 for a file withheld by a governance policy or still
+being indexed; `get` reports `file_withheld` first.
 
 #### Upload / Replace
 

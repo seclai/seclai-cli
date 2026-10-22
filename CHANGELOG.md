@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.8.0] - 2026-10-21
+
+### Changed
+
+- Require `@seclai/sdk` 1.7.0
+
+### Added
+
+- Add `contents attachments list`, `get`, `embeddings` and `download` for the files attached to a content item — email attachments, feed enclosures, web page media and the images inside a document — with whether each is indexed and, when indexing failed, why. `get` takes `--start` and `--end` to page through an attachment's text, and `download` writes to stdout or to `--output`
+- Add `agents triggers accepted-attachments` to declare the named input attachments a trigger accepts. It takes the request body or the bare list of slots, and `null` to accept any files
+- Add `sources email-rejections` to list the mail an email source refused, with the sender and the reason
+- Accept `2026-10-05`, `2026-10-13`, `2026-10-16`, `2026-10-18`, `2026-10-19` and `2026-10-21` for `--api-version`, `SECLAI_API_VERSION` and `api-version set`. `api-version --help` and the README list what each version changes
+
 ## [1.7.0] - 2026-10-05
 
 _No functional changes since 1.6.1, which added commands and should have been published as a minor version._
@@ -180,6 +193,7 @@ _Stable release. No functional changes since 0.0.2._
 
 _Initial release._
 
+[1.8.0]: https://github.com/seclai/seclai-cli/releases/tag/1.8.0
 [1.7.0]: https://github.com/seclai/seclai-cli/releases/tag/1.7.0
 [1.6.1]: https://github.com/seclai/seclai-cli/releases/tag/1.6.1
 [1.6.0]: https://github.com/seclai/seclai-cli/releases/tag/1.6.0
