@@ -466,9 +466,8 @@ export async function readAiInput(
 }
 
 /**
- * Write a download response to `output`, streaming so large files are never
- * buffered whole, and print `{saved, bytes}`. With no `output`, write the raw
- * bytes to stdout.
+ * Write a download response to `output` and print `{saved, bytes}`. With no
+ * `output`, write the raw bytes to stdout.
  */
 export async function writeDownload(rt: CliRuntime, res: Response, output?: string): Promise<void> {
   if (!output) {

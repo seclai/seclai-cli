@@ -2609,6 +2609,17 @@ describe("seclai CLI — SDK 1.7.0 surface", () => {
     }
   });
 
+  test.each([
+    [["contents", "attachments", "download", "cv_1", "att_1"]],
+    [["agents", "runs", "download-attachment", "run_1", "att_1"]],
+  ] as const)("%j refuses an empty --output before downloading", async (argv) => {
+    const { io, client } = await invoke([...argv, "--output", ""]);
+    expect(io.exitCode).toBe(1);
+    expect(io.stderr).toContain("--output was given an empty value");
+    expect(io.stdoutBytes.length).toBe(0);
+    expect(client).toBeUndefined();
+  });
+
   // --- Accepted attachments ---
 
   test("agents triggers accepted-attachments wraps a bare list", async () => {

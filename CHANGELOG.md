@@ -13,6 +13,10 @@
 - Add `sources email-rejections` to list the mail an email source refused, with the sender and the reason
 - Accept `2026-10-05`, `2026-10-13`, `2026-10-16`, `2026-10-18`, `2026-10-19` and `2026-10-21` for `--api-version`, `SECLAI_API_VERSION` and `api-version set`. `api-version --help` and the README list what each version changes
 
+### Fixed
+
+- Reject an empty `--output` on `agents runs download-attachment` before downloading. An unset shell variable passed as `--output "$OUT"` wrote the raw bytes to the terminal instead of failing
+
 ## [1.7.0] - 2026-10-05
 
 _No functional changes since 1.6.1, which added commands and should have been published as a minor version._

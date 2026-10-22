@@ -349,6 +349,9 @@ export function register(program: Command, rt: CliRuntime): void {
     .option("--output <path>", "Write the attachment bytes to this file. If omitted, raw bytes are written to stdout.")
     .action(async (runId: string, attachmentId: string, opts) => {
       await run(rt, async () => {
+        if (opts.output === "") {
+          throw new Error("--output was given an empty value. Pass a path, or omit the flag to write to stdout.");
+        }
         const client = createClient(program.opts<GlobalOptions>());
         const res = await client.downloadAgentRunAttachment(
           runId,
