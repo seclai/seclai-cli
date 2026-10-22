@@ -103,6 +103,12 @@ Each version includes the changes of the ones before it:
 | `2026-09-28` | Agent-definition writes such as `agents def update` use the current file-list grammar for a step's `attachments` |
 | `2026-09-30` | A run's and a step's `output`, and a step's `input`, are the text rather than a JSON manifest. Files are in `attachments` on every version |
 | `2026-10-03` | A new LLM step written without `attachments` takes its parent's files |
+| `2026-10-05` | An item held for review by a governance policy reports `content_status` `completed` instead of `failed`; read `held_for_review` to find holds |
+| `2026-10-13` | `sources create` and `sources update` reject a `media_types` value other than `images` or `video`, or any value on a source that is not a website or RSS feed, with a 400 where it was dropped |
+| `2026-10-16` | An upload of any type is `ready` at once, and its extracted text is no longer written into a run's `input` |
+| `2026-10-18` | A source's `document_images` defaults to `true` on a text-only embedder |
+| `2026-10-19` | `sources create` rejects `polling_max_items` on any source but an RSS feed with a 400 where it was stored |
+| `2026-10-21` | An evaluation result whose evaluator returned no verdict (`status` `error`) is left out of the failed counts, rates and average scores, and `evals test-draft` returns its `score` and `passed` as `null` instead of 0.5 and `false` |
 
 To find a run's files, read `.attachments` rather than parsing `.output`: it is
 present on every version, and `.output` stops being JSON at `2026-09-30`.

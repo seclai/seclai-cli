@@ -26,7 +26,13 @@ seclai agents run <agentId> --json '{"input":"Hello"}' --events --output status
 
 # filter specific event types
 seclai agents run <agentId> --json '{"input":"Hello"}' --events --event-filter "status,data"
+
+# also receive the model's reasoning as stream_reasoning events
+seclai agents run <agentId> --json '{"input":"Hello","include_reasoning":true}' --events
 ```
+
+`include_reasoning` only matters with `--events`: `--stream` waits for the final
+result and never prints reasoning, so the SDK drops the field there.
 
 Output modes for --events:
 - `full`: entire SSE event object (default)

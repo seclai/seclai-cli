@@ -13,6 +13,7 @@ import {
   parseNumber,
   toPagedEnvelope,
   warnDeprecated,
+  writeDownload,
 } from "../helpers.js";
 
 /** Register `agents` commands: CRUD, run (basic/stream/events/poll), runs, definition, export, input uploads, AI assistant. */
@@ -139,6 +140,32 @@ export function register(program: Command, rt: CliRuntime): void {
             agentId,
             triggerId,
             body as Parameters<typeof client.setEmailTriggerConfig>[2],
+          ),
+        );
+      });
+    });
+
+  triggers
+    .command("accepted-attachments")
+    .description(
+      "Replace the named input attachments a dynamic_input or email_received trigger accepts. " +
+        "Each slot in accepted_attachments takes name, label, content_types, min (default 0) and max; " +
+        "set accepted_attachments to null to accept any files.",
+    )
+    .argument("<agentId>", "Agent ID.")
+    .argument("<triggerId>", "Trigger ID, as 'agents get' returns it.")
+    .option("--json <json>", "Accepted attachments JSON. Use '-' for stdin.")
+    .option("--json-file <path>", "Accepted attachments JSON file. Use '-' for stdin.")
+    .action(async (agentId: string, triggerId: string, opts) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        const body = await readJsonInput(rt, { json: opts.json, jsonFile: opts.jsonFile });
+        printJson(
+          rt,
+          await client.setAcceptedAttachments(
+            agentId,
+            triggerId,
+            body as Parameters<typeof client.setAcceptedAttachments>[2],
           ),
         );
       });
@@ -316,34 +343,16 @@ export function register(program: Command, rt: CliRuntime): void {
     .option("--output <path>", "Write the attachment bytes to this file. If omitted, raw bytes are written to stdout.")
     .action(async (runId: string, attachmentId: string, opts) => {
       await run(rt, async () => {
+        if (opts.output === "") {
+          throw new Error("--output was given an empty value. Pass a path, or omit the flag to write to stdout.");
+        }
         const client = createClient(program.opts<GlobalOptions>());
         const res = await client.downloadAgentRunAttachment(
           runId,
           attachmentId,
           opts.downloadName ? { downloadName: opts.downloadName } : {},
         );
-        if (opts.output) {
-          const { createWriteStream } = await import("node:fs");
-          const { stat } = await import("node:fs/promises");
-          if (res.body) {
-            // Stream the body straight to disk so large attachments never get
-            // buffered fully in memory.
-            const { Readable } = await import("node:stream");
-            const { pipeline } = await import("node:stream/promises");
-            await pipeline(
-              Readable.fromWeb(res.body as Parameters<typeof Readable.fromWeb>[0]),
-              createWriteStream(opts.output),
-            );
-          } else {
-            // Fallback for runtimes/mocks without a streamable body.
-            const { writeFile } = await import("node:fs/promises");
-            await writeFile(opts.output, Buffer.from(await res.arrayBuffer()));
-          }
-          const { size } = await stat(opts.output);
-          printJson(rt, { saved: opts.output, bytes: size });
-        } else {
-          rt.writeOutBytes(new Uint8Array(await res.arrayBuffer()));
-        }
+        await writeDownload(rt, res, opts.output);
       });
     });
 

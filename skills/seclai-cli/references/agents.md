@@ -25,6 +25,11 @@ seclai agents callers <agentId>
 ```bash
 # alias, sender allowlist and inbound-handling flags for an EMAIL_RECEIVED trigger
 seclai agents triggers email-config <agentId> <triggerId> --json '{"alias":"support"}'
+
+# Named input attachments a dynamic_input or email_received trigger accepts.
+# Steps reference them as {{agent.attachments.<name>}}; min defaults to 0.
+seclai agents triggers accepted-attachments <agentId> <triggerId> \
+  --json '{"accepted_attachments":[{"name":"invoice","content_types":["application/pdf"],"min":1,"max":1}]}'
 ```
 
 ## Running agents

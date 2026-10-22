@@ -269,6 +269,25 @@ export function register(program: Command, rt: CliRuntime): void {
       });
     });
 
+  // --- Email ---
+
+  sources
+    .command("email-rejections")
+    .description(
+      "List mail an email source refused, newest first: sender and reason, never subject or body. " +
+        "To accept an authenticated sender, add it to the source's email_allowed_senders. " +
+        "Requires an account owner or administrator.",
+    )
+    .argument("<sourceId>", "Email source ID.")
+    .option("--page <n>", "Page number.", parseNumber)
+    .option("--limit <n>", "Page size (1-100).", parseNumber)
+    .action(async (sourceId: string, opts) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        printJson(rt, await client.listEmailSourceRejections(sourceId, listOpts(opts)));
+      });
+    });
+
   // --- Embedding Migration ---
 
   const migration = sources.command("migration").description("Source embedding migrations.");
