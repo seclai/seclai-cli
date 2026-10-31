@@ -121,7 +121,7 @@ this repo:
 
 - **The version comes from the merge commit.** `seclai/github-tag-action` reads
   it for `#major` / `#minor`, defaulting to a patch bump. A sync that adds
-  commands must say `#minor` in the PR title, or the heading you write will not
+  commands must say `#minor` in a commit message (not the PR title), or the heading you write will not
   match the tag that gets cut.
 - **Entries describe commands, not SDK methods.** A consumer of this package
   runs `seclai email domains list`; that they are reaching
