@@ -2766,11 +2766,7 @@ describe("seclai CLI — SDK 1.7.0 surface", () => {
     });
   });
 
-  // Pins a known gap, not a desired outcome: the API answers an inverted range
-  // with an empty summary. Date order is left to the API, which should return a
-  // 400 as `memory stats` does. When it does, this test and the comment in
-  // evals.ts change with it (#17).
-  test("evals non-manual-summary leaves date order to the API (known gap, #17)", async () => {
+  test("evals non-manual-summary passes an inverted date range through to the API", async () => {
     const { client } = await ok(["evals", "non-manual-summary", "--start-date", "2026-10-31", "--end-date", "2026-10-01"]);
     expect(client.getNonManualEvaluationSummary).toHaveBeenCalledWith(undefined, {
       startDate: "2026-10-31",
