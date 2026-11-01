@@ -234,7 +234,8 @@ export function register(program: Command, rt: CliRuntime): void {
       .description(
         "Get the non-manual evaluation summary for an agent, or for the whole account when no agent is given. " +
           "--start-date with --end-date sets the range; --start-date alone runs through today; " +
-          "otherwise the last --days days apply. --end-date alone is refused, because the API would ignore it.",
+          "otherwise the last --days days apply. --end-date alone, and --days with --start-date, are refused, " +
+          "because the API would ignore them.",
       )
       .argument("[agentId]", "Agent ID. Omit for the account-wide summary."),
   ).action(async (agentId: string | undefined, opts) => {
@@ -244,6 +245,14 @@ export function register(program: Command, rt: CliRuntime): void {
       }
       if (opts.endDate !== undefined && opts.startDate === undefined) {
         throw new Error("--end-date needs --start-date: the API ignores an end date on its own.");
+      }
+      if (opts.days !== undefined && opts.startDate !== undefined) {
+        throw new Error("Pass --days or --start-date, not both: the API ignores --days when a start date is given.");
+      }
+      // Unlike `memory stats`, this endpoint does not check the order, and an
+      // inverted range comes back as an empty summary that looks valid.
+      if (opts.startDate !== undefined && opts.endDate !== undefined && opts.startDate > opts.endDate) {
+        throw new Error("--start-date must be on or before --end-date.");
       }
       const client = createClient(program.opts<GlobalOptions>());
       const range = dateRangeOpts(opts);

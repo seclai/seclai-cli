@@ -5,7 +5,7 @@
 ### Changed
 
 - Require `@seclai/sdk` 1.8.0
-- Let `evals non-manual-summary` omit the agent ID for the account-wide summary, and take `--days`, `--start-date` and `--end-date`. `--end-date` without `--start-date` is refused, because the API ignores it
+- Let `evals non-manual-summary` omit the agent ID for the account-wide summary, and take `--days`, `--start-date` and `--end-date`. `--end-date` without `--start-date`, `--days` with `--start-date`, and a start date after the end date are refused: the API ignores the first two, and answers the third with an empty summary
 
 ### Added
 
@@ -13,8 +13,8 @@
 - Add `agents triggers accepted-attachments` to declare the named input attachments a trigger accepts
 - Add `agents examples list` for the agent gallery, searchable with `--query` and filterable by `--use-case`. Pass an entry's `key` as `agent_template` to `agents create`, with `resource_bindings` or `create_missing_resources` for the resources it lists
 - Add `agents triggers slack-config` to configure a `SLACK_COMMAND` trigger: its Slack connection, form, channels, activation, reply visibility and conversation settings
-- Add the filters the API declares to the listings that lacked them: `--status`, `--flagged-only`, `--time-from` and `--time-to` on `evals results list` and `evals agent-results`, which also takes `--step`; `--status`, `--step`, `--time-from` and `--time-to` on `evals agent-runs`; `--started-after` on `evals compatible-runs`; `--agent-id`, `--source-connection-id`, `--time-from` and `--time-to` on `alerts list`; `--agent-id`, `--source-connection-id` and `--scope` on `alerts configs list`; `--organization-id` and `--include-defaults` on `alerts prefs list`; `--agent-id` and `--unread-only` on `models alerts list`; `--type` on `memory list`; and `--search` on `solutions list`. A blank value is refused rather than dropped, so it cannot widen a listing
-- Add `--days`, or `--start-date` with `--end-date`, to `memory stats`. One date on its own is refused, because the API ignores it
+- Add the filters the API declares to the listings that lacked them: `--status`, `--flagged-only`, `--time-from` and `--time-to` on `evals results list` and `evals agent-results`, which also takes `--step`; `--status`, `--step`, `--time-from` and `--time-to` on `evals agent-runs`; `--started-after` on `evals compatible-runs`; `--agent-id`, `--source-connection-id`, `--time-from` and `--time-to` on `alerts list`; `--agent-id`, `--source-connection-id` and `--scope` on `alerts configs list`; `--organization-id` and `--include-defaults` on `alerts prefs list`; `--agent-id` and `--unread-only` on `models alerts list`; `--type` on `memory list`; and `--search` on `solutions list`. A blank value for one of these flags is refused rather than dropped, so it cannot widen a listing
+- Add `--days`, or `--start-date` with `--end-date`, to `memory stats`. One date on its own, or the dates with `--days`, is refused, because the API ignores it
 - Add `--limit` and `--offset` to `memory ai last` and `ai memory-history`, and `--limit` to `governance ai list`
 - Add `--require-tool-use`, `--require-structured-output`, `--require-thinking`, `--min-context-tokens` and `--min-output-tokens` to `models recommendations`
 - Add `sources email-rejections` to list the mail an email source refused, with the sender and the reason

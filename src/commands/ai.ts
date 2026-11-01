@@ -80,7 +80,12 @@ export function register(program: Command, rt: CliRuntime): void {
     await run(rt, async () => {
       const client = createClient(program.opts<GlobalOptions>());
       const page = offsetListOpts(opts);
-      printJson(rt, Object.keys(page).length > 0 ? await client.getAiAssistantMemoryBankHistory(page) : await client.getAiAssistantMemoryBankHistory());
+      printJson(
+        rt,
+        Object.keys(page).length > 0
+          ? await client.getAiAssistantMemoryBankHistory(page)
+          : await client.getAiAssistantMemoryBankHistory(),
+      );
     });
   });
 

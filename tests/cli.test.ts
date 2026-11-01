@@ -2756,6 +2756,17 @@ describe("seclai CLI — SDK 1.7.0 surface", () => {
     expect(client).toBeUndefined();
   });
 
+  test.each([
+    [["evals", "non-manual-summary", "--days", "7", "--start-date", "2026-10-01"], "not both"],
+    [["evals", "non-manual-summary", "--start-date", "2026-10-31", "--end-date", "2026-10-01"], "on or before"],
+    [["memory", "stats", "mb_1", "--days", "7", "--start-date", "2026-10-01", "--end-date", "2026-10-15"], "not both"],
+  ])("refuses a date range the API would ignore or answer empty: %j", async (argv, message) => {
+    const { io, client } = await invoke(argv);
+    expect(io.exitCode).toBe(1);
+    expect(io.stderr).toContain(message);
+    expect(client).toBeUndefined();
+  });
+
   test.each([["2026/10/01"], ["yesterday"], [""]])("a date flag refuses %j", async (value) => {
     const { io, client } = await invoke(["evals", "non-manual-summary", "--start-date", value]);
     expect(io.exitCode).not.toBe(0);

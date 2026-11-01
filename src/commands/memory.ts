@@ -97,7 +97,7 @@ export function register(program: Command, rt: CliRuntime): void {
       .command("stats")
       .description(
         "Get memory bank statistics. --start-date and --end-date together replace --days; " +
-          "either one alone is refused, because the API would ignore it.",
+          "either one alone, or both with --days, is refused, because the API would ignore it.",
       )
       .argument("<memoryBankId>", "Memory bank ID."),
   ).action(async (memoryBankId: string, opts) => {
@@ -106,6 +106,9 @@ export function register(program: Command, rt: CliRuntime): void {
       // `days` days, which would print a summary for a range nobody asked for.
       if ((opts.startDate === undefined) !== (opts.endDate === undefined)) {
         throw new Error("Pass --start-date and --end-date together, or neither.");
+      }
+      if (opts.days !== undefined && opts.startDate !== undefined) {
+        throw new Error("Pass --days or the two dates, not both: the API ignores --days when the dates are given.");
       }
       const client = createClient(program.opts<GlobalOptions>());
       const range = dateRangeOpts(opts);
@@ -214,7 +217,12 @@ export function register(program: Command, rt: CliRuntime): void {
     await run(rt, async () => {
       const client = createClient(program.opts<GlobalOptions>());
       const page = offsetListOpts(opts);
-      printJson(rt, Object.keys(page).length > 0 ? await client.getMemoryBankAiLastConversation(page) : await client.getMemoryBankAiLastConversation());
+      printJson(
+        rt,
+        Object.keys(page).length > 0
+          ? await client.getMemoryBankAiLastConversation(page)
+          : await client.getMemoryBankAiLastConversation(),
+      );
     });
   });
 
