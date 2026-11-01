@@ -490,3 +490,68 @@ export async function writeDownload(rt: CliRuntime, res: Response, output?: stri
   const { size } = await stat(output);
   printJson(rt, { saved: output, bytes: size });
 }
+
+/**
+ * Argument parser for a filter that takes an ID or a word. Refuses a blank
+ * value: a shell expanding an unset variable hands us `""`, and dropping it
+ * would turn a filtered listing into an unfiltered one that looks filtered.
+ */
+export function parseFilter(value: string): string {
+  const v = value.trim();
+  if (v.length === 0) {
+    throw new InvalidArgumentError("Expected a value, not an empty string.");
+  }
+  return v;
+}
+
+/** Argument parser for a calendar date, `YYYY-MM-DD`. */
+export function parseDate(value: string): string {
+  const v = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+    throw new InvalidArgumentError("Expected a date as YYYY-MM-DD.");
+  }
+  return v;
+}
+
+/**
+ * Add `--days`, `--start-date` and `--end-date`. Each endpoint combines them
+ * its own way, so the command's description says how. Pairs with
+ * {@link dateRangeOpts}.
+ */
+export function withDateRangeOptions(cmd: Command): Command {
+  return cmd
+    .option("--days <n>", "Days back from today (server default 30).", parseNumber)
+    .option("--start-date <date>", "First day, YYYY-MM-DD.", parseDate)
+    .option("--end-date <date>", "Last day, YYYY-MM-DD.", parseDate);
+}
+
+/** Pick the defined date-range values. */
+export function dateRangeOpts(opts: {
+  days?: number | undefined;
+  startDate?: string | undefined;
+  endDate?: string | undefined;
+}): { days?: number; startDate?: string; endDate?: string } {
+  const o: { days?: number; startDate?: string; endDate?: string } = {};
+  if (opts.days !== undefined) o.days = opts.days;
+  if (opts.startDate !== undefined) o.startDate = opts.startDate;
+  if (opts.endDate !== undefined) o.endDate = opts.endDate;
+  return o;
+}
+
+/** Add `--time-from` and `--time-to`, ISO 8601 bounds. Pairs with {@link timeRangeOpts}. */
+export function withTimeRangeOptions(cmd: Command): Command {
+  return cmd
+    .option("--time-from <time>", "Earliest time, ISO 8601.", parseFilter)
+    .option("--time-to <time>", "Latest time, ISO 8601.", parseFilter);
+}
+
+/** Pick the defined time-range values. */
+export function timeRangeOpts(opts: { timeFrom?: string | undefined; timeTo?: string | undefined }): {
+  timeFrom?: string;
+  timeTo?: string;
+} {
+  const o: { timeFrom?: string; timeTo?: string } = {};
+  if (opts.timeFrom !== undefined) o.timeFrom = opts.timeFrom;
+  if (opts.timeTo !== undefined) o.timeTo = opts.timeTo;
+  return o;
+}

@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import type { CliRuntime, GlobalOptions } from "../helpers.js";
-import { run, createClient, printJson, readAiInput, withAiInputOptions } from "../helpers.js";
+import { run, createClient, printJson, readAiInput, withAiInputOptions, withLimitOption } from "../helpers.js";
 
 /** Register `governance` commands: AI-assisted generate, list, accept, decline. */
 export function register(program: Command, rt: CliRuntime): void {
@@ -19,14 +19,20 @@ export function register(program: Command, rt: CliRuntime): void {
       });
     });
 
-  ai.command("list")
-    .description("List governance AI conversations.")
-    .action(async () => {
-      await run(rt, async () => {
-        const client = createClient(program.opts<GlobalOptions>());
-        printJson(rt, await client.listGovernanceAiConversations());
-      });
+  withLimitOption(
+    ai.command("list").description("List governance AI conversations."),
+    "How many conversations (server default 20).",
+  ).action(async (opts) => {
+    await run(rt, async () => {
+      const client = createClient(program.opts<GlobalOptions>());
+      printJson(
+        rt,
+        opts.limit !== undefined
+          ? await client.listGovernanceAiConversations({ limit: opts.limit })
+          : await client.listGovernanceAiConversations(),
+      );
     });
+  });
 
   ai.command("accept")
     .description("Accept a governance AI plan.")

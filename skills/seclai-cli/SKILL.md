@@ -34,7 +34,7 @@ seclai agents runs list <agentId>
 
 | Group | What it covers | Reference |
 | --- | --- | --- |
-| `agents` | Agents, runs, definitions, export/import, input uploads, triggers, agent AI | [references/agents.md](references/agents.md) |
+| `agents` | Agents, runs, definitions, export/import, input uploads, triggers, the agent gallery, agent AI | [references/agents.md](references/agents.md) |
 | `sources` `contents` `kb` `memory` | Sources and uploads, indexing status, exports, embedding migration, indexed content, knowledge bases, memory banks | [references/knowledge.md](references/knowledge.md) |
 | `evals` | Evaluation criteria, results, runs, agent-level summaries | [references/evaluations.md](references/evaluations.md) |
 | `solutions` `governance` | Solutions, resource links, conversations, solution and governance AI | [references/solutions.md](references/solutions.md) |
@@ -109,6 +109,7 @@ Each version includes the changes of the ones before it:
 | `2026-10-18` | A source's `document_images` defaults to `true` on a text-only embedder |
 | `2026-10-19` | `sources create` rejects `polling_max_items` on any source but an RSS feed with a 400 where it was stored |
 | `2026-10-21` | An evaluation result whose evaluator returned no verdict (`status` `error`) is left out of the failed counts, rates and average scores, and `evals test-draft` returns its `score` and `passed` as `null` instead of 0.5 and `false` |
+| `2026-10-28` | An `if_else` or `switch` step's `output` is the result of the arm it took instead of a `{"branch": ...}` marker naming the arm. Read the arm from the step's `decision`, which is set on every version |
 
 To find a run's files, read `.attachments` rather than parsing `.output`: it is
 present on every version, and `.output` stops being JSON at `2026-09-30`.

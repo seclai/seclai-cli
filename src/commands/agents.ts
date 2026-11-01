@@ -5,12 +5,14 @@ import {
   createClient,
   printJson,
   readJsonInput,
+  readJsonObjectInput,
   readAiInput,
   withAiInputOptions,
   listOpts,
   withOffsetListOptions,
   offsetListOpts,
   parseNumber,
+  parseFilter,
   toPagedEnvelope,
   warnDeprecated,
   writeDownload,
@@ -38,7 +40,10 @@ export function register(program: Command, rt: CliRuntime): void {
 
   agents
     .command("create")
-    .description("Create a new agent.")
+    .description(
+      "Create a new agent. To start from the gallery, pass an entry's key from 'agents examples list' " +
+        "as agent_template, with resource_bindings or create_missing_resources for the resources it needs.",
+    )
     .option("--json <json>", "Inline JSON body. Use '-' for stdin.")
     .option("--json-file <path>", "JSON file path. Use '-' for stdin.")
     .action(async (opts) => {
@@ -119,6 +124,30 @@ export function register(program: Command, rt: CliRuntime): void {
       });
     });
 
+  // --- Gallery ---
+
+  const examples = agents.command("examples").description("The agent gallery: ready-made agents to create from.");
+
+  examples
+    .command("list")
+    .description(
+      "List agent gallery entries. Pass an entry's key as agent_template to 'agents create'; " +
+        "its resources say what to bind in resource_bindings.",
+    )
+    .option("--page <n>", "Page number.", parseNumber)
+    .option("--limit <n>", "Page size.", parseNumber)
+    .option("--query <words>", "Words every matching entry must contain.", parseFilter)
+    .option("--use-case <useCase>", "Only entries for this use case.", parseFilter)
+    .action(async (opts) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        const o: Parameters<typeof client.listAgentExamples>[0] = listOpts(opts);
+        if (opts.query !== undefined) o.query = opts.query;
+        if (opts.useCase !== undefined) o.useCase = opts.useCase;
+        printJson(rt, await client.listAgentExamples(o));
+      });
+    });
+
   // --- Triggers ---
 
   const triggers = agents.command("triggers").description("Agent trigger configuration.");
@@ -140,6 +169,31 @@ export function register(program: Command, rt: CliRuntime): void {
             agentId,
             triggerId,
             body as Parameters<typeof client.setEmailTriggerConfig>[2],
+          ),
+        );
+      });
+    });
+
+  triggers
+    .command("slack-config")
+    .description(
+      "Configure a SLACK_COMMAND trigger: mcp_client_id (the Slack connection), form, input, scope, channel_ids, " +
+        "activation, allow_dms, visibility, and the turns_* conversation settings. Omitted fields are left unchanged.",
+    )
+    .argument("<agentId>", "Agent ID.")
+    .argument("<triggerId>", "Trigger ID, as 'agents get' returns it.")
+    .option("--json <json>", "Config body JSON. Use '-' for stdin.")
+    .option("--json-file <path>", "Config body JSON file. Use '-' for stdin.")
+    .action(async (agentId: string, triggerId: string, opts) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        const body = await readJsonObjectInput(rt, { json: opts.json, jsonFile: opts.jsonFile });
+        printJson(
+          rt,
+          await client.setSlackTriggerConfig(
+            agentId,
+            triggerId,
+            body as Parameters<typeof client.setSlackTriggerConfig>[2],
           ),
         );
       });

@@ -31,6 +31,8 @@ export const API_VERSION_NOTES: Record<string, string> = {
     "`sources create` rejects polling_max_items on any source but an RSS feed with a 400 where it was stored.",
   "2026-10-21":
     "An evaluation result whose evaluator returned no verdict (status error) is left out of the failed counts, rates and average scores, and `evals test-draft` returns its score and passed as null instead of 0.5 and false.",
+  "2026-10-28":
+    "An if_else or switch step's output is the result of the arm it took instead of a {branch} marker; read the arm from the step's decision, which is set on every version.",
 };
 
 /** The versions and their notes as a help block, oldest first. */

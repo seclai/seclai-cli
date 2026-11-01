@@ -6,7 +6,7 @@ Governance defines the policies applied to agent input and output.
 ## Solutions
 
 ```bash
-seclai solutions list [--page N] [--limit N] [--sort field] [--order asc|desc]
+seclai solutions list [--page N] [--limit N] [--sort field] [--order asc|desc] [--search <text>]
 seclai solutions create --json '{"name":"Customer Support Solution"}'
 seclai solutions get <solutionId>
 seclai solutions update <solutionId> --json '{"name":"Updated"}'
@@ -46,7 +46,7 @@ step, which is why they live here rather than under `kb` or `sources`.
 
 ```bash
 seclai governance ai generate --user-input "Create a content safety policy"
-seclai governance ai list
+seclai governance ai list [--limit N]
 seclai governance ai accept <conversationId>
 seclai governance ai decline <conversationId>
 ```
@@ -66,6 +66,6 @@ seclai solutions get <solutionId>
 
 ```bash
 seclai governance ai generate --user-input "Create a content safety policy that blocks harmful outputs"
-seclai governance ai list
+seclai governance ai list [--limit N]
 seclai governance ai accept <conversationId>
 ```

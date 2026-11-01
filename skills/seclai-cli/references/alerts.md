@@ -8,7 +8,7 @@ Model-catalog alerts are separate — see [models.md](models.md).
 ## Alerts
 
 ```bash
-seclai alerts list [--page N] [--limit N] [--status <status>]
+seclai alerts list [--page N] [--limit N] [--status <status>] [--agent-id <id>] [--source-connection-id <id>] [--time-from ISO] [--time-to ISO]
 seclai alerts get <alertId>
 seclai alerts status <alertId> --json '{"status":"resolved"}'
 seclai alerts comment <alertId> --json '{"comment":"Fixed the issue"}'
@@ -27,7 +27,7 @@ seclai alerts list | jq '[.data[] | select(.severity == "high")]'
 ## Alert configurations
 
 ```bash
-seclai alerts configs list [--page N] [--limit N]
+seclai alerts configs list [--page N] [--limit N] [--agent-id <id>] [--source-connection-id <id>] [--scope source]
 seclai alerts configs create --json '{"name":"Latency Alert","description":"...","threshold":5000}'
 seclai alerts configs get <configId>
 seclai alerts configs update <configId> --json '{"threshold":3000}'
@@ -37,7 +37,7 @@ seclai alerts configs delete <configId>
 ## Organization preferences
 
 ```bash
-seclai alerts prefs list
+seclai alerts prefs list [--organization-id <id>] [--include-defaults]
 seclai alerts prefs update <organizationId> <alertType> --json '{"enabled":true}'
 ```
 

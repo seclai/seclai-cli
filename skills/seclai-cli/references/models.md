@@ -37,7 +37,7 @@ instead, with the `pagination` block once the API sends one.
 ## Model alerts
 
 ```bash
-seclai models alerts list [--page N] [--limit N]
+seclai models alerts list [--page N] [--limit N] [--agent-id <id>] [--unread-only]
 seclai models alerts mark-read <alertId>
 seclai models alerts mark-all-read
 seclai models alerts unread-count
@@ -49,7 +49,7 @@ account alerts in [alerts.md](alerts.md).
 ## Recommendations
 
 ```bash
-seclai models recommendations <modelId>
+seclai models recommendations <modelId> [--require-tool-use] [--require-structured-output] [--require-thinking] [--min-context-tokens N] [--min-output-tokens N]
 ```
 
 Suggests replacements for a model, which is how you act on a deprecation alert.

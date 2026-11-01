@@ -7,7 +7,10 @@ import {
   readJsonInput,
   listOpts,
   parseNumber,
+  parseFilter,
   toPagedEnvelope,
+  withTimeRangeOptions,
+  timeRangeOpts,
 } from "../helpers.js";
 
 /** Register `alerts` commands: alert CRUD, configs, organization preferences. */
@@ -16,20 +19,25 @@ export function register(program: Command, rt: CliRuntime): void {
 
   // --- Alert CRUD ---
 
-  alerts
-    .command("list")
-    .description("List alerts.")
-    .option("--page <n>", "Page number.", parseNumber)
-    .option("--limit <n>", "Page size.", parseNumber)
-    .option("--status <status>", "Filter by status.")
-    .action(async (opts) => {
-      await run(rt, async () => {
-        const client = createClient(program.opts<GlobalOptions>());
-        const o: Record<string, unknown> = listOpts(opts);
-        if (opts.status) o.status = opts.status;
-        printJson(rt, await client.listAlerts(o));
-      });
+  withTimeRangeOptions(
+    alerts
+      .command("list")
+      .description("List alerts.")
+      .option("--page <n>", "Page number.", parseNumber)
+      .option("--limit <n>", "Page size.", parseNumber)
+      .option("--status <status>", "Filter by status.")
+      .option("--agent-id <id>", "Keep only alerts for this agent.", parseFilter)
+      .option("--source-connection-id <id>", "Keep only alerts for this source connection.", parseFilter),
+  ).action(async (opts) => {
+    await run(rt, async () => {
+      const client = createClient(program.opts<GlobalOptions>());
+      const o: Parameters<typeof client.listAlerts>[0] = { ...listOpts(opts), ...timeRangeOpts(opts) };
+      if (opts.status) o.status = opts.status;
+      if (opts.agentId !== undefined) o.agentId = opts.agentId;
+      if (opts.sourceConnectionId !== undefined) o.sourceConnectionId = opts.sourceConnectionId;
+      printJson(rt, await client.listAlerts(o));
     });
+  });
 
   alerts
     .command("get")
@@ -101,6 +109,9 @@ export function register(program: Command, rt: CliRuntime): void {
     .description("List alert configurations.")
     .option("--page <n>", "Page number.", parseNumber)
     .option("--limit <n>", "Page size.", parseNumber)
+    .option("--agent-id <id>", "Keep only configs for this agent.", parseFilter)
+    .option("--source-connection-id <id>", "Keep only configs for this source connection.", parseFilter)
+    .option("--scope <scope>", "'source' lists the account-level source alert configs.", parseFilter)
     .option(
       "--paged",
       "Wrap the results in {data: [...]}, the shape this endpoint moves to from --api-version 2026-07-27.",
@@ -108,7 +119,11 @@ export function register(program: Command, rt: CliRuntime): void {
     .action(async (opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
-        const res = await client.listAlertConfigs(listOpts(opts));
+        const o: Parameters<typeof client.listAlertConfigs>[0] = listOpts(opts);
+        if (opts.agentId !== undefined) o.agentId = opts.agentId;
+        if (opts.sourceConnectionId !== undefined) o.sourceConnectionId = opts.sourceConnectionId;
+        if (opts.scope !== undefined) o.scope = opts.scope;
+        const res = await client.listAlertConfigs(o);
         printJson(rt, opts.paged ? toPagedEnvelope(res, "configs") : res);
       });
     });
@@ -170,10 +185,20 @@ export function register(program: Command, rt: CliRuntime): void {
   prefs
     .command("list")
     .description("List organization alert preferences.")
-    .action(async () => {
+    .option("--organization-id <id>", "Keep only one organization's preferences.", parseFilter)
+    .option("--include-defaults", "Also list the default subscription for every alert type.")
+    .action(async (opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
-        printJson(rt, await client.listOrganizationAlertPreferences());
+        const o: NonNullable<Parameters<typeof client.listOrganizationAlertPreferences>[0]> = {};
+        if (opts.organizationId !== undefined) o.organizationId = opts.organizationId;
+        if (opts.includeDefaults) o.includeDefaults = true;
+        printJson(
+          rt,
+          Object.keys(o).length > 0
+            ? await client.listOrganizationAlertPreferences(o)
+            : await client.listOrganizationAlertPreferences(),
+        );
       });
     });
 
