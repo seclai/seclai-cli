@@ -249,6 +249,10 @@ export function register(program: Command, rt: CliRuntime): void {
       if (opts.days !== undefined && opts.startDate !== undefined) {
         throw new Error("Pass --days or --start-date, not both: the API ignores --days when a start date is given.");
       }
+      // Date order is deliberately not checked here. Today this endpoint answers
+      // an inverted range with an empty summary; the fix belongs in the API
+      // (a 400, as `memory stats` returns), where "today" is the server's date
+      // rather than the caller's clock.
       const client = createClient(program.opts<GlobalOptions>());
       const range = dateRangeOpts(opts);
       printJson(

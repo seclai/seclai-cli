@@ -2759,6 +2759,13 @@ describe("seclai CLI — SDK 1.7.0 surface", () => {
       endDate: "2026-10-01",
     });
 
+    // Date order is left to the API, so an inverted range is passed through.
+    const inverted = await ok(["evals", "non-manual-summary", "--start-date", "2026-10-31", "--end-date", "2026-10-01"]);
+    expect(inverted.client.getNonManualEvaluationSummary).toHaveBeenCalledWith(undefined, {
+      startDate: "2026-10-31",
+      endDate: "2026-10-01",
+    });
+
     const memorySameDay = await ok(["memory", "stats", "mb_1", "--start-date", "2026-10-01", "--end-date", "2026-10-01"]);
     expect(memorySameDay.client.getMemoryBankStats).toHaveBeenCalledWith("mb_1", {
       startDate: "2026-10-01",
