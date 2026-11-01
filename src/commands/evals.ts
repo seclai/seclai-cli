@@ -249,11 +249,6 @@ export function register(program: Command, rt: CliRuntime): void {
       if (opts.days !== undefined && opts.startDate !== undefined) {
         throw new Error("Pass --days or --start-date, not both: the API ignores --days when a start date is given.");
       }
-      // Unlike `memory stats`, this endpoint does not check the order, and an
-      // inverted range comes back as an empty summary that looks valid.
-      if (opts.startDate !== undefined && opts.endDate !== undefined && opts.startDate > opts.endDate) {
-        throw new Error("--start-date must be on or before --end-date.");
-      }
       const client = createClient(program.opts<GlobalOptions>());
       const range = dateRangeOpts(opts);
       printJson(

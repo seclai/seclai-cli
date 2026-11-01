@@ -2749,6 +2749,23 @@ describe("seclai CLI — SDK 1.7.0 surface", () => {
     });
   });
 
+  test("date ranges accept the boundaries the guards allow", async () => {
+    const startOnly = await ok(["evals", "non-manual-summary", "--start-date", "2026-10-01"]);
+    expect(startOnly.client.getNonManualEvaluationSummary).toHaveBeenCalledWith(undefined, { startDate: "2026-10-01" });
+
+    const sameDay = await ok(["evals", "non-manual-summary", "--start-date", "2026-10-01", "--end-date", "2026-10-01"]);
+    expect(sameDay.client.getNonManualEvaluationSummary).toHaveBeenCalledWith(undefined, {
+      startDate: "2026-10-01",
+      endDate: "2026-10-01",
+    });
+
+    const memorySameDay = await ok(["memory", "stats", "mb_1", "--start-date", "2026-10-01", "--end-date", "2026-10-01"]);
+    expect(memorySameDay.client.getMemoryBankStats).toHaveBeenCalledWith("mb_1", {
+      startDate: "2026-10-01",
+      endDate: "2026-10-01",
+    });
+  });
+
   test("evals non-manual-summary refuses --end-date without --start-date", async () => {
     const { io, client } = await invoke(["evals", "non-manual-summary", "--end-date", "2026-10-15"]);
     expect(io.exitCode).toBe(1);
@@ -2758,9 +2775,8 @@ describe("seclai CLI — SDK 1.7.0 surface", () => {
 
   test.each([
     [["evals", "non-manual-summary", "--days", "7", "--start-date", "2026-10-01"], "not both"],
-    [["evals", "non-manual-summary", "--start-date", "2026-10-31", "--end-date", "2026-10-01"], "on or before"],
     [["memory", "stats", "mb_1", "--days", "7", "--start-date", "2026-10-01", "--end-date", "2026-10-15"], "not both"],
-  ])("refuses a date range the API would ignore or answer empty: %j", async (argv, message) => {
+  ])("refuses a date range the API would ignore: %j", async (argv, message) => {
     const { io, client } = await invoke(argv);
     expect(io.exitCode).toBe(1);
     expect(io.stderr).toContain(message);

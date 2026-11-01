@@ -492,7 +492,7 @@ seclai evals compatible-runs <criteriaId> [--page N] [--limit N] [--started-afte
 seclai evals test-draft <agentId> --json '{"criteria":{...}}'
 seclai evals agent-results <agentId> [--page N] [--limit N] [--status S] [--flagged-only] [--step <stepId>] [--time-from ISO] [--time-to ISO]
 seclai evals agent-runs <agentId> [--page N] [--limit N] [--status S] [--step <stepId>] [--time-from ISO] [--time-to ISO]
-seclai evals non-manual-summary [agentId] [--days N] [--start-date YYYY-MM-DD] [--end-date YYYY-MM-DD]   # omit agentId for the whole account
+seclai evals non-manual-summary [agentId] [--days N | --start-date YYYY-MM-DD [--end-date YYYY-MM-DD]]   # omit agentId for the whole account
 ```
 
 ### Solutions

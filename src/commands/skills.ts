@@ -547,7 +547,7 @@ seclai evals results create <criteriaId> --json '{"run_id":"<runId>","score":0.9
 seclai evals criteria summary <criteriaId>
 seclai evals agent-results <agentId>
 seclai evals agent-runs <agentId> --limit 20
-seclai evals non-manual-summary [agentId] [--days N] [--start-date YYYY-MM-DD] [--end-date YYYY-MM-DD]   # omit agentId for the whole account
+seclai evals non-manual-summary [agentId] [--days N | --start-date YYYY-MM-DD [--end-date YYYY-MM-DD]]   # omit agentId for the whole account
 \`\`\`
 
 ## Managing criteria

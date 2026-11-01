@@ -97,7 +97,8 @@ export function register(program: Command, rt: CliRuntime): void {
       .command("stats")
       .description(
         "Get memory bank statistics. --start-date and --end-date together replace --days; " +
-          "either one alone, or both with --days, is refused, because the API would ignore it.",
+          "either one alone is refused, because the API would ignore it, and so are both with --days, " +
+          "because the API would ignore --days.",
       )
       .argument("<memoryBankId>", "Memory bank ID."),
   ).action(async (memoryBankId: string, opts) => {
