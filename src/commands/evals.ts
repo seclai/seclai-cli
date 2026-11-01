@@ -1,6 +1,18 @@
 import { Command } from "commander";
 import type { CliRuntime, GlobalOptions } from "../helpers.js";
-import { run, createClient, printJson, readJsonInput, listOpts, parseNumber } from "../helpers.js";
+import {
+  run,
+  createClient,
+  printJson,
+  readJsonInput,
+  listOpts,
+  parseNumber,
+  parseFilter,
+  withDateRangeOptions,
+  dateRangeOpts,
+  withTimeRangeOptions,
+  timeRangeOpts,
+} from "../helpers.js";
 
 /** Register `evals` commands: criteria CRUD, results, compatible-runs, test-draft, agent-level summaries. */
 export function register(program: Command, rt: CliRuntime): void {
@@ -102,18 +114,27 @@ export function register(program: Command, rt: CliRuntime): void {
 
   const results = evals.command("results").description("Evaluation results.");
 
-  results
-    .command("list")
-    .description("List results for criteria.")
-    .argument("<criteriaId>", "Criteria ID.")
-    .option("--page <n>", "Page number.", parseNumber)
-    .option("--limit <n>", "Page size.", parseNumber)
-    .action(async (criteriaId: string, opts) => {
-      await run(rt, async () => {
-        const client = createClient(program.opts<GlobalOptions>());
-        printJson(rt, await client.listEvaluationResults(criteriaId, listOpts(opts)));
-      });
+  withTimeRangeOptions(
+    results
+      .command("list")
+      .description("List results for criteria.")
+      .argument("<criteriaId>", "Criteria ID.")
+      .option("--page <n>", "Page number.", parseNumber)
+      .option("--limit <n>", "Page size.", parseNumber)
+      .option("--status <status>", "Keep only one result status.", parseFilter)
+      .option("--flagged-only", "Keep only flagged results."),
+  ).action(async (criteriaId: string, opts) => {
+    await run(rt, async () => {
+      const client = createClient(program.opts<GlobalOptions>());
+      const o: Parameters<typeof client.listEvaluationResults>[1] = {
+        ...listOpts(opts),
+        ...timeRangeOpts(opts),
+      };
+      if (opts.status !== undefined) o.status = opts.status;
+      if (opts.flaggedOnly) o.flaggedOnly = true;
+      printJson(rt, await client.listEvaluationResults(criteriaId, o));
     });
+  });
 
   results
     .command("create")
@@ -137,10 +158,13 @@ export function register(program: Command, rt: CliRuntime): void {
     .argument("<criteriaId>", "Criteria ID.")
     .option("--page <n>", "Page number.", parseNumber)
     .option("--limit <n>", "Page size.", parseNumber)
+    .option("--started-after <time>", "Only runs started after this time, ISO 8601.", parseFilter)
     .action(async (criteriaId: string, opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
-        printJson(rt, await client.listCompatibleRuns(criteriaId, listOpts(opts)));
+        const o: Parameters<typeof client.listCompatibleRuns>[1] = listOpts(opts);
+        if (opts.startedAfter !== undefined) o.startedAfter = opts.startedAfter;
+        printJson(rt, await client.listCompatibleRuns(criteriaId, o));
       });
     });
 
@@ -158,40 +182,82 @@ export function register(program: Command, rt: CliRuntime): void {
       });
     });
 
-  evals
-    .command("agent-results")
-    .description("List all evaluation results for an agent.")
-    .argument("<agentId>", "Agent ID.")
-    .option("--page <n>", "Page number.", parseNumber)
-    .option("--limit <n>", "Page size.", parseNumber)
-    .action(async (agentId: string, opts) => {
-      await run(rt, async () => {
-        const client = createClient(program.opts<GlobalOptions>());
-        printJson(rt, await client.listAgentEvaluationResults(agentId, listOpts(opts)));
-      });
+  withTimeRangeOptions(
+    evals
+      .command("agent-results")
+      .description("List all evaluation results for an agent.")
+      .argument("<agentId>", "Agent ID.")
+      .option("--page <n>", "Page number.", parseNumber)
+      .option("--limit <n>", "Page size.", parseNumber)
+      .option("--status <status>", "Keep only one result status.", parseFilter)
+      .option("--flagged-only", "Keep only flagged results.")
+      .option("--step <stepId>", "Keep only results for this agent step.", parseFilter),
+  ).action(async (agentId: string, opts) => {
+    await run(rt, async () => {
+      const client = createClient(program.opts<GlobalOptions>());
+      const o: Parameters<typeof client.listAgentEvaluationResults>[1] = {
+        ...listOpts(opts),
+        ...timeRangeOpts(opts),
+      };
+      if (opts.status !== undefined) o.status = opts.status;
+      if (opts.flaggedOnly) o.flaggedOnly = true;
+      if (opts.step !== undefined) o.step = opts.step;
+      printJson(rt, await client.listAgentEvaluationResults(agentId, o));
     });
+  });
 
-  evals
-    .command("agent-runs")
-    .description("List evaluation run summaries for an agent.")
-    .argument("<agentId>", "Agent ID.")
-    .option("--page <n>", "Page number.", parseNumber)
-    .option("--limit <n>", "Page size.", parseNumber)
-    .action(async (agentId: string, opts) => {
-      await run(rt, async () => {
-        const client = createClient(program.opts<GlobalOptions>());
-        printJson(rt, await client.listEvaluationRuns(agentId, listOpts(opts)));
-      });
+  withTimeRangeOptions(
+    evals
+      .command("agent-runs")
+      .description("List evaluation run summaries for an agent.")
+      .argument("<agentId>", "Agent ID.")
+      .option("--page <n>", "Page number.", parseNumber)
+      .option("--limit <n>", "Page size.", parseNumber)
+      .option("--status <status>", "Keep only one result status.", parseFilter)
+      .option("--step <stepId>", "Keep only runs for this agent step.", parseFilter),
+  ).action(async (agentId: string, opts) => {
+    await run(rt, async () => {
+      const client = createClient(program.opts<GlobalOptions>());
+      const o: Parameters<typeof client.listEvaluationRuns>[1] = {
+        ...listOpts(opts),
+        ...timeRangeOpts(opts),
+      };
+      if (opts.status !== undefined) o.status = opts.status;
+      if (opts.step !== undefined) o.step = opts.step;
+      printJson(rt, await client.listEvaluationRuns(agentId, o));
     });
+  });
 
-  evals
-    .command("non-manual-summary")
-    .description("Get non-manual evaluation summary for an agent.")
-    .argument("<agentId>", "Agent ID.")
-    .action(async (agentId: string) => {
-      await run(rt, async () => {
-        const client = createClient(program.opts<GlobalOptions>());
-        printJson(rt, await client.getNonManualEvaluationSummary(agentId));
-      });
+  withDateRangeOptions(
+    evals
+      .command("non-manual-summary")
+      .description(
+        "Get the non-manual evaluation summary for an agent, or for the whole account when no agent is given. " +
+          "--start-date with --end-date sets the range; --start-date alone runs through today; " +
+          "otherwise the last --days days apply. --end-date alone, and --days with --start-date, are refused, " +
+          "because the API would ignore them.",
+      )
+      .argument("[agentId]", "Agent ID. Omit for the account-wide summary."),
+  ).action(async (agentId: string | undefined, opts) => {
+    await run(rt, async () => {
+      if (agentId !== undefined && agentId.trim().length === 0) {
+        throw new Error("agentId was given an empty value. Pass an agent ID, or omit it for the account-wide summary.");
+      }
+      if (opts.endDate !== undefined && opts.startDate === undefined) {
+        throw new Error("--end-date needs --start-date: the API ignores an end date on its own.");
+      }
+      if (opts.days !== undefined && opts.startDate !== undefined) {
+        throw new Error("Pass --days or --start-date, not both: the API ignores --days when a start date is given.");
+      }
+      // Date order is left to the API; see #17.
+      const client = createClient(program.opts<GlobalOptions>());
+      const range = dateRangeOpts(opts);
+      printJson(
+        rt,
+        Object.keys(range).length > 0
+          ? await client.getNonManualEvaluationSummary(agentId, range)
+          : await client.getNonManualEvaluationSummary(agentId),
+      );
     });
+  });
 }

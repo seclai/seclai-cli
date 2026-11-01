@@ -64,13 +64,13 @@ forward.
 
 ## Determine the version
 
-Do not guess the next version. Releases are cut by `seclai/github-tag-action` in `.github/workflows/main-build.yaml`, which reads the **merge commit message**:
+Do not guess the next version. These repos only squash-merge. The squash commit's subject is the PR title on a multi-commit PR, or that commit's headline on a single-commit PR, and its body is every branch commit message. Releases are cut by `seclai/github-tag-action` in `.github/workflows/main-build.yaml`, which reads that **squash commit** on `main`:
 
 - contains `#major` → major bump
 - contains `#minor` → minor bump
 - otherwise → `DEFAULT_BUMP: patch`
 
-So a PR that adds endpoints must say `#minor` in its title/merge commit, or the heading you write will not match the tag that gets cut. Confirm the intended bump with the user when it isn't stated, and flag the mismatch risk if the PR title lacks the keyword.
+The convention is to put `#minor` / `#major` in a branch commit message. It reaches `main` through the squash body, so do not trim the body in the merge dialog. The PR title also counts on a multi-commit PR. A change that adds endpoints needs `#minor` in one of those places, or it ships as a patch and the heading you write will not match the tag that gets cut. Confirm the intended bump with the user when it isn't stated, and flag the mismatch risk if neither a branch commit message nor the PR title carries the keyword.
 
 Check `git tag --sort=-v:refname | head -1` for the current latest, then apply the bump.
 
@@ -160,8 +160,10 @@ export type AddEmailDomainInput = Pick<AddEmailDomainRequest, "kind" | "value"> 
 
 See `AddEmailDomainInput` and `CreateExperimentInput` in `src/types.ts`.
 
-**Compile the doc examples.** `npm run typecheck` covers `src/` and `tests/`, not
-README or changelog snippets. Paste any example you write into a scratch `.ts`
+**Compile the doc examples.** `npm run typecheck` covers `src/` only — its
+`tsconfig.json` includes `src/**/*.ts`, and vitest strips types without checking
+them, so `tests/` is not type-checked either — let alone README or changelog
+snippets. Paste any example you write into a scratch `.ts`
 that imports from `../src/index` and compile it — that is how the
 `delegated`-is-required bug above was found, after the snippet had already shipped
 in a PR.

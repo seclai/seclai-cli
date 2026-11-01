@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import type { CliRuntime, GlobalOptions } from "../helpers.js";
-import { run, createClient, printJson, readJsonInput, readAiInput, withAiInputOptions, listOpts, parseNumber } from "../helpers.js";
+import { run, createClient, printJson, readJsonInput, readAiInput, withAiInputOptions, listOpts, parseNumber, parseFilter } from "../helpers.js";
 
 /** Register `solutions` commands: CRUD, link/unlink, conversations, AI assistant. */
 export function register(program: Command, rt: CliRuntime): void {
@@ -15,10 +15,13 @@ export function register(program: Command, rt: CliRuntime): void {
     .option("--limit <n>", "Page size.", parseNumber)
     .option("--sort <field>", "Sort field.")
     .option("--order <asc|desc>", "Sort direction.")
+    .option("--search <text>", "Keep solutions whose name contains this text (case-insensitive).", parseFilter)
     .action(async (opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
-        printJson(rt, await client.listSolutions(listOpts(opts)));
+        const o: Parameters<typeof client.listSolutions>[0] = listOpts(opts);
+        if (opts.search !== undefined) o.search = opts.search;
+        printJson(rt, await client.listSolutions(o));
       });
     });
 

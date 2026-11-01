@@ -55,6 +55,8 @@ type SeclaiMock = {
   getAgentCallers: ReturnType<typeof vi.fn>;
   setEmailTriggerConfig: ReturnType<typeof vi.fn>;
   setAcceptedAttachments: ReturnType<typeof vi.fn>;
+  setSlackTriggerConfig: ReturnType<typeof vi.fn>;
+  listAgentExamples: ReturnType<typeof vi.fn>;
   listEmailSourceRejections: ReturnType<typeof vi.fn>;
   // contents
   uploadFileToContent: ReturnType<typeof vi.fn>;
@@ -357,6 +359,8 @@ vi.mock("@seclai/sdk", () => {
     getAgentCallers = vi.fn(async () => []);
     setEmailTriggerConfig = vi.fn(async () => ({ ok: true }));
     setAcceptedAttachments = vi.fn(async () => ({ accepted_attachments: [] }));
+    setSlackTriggerConfig = vi.fn(async () => ({ trigger_id: "trig_1", missing_scopes: [] }));
+    listAgentExamples = vi.fn(async () => ({ data: [], pagination: {} }));
     listEmailSourceRejections = vi.fn(async () => ({ data: [], pagination: {} }));
 
     // contents
@@ -2638,5 +2642,255 @@ describe("seclai CLI — SDK 1.7.0 surface", () => {
 
     const paged = await ok(["sources", "email-rejections", "src_1", "--limit", "25"]);
     expect(paged.client.listEmailSourceRejections).toHaveBeenCalledWith("src_1", { limit: 25 });
+  });
+
+  // --- SDK 1.8.0: agent gallery and Slack triggers ---
+
+  test("agents examples list omits every option not passed", async () => {
+    const { client, io } = await ok(["agents", "examples", "list"]);
+    expect(client.listAgentExamples).toHaveBeenCalledWith({});
+    expect(JSON.parse(io.stdout)).toEqual({ data: [], pagination: {} });
+  });
+
+  test("agents examples list maps its options", async () => {
+    const { client } = await ok([
+      "agents", "examples", "list", "--query", "invoice", "--use-case", "finance", "--page", "2", "--limit", "5",
+    ]);
+    expect(client.listAgentExamples).toHaveBeenCalledWith({
+      page: 2,
+      limit: 5,
+      query: "invoice",
+      useCase: "finance",
+    });
+  });
+
+  test.each([[["--query", ""]], [["--use-case", "  "]]])(
+    "agents examples list refuses a blank filter: %j",
+    async (flags) => {
+      const { io, client } = await invoke(["agents", "examples", "list", ...flags]);
+      expect(io.exitCode).not.toBe(0);
+      expect(client).toBeUndefined();
+    },
+  );
+
+  test("agents triggers slack-config passes the body through", async () => {
+    const body = { mcp_client_id: "mcp_1", scope: "selected_channels", channel_ids: ["C1"], visibility: "private" };
+    const { client } = await ok([
+      "agents", "triggers", "slack-config", "agent_1", "trig_1", "--json", JSON.stringify(body),
+    ]);
+    expect(client.setSlackTriggerConfig).toHaveBeenCalledWith("agent_1", "trig_1", body);
+  });
+
+  test("agents triggers slack-config refuses a body that is not an object", async () => {
+    const { io, client } = await invoke([
+      "agents", "triggers", "slack-config", "agent_1", "trig_1", "--json", "[]",
+    ]);
+    expect(io.exitCode).toBe(1);
+    expect(io.stderr).toContain("Expected a JSON object");
+    expect(client?.setSlackTriggerConfig).not.toHaveBeenCalled();
+  });
+
+  // --- SDK 1.8.0: query filters the API declares ---
+
+  test("evals results list sends its filters", async () => {
+    const bare = await ok(["evals", "results", "list", "crit_1"]);
+    expect(bare.client.listEvaluationResults).toHaveBeenCalledWith("crit_1", {});
+
+    const { client } = await ok([
+      "evals", "results", "list", "crit_1", "--status", "failed", "--flagged-only",
+      "--time-from", "2026-10-01T00:00:00Z", "--time-to", "2026-10-31T00:00:00Z",
+    ]);
+    expect(client.listEvaluationResults).toHaveBeenCalledWith("crit_1", {
+      status: "failed",
+      flaggedOnly: true,
+      timeFrom: "2026-10-01T00:00:00Z",
+      timeTo: "2026-10-31T00:00:00Z",
+    });
+  });
+
+  test("evals agent-results and agent-runs send their filters", async () => {
+    const results = await ok([
+      "evals", "agent-results", "agent_1", "--step", "step_1", "--flagged-only", "--status", "passed",
+    ]);
+    expect(results.client.listAgentEvaluationResults).toHaveBeenCalledWith("agent_1", {
+      status: "passed",
+      flaggedOnly: true,
+      step: "step_1",
+    });
+
+    const runs = await ok(["evals", "agent-runs", "agent_1", "--step", "step_1", "--time-from", "2026-10-01"]);
+    expect(runs.client.listEvaluationRuns).toHaveBeenCalledWith("agent_1", {
+      timeFrom: "2026-10-01",
+      step: "step_1",
+    });
+
+    const bare = await ok(["evals", "agent-runs", "agent_1"]);
+    expect(bare.client.listEvaluationRuns).toHaveBeenCalledWith("agent_1", {});
+  });
+
+  test("evals compatible-runs sends --started-after", async () => {
+    const { client } = await ok(["evals", "compatible-runs", "crit_1", "--started-after", "2026-10-01T00:00:00Z"]);
+    expect(client.listCompatibleRuns).toHaveBeenCalledWith("crit_1", { startedAfter: "2026-10-01T00:00:00Z" });
+  });
+
+  test("evals non-manual-summary takes an optional agent and a date range", async () => {
+    const one = await ok(["evals", "non-manual-summary", "agent_1"]);
+    expect(one.client.getNonManualEvaluationSummary).toHaveBeenCalledWith("agent_1");
+
+    const account = await ok(["evals", "non-manual-summary", "--days", "7"]);
+    expect(account.client.getNonManualEvaluationSummary).toHaveBeenCalledWith(undefined, { days: 7 });
+
+    const range = await ok([
+      "evals", "non-manual-summary", "agent_1", "--start-date", "2026-10-01", "--end-date", "2026-10-15",
+    ]);
+    expect(range.client.getNonManualEvaluationSummary).toHaveBeenCalledWith("agent_1", {
+      startDate: "2026-10-01",
+      endDate: "2026-10-15",
+    });
+  });
+
+  test("date ranges accept the boundaries the guards allow", async () => {
+    const startOnly = await ok(["evals", "non-manual-summary", "--start-date", "2026-10-01"]);
+    expect(startOnly.client.getNonManualEvaluationSummary).toHaveBeenCalledWith(undefined, { startDate: "2026-10-01" });
+
+    const sameDay = await ok(["evals", "non-manual-summary", "--start-date", "2026-10-01", "--end-date", "2026-10-01"]);
+    expect(sameDay.client.getNonManualEvaluationSummary).toHaveBeenCalledWith(undefined, {
+      startDate: "2026-10-01",
+      endDate: "2026-10-01",
+    });
+
+    const memorySameDay = await ok(["memory", "stats", "mb_1", "--start-date", "2026-10-01", "--end-date", "2026-10-01"]);
+    expect(memorySameDay.client.getMemoryBankStats).toHaveBeenCalledWith("mb_1", {
+      startDate: "2026-10-01",
+      endDate: "2026-10-01",
+    });
+  });
+
+  test("evals non-manual-summary passes an inverted date range through to the API", async () => {
+    const { client } = await ok(["evals", "non-manual-summary", "--start-date", "2026-10-31", "--end-date", "2026-10-01"]);
+    expect(client.getNonManualEvaluationSummary).toHaveBeenCalledWith(undefined, {
+      startDate: "2026-10-31",
+      endDate: "2026-10-01",
+    });
+  });
+
+  test("evals non-manual-summary refuses --end-date without --start-date", async () => {
+    const { io, client } = await invoke(["evals", "non-manual-summary", "--end-date", "2026-10-15"]);
+    expect(io.exitCode).toBe(1);
+    expect(io.stderr).toContain("--end-date needs --start-date");
+    expect(client).toBeUndefined();
+  });
+
+  test.each([
+    [["evals", "non-manual-summary", "--days", "7", "--start-date", "2026-10-01"], "not both"],
+    [["memory", "stats", "mb_1", "--days", "7", "--start-date", "2026-10-01", "--end-date", "2026-10-15"], "not both"],
+  ])("refuses a date range the API would ignore: %j", async (argv, message) => {
+    const { io, client } = await invoke(argv);
+    expect(io.exitCode).toBe(1);
+    expect(io.stderr).toContain(message);
+    expect(client).toBeUndefined();
+  });
+
+  test.each([["2026/10/01"], ["yesterday"], [""]])("a date flag refuses %j", async (value) => {
+    const { io, client } = await invoke(["evals", "non-manual-summary", "--start-date", value]);
+    expect(io.exitCode).not.toBe(0);
+    expect(io.stderr).toContain("YYYY-MM-DD");
+    expect(client).toBeUndefined();
+  });
+
+  test("memory stats takes a date range only as a pair", async () => {
+    const days = await ok(["memory", "stats", "mb_1", "--days", "14"]);
+    expect(days.client.getMemoryBankStats).toHaveBeenCalledWith("mb_1", { days: 14 });
+
+    const pair = await ok(["memory", "stats", "mb_1", "--start-date", "2026-10-01", "--end-date", "2026-10-15"]);
+    expect(pair.client.getMemoryBankStats).toHaveBeenCalledWith("mb_1", {
+      startDate: "2026-10-01",
+      endDate: "2026-10-15",
+    });
+
+    const lone = await invoke(["memory", "stats", "mb_1", "--start-date", "2026-10-01"]);
+    expect(lone.io.exitCode).toBe(1);
+    expect(lone.io.stderr).toContain("together");
+    expect(lone.client).toBeUndefined();
+  });
+
+  test("memory list sends --type", async () => {
+    const { client } = await ok(["memory", "list", "--type", "conversation"]);
+    expect(client.listMemoryBanks).toHaveBeenCalledWith({ type: "conversation" });
+  });
+
+  test("memory ai last and ai memory-history page by limit and offset", async () => {
+    const bare = await ok(["memory", "ai", "last"]);
+    expect(bare.client.getMemoryBankAiLastConversation).toHaveBeenCalledWith();
+
+    const last = await ok(["memory", "ai", "last", "--limit", "10", "--offset", "5"]);
+    expect(last.client.getMemoryBankAiLastConversation).toHaveBeenCalledWith({ limit: 10, offset: 5 });
+
+    const history = await ok(["ai", "memory-history", "--limit", "3"]);
+    expect(history.client.getAiAssistantMemoryBankHistory).toHaveBeenCalledWith({ limit: 3 });
+  });
+
+  test("alerts list sends its filters", async () => {
+    const { client } = await ok([
+      "alerts", "list", "--agent-id", "agent_1", "--source-connection-id", "sc_1",
+      "--time-from", "2026-10-01T00:00:00Z", "--time-to", "2026-10-02T00:00:00Z",
+    ]);
+    expect(client.listAlerts).toHaveBeenCalledWith({
+      agentId: "agent_1",
+      sourceConnectionId: "sc_1",
+      timeFrom: "2026-10-01T00:00:00Z",
+      timeTo: "2026-10-02T00:00:00Z",
+    });
+  });
+
+  test("alerts list refuses a blank --agent-id rather than widening the listing", async () => {
+    const { io, client } = await invoke(["alerts", "list", "--agent-id", ""]);
+    expect(io.exitCode).not.toBe(0);
+    expect(io.stderr).toContain("--agent-id");
+    expect(client).toBeUndefined();
+  });
+
+  test("alerts configs list and prefs list send their filters", async () => {
+    const configs = await ok(["alerts", "configs", "list", "--scope", "source", "--agent-id", "agent_1"]);
+    expect(configs.client.listAlertConfigs).toHaveBeenCalledWith({ agentId: "agent_1", scope: "source" });
+
+    const prefsBare = await ok(["alerts", "prefs", "list"]);
+    expect(prefsBare.client.listOrganizationAlertPreferences).toHaveBeenCalledWith();
+
+    const prefs = await ok(["alerts", "prefs", "list", "--organization-id", "org_1", "--include-defaults"]);
+    expect(prefs.client.listOrganizationAlertPreferences).toHaveBeenCalledWith({
+      organizationId: "org_1",
+      includeDefaults: true,
+    });
+  });
+
+  test("governance ai list sends --limit", async () => {
+    const bare = await ok(["governance", "ai", "list"]);
+    expect(bare.client.listGovernanceAiConversations).toHaveBeenCalledWith();
+
+    const limited = await ok(["governance", "ai", "list", "--limit", "5"]);
+    expect(limited.client.listGovernanceAiConversations).toHaveBeenCalledWith({ limit: 5 });
+  });
+
+  test("models alerts list and recommendations send their filters", async () => {
+    const alerts = await ok(["models", "alerts", "list", "--agent-id", "agent_1", "--unread-only"]);
+    expect(alerts.client.listModelAlerts).toHaveBeenCalledWith({ agentId: "agent_1", unreadOnly: true });
+
+    const recs = await ok([
+      "models", "recommendations", "model_1", "--require-tool-use", "--require-structured-output",
+      "--require-thinking", "--min-context-tokens", "100000", "--min-output-tokens", "8000",
+    ]);
+    expect(recs.client.getModelRecommendations).toHaveBeenCalledWith("model_1", {
+      requireToolUse: true,
+      requireStructuredOutput: true,
+      requireThinking: true,
+      minContextTokens: 100000,
+      minOutputTokens: 8000,
+    });
+  });
+
+  test("solutions list sends --search", async () => {
+    const { client } = await ok(["solutions", "list", "--search", "support"]);
+    expect(client.listSolutions).toHaveBeenCalledWith({ search: "support" });
   });
 });

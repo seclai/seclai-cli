@@ -29,7 +29,7 @@ seclai evals results create <criteriaId> --json '{"run_id":"<runId>","score":0.9
 seclai evals criteria summary <criteriaId>
 seclai evals agent-results <agentId>
 seclai evals agent-runs <agentId> --limit 20
-seclai evals non-manual-summary <agentId>
+seclai evals non-manual-summary [agentId] [--days N | --start-date YYYY-MM-DD [--end-date YYYY-MM-DD]]   # omit agentId for the whole account
 ```
 
 ## Managing criteria
@@ -48,8 +48,8 @@ get `.pagination`.
 
 ## Viewing results
 ```bash
-seclai evals results list <criteriaId> [--page N] [--limit N]
-seclai evals compatible-runs <criteriaId> [--page N] [--limit N]
-seclai evals agent-results <agentId> [--page N] [--limit N]
-seclai evals agent-runs <agentId> [--page N] [--limit N]
+seclai evals results list <criteriaId> [--page N] [--limit N] [--status S] [--flagged-only] [--time-from ISO] [--time-to ISO]
+seclai evals compatible-runs <criteriaId> [--page N] [--limit N] [--started-after ISO]
+seclai evals agent-results <agentId> [--page N] [--limit N] [--status S] [--flagged-only] [--step <stepId>] [--time-from ISO] [--time-to ISO]
+seclai evals agent-runs <agentId> [--page N] [--limit N] [--status S] [--step <stepId>] [--time-from ISO] [--time-to ISO]
 ```

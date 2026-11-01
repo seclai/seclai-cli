@@ -46,7 +46,7 @@ seclai agents runs list <agentId>
 
 | Group | What it covers | Reference |
 | --- | --- | --- |
-| \`agents\` | Agents, runs, definitions, export/import, input uploads, triggers, agent AI | [references/agents.md](references/agents.md) |
+| \`agents\` | Agents, runs, definitions, export/import, input uploads, triggers, the agent gallery, agent AI | [references/agents.md](references/agents.md) |
 | \`sources\` \`contents\` \`kb\` \`memory\` | Sources and uploads, indexing status, exports, embedding migration, indexed content, knowledge bases, memory banks | [references/knowledge.md](references/knowledge.md) |
 | \`evals\` | Evaluation criteria, results, runs, agent-level summaries | [references/evaluations.md](references/evaluations.md) |
 | \`solutions\` \`governance\` | Solutions, resource links, conversations, solution and governance AI | [references/solutions.md](references/solutions.md) |
@@ -121,6 +121,7 @@ Each version includes the changes of the ones before it:
 | \`2026-10-18\` | A source's \`document_images\` defaults to \`true\` on a text-only embedder |
 | \`2026-10-19\` | \`sources create\` rejects \`polling_max_items\` on any source but an RSS feed with a 400 where it was stored |
 | \`2026-10-21\` | An evaluation result whose evaluator returned no verdict (\`status\` \`error\`) is left out of the failed counts, rates and average scores, and \`evals test-draft\` returns its \`score\` and \`passed\` as \`null\` instead of 0.5 and \`false\` |
+| \`2026-10-28\` | An \`if_else\` or \`switch\` step's \`output\` is the result of the arm it took instead of a \`{"branch": ...}\` marker naming the arm. Read the arm from the step's \`decision\`, which is set on every version |
 
 To find a run's files, read \`.attachments\` rather than parsing \`.output\`: it is
 present on every version, and \`.output\` stops being JSON at \`2026-09-30\`.
@@ -189,6 +190,20 @@ seclai agents triggers email-config <agentId> <triggerId> --json '{"alias":"supp
 # Steps reference them as {{agent.attachments.<name>}}; min defaults to 0.
 seclai agents triggers accepted-attachments <agentId> <triggerId> \\
   --json '{"accepted_attachments":[{"name":"invoice","content_types":["application/pdf"],"min":1,"max":1}]}'
+
+# Slack connection, form, channels, activation, reply visibility and conversation
+# settings for a SLACK_COMMAND trigger. Omitted fields are left unchanged.
+seclai agents triggers slack-config <agentId> <triggerId> \\
+  --json '{"mcp_client_id":"<slackClientId>","scope":"selected_channels","channel_ids":["C0123"],"visibility":"private"}'
+\`\`\`
+
+## Agent gallery
+
+\`\`\`bash
+# Ready-made agents. Search, then create one from an entry's key; its
+# resources list the slots to bind in resource_bindings.
+seclai agents examples list [--query "invoice"] [--use-case <useCase>] [--page N] [--limit N]
+seclai agents create --json '{"name":"Invoices","agent_template":"<key>","create_missing_resources":true}'
 \`\`\`
 
 ## Running agents
@@ -312,7 +327,7 @@ seclai ai source --user-input "Create a documentation source"
 seclai ai solution --user-input "Build a customer support solution"
 seclai ai memory --user-input "Create a conversation memory bank"
 
-seclai ai memory-history
+seclai ai memory-history [--limit N] [--offset N]
 seclai ai accept <conversationId> --json '{"accepted":true}'
 seclai ai decline <conversationId>
 seclai ai memory-accept <conversationId> --json '{"accepted":true}'
@@ -345,7 +360,7 @@ Model-catalog alerts are separate — see [models.md](models.md).
 ## Alerts
 
 \`\`\`bash
-seclai alerts list [--page N] [--limit N] [--status <status>]
+seclai alerts list [--page N] [--limit N] [--status <status>] [--agent-id <id>] [--source-connection-id <id>] [--time-from ISO] [--time-to ISO]
 seclai alerts get <alertId>
 seclai alerts status <alertId> --json '{"status":"resolved"}'
 seclai alerts comment <alertId> --json '{"comment":"Fixed the issue"}'
@@ -364,7 +379,7 @@ seclai alerts list | jq '[.data[] | select(.severity == "high")]'
 ## Alert configurations
 
 \`\`\`bash
-seclai alerts configs list [--page N] [--limit N]
+seclai alerts configs list [--page N] [--limit N] [--agent-id <id>] [--source-connection-id <id>] [--scope source]
 seclai alerts configs create --json '{"name":"Latency Alert","description":"...","threshold":5000}'
 seclai alerts configs get <configId>
 seclai alerts configs update <configId> --json '{"threshold":3000}'
@@ -374,7 +389,7 @@ seclai alerts configs delete <configId>
 ## Organization preferences
 
 \`\`\`bash
-seclai alerts prefs list
+seclai alerts prefs list [--organization-id <id>] [--include-defaults]
 seclai alerts prefs update <organizationId> <alertType> --json '{"enabled":true}'
 \`\`\`
 
@@ -532,7 +547,7 @@ seclai evals results create <criteriaId> --json '{"run_id":"<runId>","score":0.9
 seclai evals criteria summary <criteriaId>
 seclai evals agent-results <agentId>
 seclai evals agent-runs <agentId> --limit 20
-seclai evals non-manual-summary <agentId>
+seclai evals non-manual-summary [agentId] [--days N | --start-date YYYY-MM-DD [--end-date YYYY-MM-DD]]   # omit agentId for the whole account
 \`\`\`
 
 ## Managing criteria
@@ -551,10 +566,10 @@ get \`.pagination\`.
 
 ## Viewing results
 \`\`\`bash
-seclai evals results list <criteriaId> [--page N] [--limit N]
-seclai evals compatible-runs <criteriaId> [--page N] [--limit N]
-seclai evals agent-results <agentId> [--page N] [--limit N]
-seclai evals agent-runs <agentId> [--page N] [--limit N]
+seclai evals results list <criteriaId> [--page N] [--limit N] [--status S] [--flagged-only] [--time-from ISO] [--time-to ISO]
+seclai evals compatible-runs <criteriaId> [--page N] [--limit N] [--started-after ISO]
+seclai evals agent-results <agentId> [--page N] [--limit N] [--status S] [--flagged-only] [--step <stepId>] [--time-from ISO] [--time-to ISO]
+seclai evals agent-runs <agentId> [--page N] [--limit N] [--status S] [--step <stepId>] [--time-from ISO] [--time-to ISO]
 \`\`\`
 ` },
   { name: "references/knowledge.md", content: `# Sources, content, knowledge bases and memory banks
@@ -685,7 +700,7 @@ seclai kb delete <kbId>
 ## Memory banks
 
 \`\`\`bash
-seclai memory list [--page N] [--limit N] [--sort field] [--order asc|desc]
+seclai memory list [--page N] [--limit N] [--sort field] [--order asc|desc] [--type conversation|general]
 # type: "conversation" (chat history) or "general" (structured facts)
 seclai memory create --json '{"name":"Chat Memory","type":"conversation"}'
 seclai memory get <memoryBankId>
@@ -696,7 +711,7 @@ seclai memory delete <memoryBankId>
 ### Utilities
 
 \`\`\`bash
-seclai memory stats <memoryBankId>
+seclai memory stats <memoryBankId> [--days N | --start-date YYYY-MM-DD --end-date YYYY-MM-DD]
 seclai memory agents <memoryBankId>        # agents using this bank
 seclai memory compact <memoryBankId>
 seclai memory delete-source <memoryBankId>
@@ -712,7 +727,7 @@ produce without writing to the bank.
 
 \`\`\`bash
 seclai memory ai generate --user-input "Configure compaction for chat memory"
-seclai memory ai last
+seclai memory ai last [--limit N] [--offset N]
 seclai memory ai accept <conversationId> --json '{"accepted":true}'
 \`\`\`
 
@@ -764,7 +779,7 @@ instead, with the \`pagination\` block once the API sends one.
 ## Model alerts
 
 \`\`\`bash
-seclai models alerts list [--page N] [--limit N]
+seclai models alerts list [--page N] [--limit N] [--agent-id <id>] [--unread-only]
 seclai models alerts mark-read <alertId>
 seclai models alerts mark-all-read
 seclai models alerts unread-count
@@ -776,7 +791,7 @@ account alerts in [alerts.md](alerts.md).
 ## Recommendations
 
 \`\`\`bash
-seclai models recommendations <modelId>
+seclai models recommendations <modelId> [--require-tool-use] [--require-structured-output] [--require-thinking] [--min-context-tokens N] [--min-output-tokens N]
 \`\`\`
 
 Suggests replacements for a model, which is how you act on a deprecation alert.
@@ -867,7 +882,7 @@ Governance defines the policies applied to agent input and output.
 ## Solutions
 
 \`\`\`bash
-seclai solutions list [--page N] [--limit N] [--sort field] [--order asc|desc]
+seclai solutions list [--page N] [--limit N] [--sort field] [--order asc|desc] [--search <text>]
 seclai solutions create --json '{"name":"Customer Support Solution"}'
 seclai solutions get <solutionId>
 seclai solutions update <solutionId> --json '{"name":"Updated"}'
@@ -907,7 +922,7 @@ step, which is why they live here rather than under \`kb\` or \`sources\`.
 
 \`\`\`bash
 seclai governance ai generate --user-input "Create a content safety policy"
-seclai governance ai list
+seclai governance ai list [--limit N]
 seclai governance ai accept <conversationId>
 seclai governance ai decline <conversationId>
 \`\`\`
@@ -927,7 +942,7 @@ seclai solutions get <solutionId>
 
 \`\`\`bash
 seclai governance ai generate --user-input "Create a content safety policy that blocks harmful outputs"
-seclai governance ai list
+seclai governance ai list [--limit N]
 seclai governance ai accept <conversationId>
 \`\`\`
 ` },

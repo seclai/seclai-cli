@@ -1,6 +1,21 @@
 import { Command } from "commander";
 import type { CliRuntime, GlobalOptions } from "../helpers.js";
-import { run, createClient, printJson, readJsonInput, readAiInput, withAiInputOptions, readJsonObjectInput, listOpts, parseNumber } from "../helpers.js";
+import {
+  run,
+  createClient,
+  printJson,
+  readJsonInput,
+  readAiInput,
+  withAiInputOptions,
+  readJsonObjectInput,
+  listOpts,
+  parseNumber,
+  parseFilter,
+  withDateRangeOptions,
+  dateRangeOpts,
+  withOffsetListOptions,
+  offsetListOpts,
+} from "../helpers.js";
 
 /** Register `memory` commands: CRUD, stats, utilities, test-compaction, AI assistant. */
 export function register(program: Command, rt: CliRuntime): void {
@@ -15,10 +30,13 @@ export function register(program: Command, rt: CliRuntime): void {
     .option("--limit <n>", "Page size.", parseNumber)
     .option("--sort <field>", "Sort field.")
     .option("--order <asc|desc>", "Sort direction.")
+    .option("--type <type>", "Keep only one bank type: conversation or general.", parseFilter)
     .action(async (opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
-        printJson(rt, await client.listMemoryBanks(listOpts(opts)));
+        const o: Parameters<typeof client.listMemoryBanks>[0] = listOpts(opts);
+        if (opts.type !== undefined) o.type = opts.type;
+        printJson(rt, await client.listMemoryBanks(o));
       });
     });
 
@@ -74,16 +92,35 @@ export function register(program: Command, rt: CliRuntime): void {
 
   // --- Stats & utilities ---
 
-  memory
-    .command("stats")
-    .description("Get memory bank statistics.")
-    .argument("<memoryBankId>", "Memory bank ID.")
-    .action(async (memoryBankId: string) => {
-      await run(rt, async () => {
-        const client = createClient(program.opts<GlobalOptions>());
-        printJson(rt, await client.getMemoryBankStats(memoryBankId));
-      });
+  withDateRangeOptions(
+    memory
+      .command("stats")
+      .description(
+        "Get memory bank statistics. --start-date and --end-date together replace --days; " +
+          "either one alone is refused, because the API would ignore it, and so are both with --days, " +
+          "because the API would ignore --days.",
+      )
+      .argument("<memoryBankId>", "Memory bank ID."),
+  ).action(async (memoryBankId: string, opts) => {
+    await run(rt, async () => {
+      // The API ignores a lone start or end date and falls back to the last
+      // `days` days, which would print a summary for a range nobody asked for.
+      if ((opts.startDate === undefined) !== (opts.endDate === undefined)) {
+        throw new Error("Pass --start-date and --end-date together, or neither.");
+      }
+      if (opts.days !== undefined && opts.startDate !== undefined) {
+        throw new Error("Pass --days or the two dates, not both: the API ignores --days when the dates are given.");
+      }
+      const client = createClient(program.opts<GlobalOptions>());
+      const range = dateRangeOpts(opts);
+      printJson(
+        rt,
+        Object.keys(range).length > 0
+          ? await client.getMemoryBankStats(memoryBankId, range)
+          : await client.getMemoryBankStats(memoryBankId),
+      );
     });
+  });
 
   memory
     .command("agents")
@@ -172,14 +209,23 @@ export function register(program: Command, rt: CliRuntime): void {
       });
     });
 
-  ai.command("last")
-    .description("Get last memory bank AI conversation.")
-    .action(async () => {
-      await run(rt, async () => {
-        const client = createClient(program.opts<GlobalOptions>());
-        printJson(rt, await client.getMemoryBankAiLastConversation());
-      });
+  withOffsetListOptions(
+    ai.command("last").description(
+      "Get last memory bank AI conversation. --limit is the turns to return (server default 5); " +
+        "--offset skips the most recent turns.",
+    ),
+  ).action(async (opts) => {
+    await run(rt, async () => {
+      const client = createClient(program.opts<GlobalOptions>());
+      const page = offsetListOpts(opts);
+      printJson(
+        rt,
+        Object.keys(page).length > 0
+          ? await client.getMemoryBankAiLastConversation(page)
+          : await client.getMemoryBankAiLastConversation(),
+      );
     });
+  });
 
   ai.command("accept")
     .description("Accept a memory bank AI suggestion.")

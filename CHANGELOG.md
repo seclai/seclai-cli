@@ -1,17 +1,24 @@
 # Changelog
 
-## [1.8.0] - 2026-10-21
+## [1.8.0] - 2026-10-31
 
 ### Changed
 
-- Require `@seclai/sdk` 1.7.0
+- Require `@seclai/sdk` 1.8.0
+- Let `evals non-manual-summary` omit the agent ID for the account-wide summary, and take `--days`, `--start-date` and `--end-date`. `--end-date` without `--start-date`, and `--days` with `--start-date`, are refused, because the API ignores them
 
 ### Added
 
 - Add `contents attachments list`, `get`, `embeddings` and `download` for the files attached to a content item — email attachments, feed enclosures, web page media and the images inside a document — with whether each is indexed and, when indexing failed, why. `get` takes `--start` and `--end` to page through an attachment's text, and `download` writes to stdout or to `--output`
 - Add `agents triggers accepted-attachments` to declare the named input attachments a trigger accepts
+- Add `agents examples list` for the agent gallery, searchable with `--query` and filterable by `--use-case`. Pass an entry's `key` as `agent_template` to `agents create`, with `resource_bindings` or `create_missing_resources` for the resources it lists
+- Add `agents triggers slack-config` to configure a `SLACK_COMMAND` trigger: its Slack connection, form, channels, activation, reply visibility and conversation settings
+- Add the filters the API declares to the listings that lacked them: `--status`, `--flagged-only`, `--time-from` and `--time-to` on `evals results list` and `evals agent-results`, which also takes `--step`; `--status`, `--step`, `--time-from` and `--time-to` on `evals agent-runs`; `--started-after` on `evals compatible-runs`; `--agent-id`, `--source-connection-id`, `--time-from` and `--time-to` on `alerts list`; `--agent-id`, `--source-connection-id` and `--scope` on `alerts configs list`; `--organization-id` and `--include-defaults` on `alerts prefs list`; `--agent-id` and `--unread-only` on `models alerts list`; `--type` on `memory list`; and `--search` on `solutions list`. A blank value for one of these flags is refused rather than dropped, so it cannot widen a listing
+- Add `--days`, or `--start-date` with `--end-date`, to `memory stats`. One date on its own is refused, because the API ignores it, and so are the dates with `--days`, because the API then ignores `--days`
+- Add `--limit` and `--offset` to `memory ai last` and `ai memory-history`, and `--limit` to `governance ai list`
+- Add `--require-tool-use`, `--require-structured-output`, `--require-thinking`, `--min-context-tokens` and `--min-output-tokens` to `models recommendations`
 - Add `sources email-rejections` to list the mail an email source refused, with the sender and the reason
-- Accept `2026-10-05`, `2026-10-13`, `2026-10-16`, `2026-10-18`, `2026-10-19` and `2026-10-21` for `--api-version`, `SECLAI_API_VERSION` and `api-version set`. `api-version --help` and the README list what each version changes
+- Accept `2026-10-05`, `2026-10-13`, `2026-10-16`, `2026-10-18`, `2026-10-19`, `2026-10-21` and `2026-10-28` for `--api-version`, `SECLAI_API_VERSION` and `api-version set`. `api-version --help` and the README list what each version changes
 
 ### Fixed
 

@@ -1,6 +1,15 @@
 import { Command } from "commander";
 import type { CliRuntime, GlobalOptions } from "../helpers.js";
-import { run, createClient, printJson, readJsonInput, readAiInput, withAiInputOptions } from "../helpers.js";
+import {
+  run,
+  createClient,
+  printJson,
+  readJsonInput,
+  readAiInput,
+  withAiInputOptions,
+  withOffsetListOptions,
+  offsetListOpts,
+} from "../helpers.js";
 
 /** Register top-level `ai` commands: feedback, domain assistants (kb/source/solution/memory), accept/decline. */
 export function register(program: Command, rt: CliRuntime): void {
@@ -62,14 +71,23 @@ export function register(program: Command, rt: CliRuntime): void {
       });
     });
 
-  ai.command("memory-history")
-    .description("Get AI assistant memory bank conversation history.")
-    .action(async () => {
-      await run(rt, async () => {
-        const client = createClient(program.opts<GlobalOptions>());
-        printJson(rt, await client.getAiAssistantMemoryBankHistory());
-      });
+  withOffsetListOptions(
+    ai.command("memory-history").description(
+      "Get AI assistant memory bank conversation history. --limit is the turns to return (server default 5); " +
+        "--offset skips the most recent turns.",
+    ),
+  ).action(async (opts) => {
+    await run(rt, async () => {
+      const client = createClient(program.opts<GlobalOptions>());
+      const page = offsetListOpts(opts);
+      printJson(
+        rt,
+        Object.keys(page).length > 0
+          ? await client.getAiAssistantMemoryBankHistory(page)
+          : await client.getAiAssistantMemoryBankHistory(),
+      );
     });
+  });
 
   ai.command("accept")
     .description("Accept an AI assistant plan.")

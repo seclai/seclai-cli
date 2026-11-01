@@ -10,6 +10,7 @@ import {
   withOffsetListOptions,
   offsetListOpts,
   parseNumber,
+  parseFilter,
   toPagedEnvelope,
 } from "../helpers.js";
 
@@ -113,6 +114,8 @@ export function register(program: Command, rt: CliRuntime): void {
     .description("List model alerts.")
     .option("--page <n>", "Page number.", parseNumber)
     .option("--limit <n>", "Page size.", parseNumber)
+    .option("--agent-id <id>", "Keep only alerts for this agent.", parseFilter)
+    .option("--unread-only", "Keep only unread alerts.")
     .option(
       "--paged",
       "Wrap the results in {data: [...]}, the shape this endpoint moves to from --api-version 2026-07-27.",
@@ -120,7 +123,10 @@ export function register(program: Command, rt: CliRuntime): void {
     .action(async (opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
-        const res = await client.listModelAlerts(listOpts(opts));
+        const o: Parameters<typeof client.listModelAlerts>[0] = listOpts(opts);
+        if (opts.agentId !== undefined) o.agentId = opts.agentId;
+        if (opts.unreadOnly) o.unreadOnly = true;
+        const res = await client.listModelAlerts(o);
         printJson(rt, opts.paged ? toPagedEnvelope(res, "alerts") : res);
       });
     });
@@ -162,10 +168,26 @@ export function register(program: Command, rt: CliRuntime): void {
     .command("recommendations")
     .description("Get model recommendations.")
     .argument("<modelId>", "Model ID.")
-    .action(async (modelId: string) => {
+    .option("--require-tool-use", "Only models that support tool use.")
+    .option("--require-structured-output", "Only models that support structured output.")
+    .option("--require-thinking", "Only models that support thinking.")
+    .option("--min-context-tokens <n>", "Smallest acceptable context window, in tokens.", parseNumber)
+    .option("--min-output-tokens <n>", "Smallest acceptable output limit, in tokens.", parseNumber)
+    .action(async (modelId: string, opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
-        printJson(rt, await client.getModelRecommendations(modelId));
+        const o: NonNullable<Parameters<typeof client.getModelRecommendations>[1]> = {};
+        if (opts.requireToolUse) o.requireToolUse = true;
+        if (opts.requireStructuredOutput) o.requireStructuredOutput = true;
+        if (opts.requireThinking) o.requireThinking = true;
+        if (opts.minContextTokens !== undefined) o.minContextTokens = opts.minContextTokens;
+        if (opts.minOutputTokens !== undefined) o.minOutputTokens = opts.minOutputTokens;
+        printJson(
+          rt,
+          Object.keys(o).length > 0
+            ? await client.getModelRecommendations(modelId, o)
+            : await client.getModelRecommendations(modelId),
+        );
       });
     });
 

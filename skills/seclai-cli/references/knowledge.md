@@ -126,7 +126,7 @@ seclai kb delete <kbId>
 ## Memory banks
 
 ```bash
-seclai memory list [--page N] [--limit N] [--sort field] [--order asc|desc]
+seclai memory list [--page N] [--limit N] [--sort field] [--order asc|desc] [--type conversation|general]
 # type: "conversation" (chat history) or "general" (structured facts)
 seclai memory create --json '{"name":"Chat Memory","type":"conversation"}'
 seclai memory get <memoryBankId>
@@ -137,7 +137,7 @@ seclai memory delete <memoryBankId>
 ### Utilities
 
 ```bash
-seclai memory stats <memoryBankId>
+seclai memory stats <memoryBankId> [--days N | --start-date YYYY-MM-DD --end-date YYYY-MM-DD]
 seclai memory agents <memoryBankId>        # agents using this bank
 seclai memory compact <memoryBankId>
 seclai memory delete-source <memoryBankId>
@@ -153,7 +153,7 @@ produce without writing to the bank.
 
 ```bash
 seclai memory ai generate --user-input "Configure compaction for chat memory"
-seclai memory ai last
+seclai memory ai last [--limit N] [--offset N]
 seclai memory ai accept <conversationId> --json '{"accepted":true}'
 ```
 

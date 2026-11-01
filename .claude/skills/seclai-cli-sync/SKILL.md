@@ -119,10 +119,9 @@ not a preference: a CLI's output is a scripting interface.
 `seclai-changelog` skill, which is vendored here too. Two things are specific to
 this repo:
 
-- **The version comes from the merge commit.** `seclai/github-tag-action` reads
-  it for `#major` / `#minor`, defaulting to a patch bump. A sync that adds
-  commands must say `#minor` in the PR title, or the heading you write will not
-  match the tag that gets cut.
+- **A sync that adds commands needs a `#minor` bump.** Where the keyword goes
+  and how the squash commit carries it is in the `seclai-changelog` skill,
+  "Determine the version".
 - **Entries describe commands, not SDK methods.** A consumer of this package
   runs `seclai email domains list`; that they are reaching
   `listEmailDomains()` is an implementation detail. Group a family of new

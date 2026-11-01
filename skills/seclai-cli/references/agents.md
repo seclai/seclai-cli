@@ -30,6 +30,20 @@ seclai agents triggers email-config <agentId> <triggerId> --json '{"alias":"supp
 # Steps reference them as {{agent.attachments.<name>}}; min defaults to 0.
 seclai agents triggers accepted-attachments <agentId> <triggerId> \
   --json '{"accepted_attachments":[{"name":"invoice","content_types":["application/pdf"],"min":1,"max":1}]}'
+
+# Slack connection, form, channels, activation, reply visibility and conversation
+# settings for a SLACK_COMMAND trigger. Omitted fields are left unchanged.
+seclai agents triggers slack-config <agentId> <triggerId> \
+  --json '{"mcp_client_id":"<slackClientId>","scope":"selected_channels","channel_ids":["C0123"],"visibility":"private"}'
+```
+
+## Agent gallery
+
+```bash
+# Ready-made agents. Search, then create one from an entry's key; its
+# resources list the slots to bind in resource_bindings.
+seclai agents examples list [--query "invoice"] [--use-case <useCase>] [--page N] [--limit N]
+seclai agents create --json '{"name":"Invoices","agent_template":"<key>","create_missing_resources":true}'
 ```
 
 ## Running agents
