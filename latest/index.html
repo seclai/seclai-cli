@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Seclai CLI Docs (v1.7.0)</title>
+  <title>Seclai CLI Docs (v1.8.0)</title>
   <style>
     :root {
       color-scheme: light dark;
@@ -98,7 +98,7 @@
   <div class="wrap">
     <header>
       <h1>Seclai CLI</h1>
-      <p class="meta">Version: <code>1.7.0</code> · Generated command reference from <code>--help</code> output</p>
+      <p class="meta">Version: <code>1.8.0</code> · Generated command reference from <code>--help</code> output</p>
     </header>
     <div class="layout">
       <nav aria-label="Table of contents">
@@ -276,7 +276,7 @@
 <h2 class="section-title"><a class="anchor" href="#overview">Overview</a></h2>
 <pre class="code"><code>Usage: seclai [options] [command]
 
-Seclai Command Line Interface (v1.7.0)
+Seclai Command Line Interface (v1.8.0)
 
 Manage agents, knowledge bases, sources, memory banks, evaluations, and more
 from the terminal.
@@ -365,7 +365,12 @@ Options:
 
 Commands:
   list [options]                     List agents.
-  create [options]                   Create a new agent.
+  create [options]                   Create a new agent. To start from the
+                                     gallery, pass an entry&#39;s key from &#39;agents
+                                     examples list&#39; as agent_template, with
+                                     resource_bindings or
+                                     create_missing_resources for the resources
+                                     it needs.
   get &lt;agentId&gt;                      Get an agent by ID.
   update [options] &lt;agentId&gt;         Update an agent.
   delete &lt;agentId&gt;                   Delete an agent.
@@ -374,6 +379,8 @@ Commands:
   enable &lt;agentId&gt;                   Resume a paused agent.
   callers &lt;agentId&gt;                  List the live agents that call this agent
                                      via a call_agent step.
+  examples                           The agent gallery: ready-made agents to
+                                     create from.
   triggers                           Agent trigger configuration.
   run [options] &lt;agentId&gt;            Run an agent. Use --stream/--events/--poll
                                      for different modes.
@@ -418,7 +425,9 @@ Options:
 <h2 class="section-title"><a class="anchor" href="#agents-create">agents create</a></h2>
 <pre class="code"><code>Usage: seclai agents create [options]
 
-Create a new agent.
+Create a new agent. To start from the gallery, pass an entry&#39;s key from &#39;agents
+examples list&#39; as agent_template, with resource_bindings or
+create_missing_resources for the resources it needs.
 
 Options:
   --json &lt;json&gt;       Inline JSON body. Use &#39;-&#39; for stdin.
@@ -786,20 +795,21 @@ Options:
 Manage content sources.
 
 Options:
-  -h, --help                        display help for command
+  -h, --help                             display help for command
 
 Commands:
-  list [options]                    List sources.
-  create [options]                  Create a source.
-  get &lt;sourceId&gt;                    Get a source by ID.
-  update [options] &lt;sourceId&gt;       Update a source.
-  delete &lt;sourceId&gt;                 Delete a source.
-  upload [options] &lt;sourceId&gt;       Upload a file to a source.
-  upload-text [options] &lt;sourceId&gt;  Upload inline text to a source.
-  contents                          Indexing status of a source&#39;s content items.
-  exports                           Manage source exports.
-  migration                         Source embedding migrations.
-  help [command]                    display help for command
+  list [options]                         List sources.
+  create [options]                       Create a source.
+  get &lt;sourceId&gt;                         Get a source by ID.
+  update [options] &lt;sourceId&gt;            Update a source.
+  delete &lt;sourceId&gt;                      Delete a source.
+  upload [options] &lt;sourceId&gt;            Upload a file to a source.
+  upload-text [options] &lt;sourceId&gt;       Upload inline text to a source.
+  contents                               Indexing status of a source&#39;s content items.
+  exports                                Manage source exports.
+  email-rejections [options] &lt;sourceId&gt;  List mail an email source refused, newest first: sender and reason, never subject or body. To accept an authenticated sender, add it to the source&#39;s email_allowed_senders. Requires an account owner or administrator.
+  migration                              Source embedding migrations.
+  help [command]                         display help for command
 </code></pre>
 </section>
 
@@ -1174,6 +1184,7 @@ Commands:
   upload|replace [options] &lt;contentVersionId&gt;  Upload/replace content file.
   replace-text [options] &lt;contentVersionId&gt;    Replace content with inline text.
   embeddings [options] &lt;contentVersionId&gt;      List embeddings for a content version.
+  attachments                                  Files attached to a content item: email attachments, feed enclosures, page media, document images.
   help [command]                               display help for command
 </code></pre>
 </section>
@@ -1366,7 +1377,7 @@ Commands:
   get &lt;memoryBankId&gt;                        Get a memory bank.
   update [options] &lt;memoryBankId&gt;           Update a memory bank.
   delete &lt;memoryBankId&gt;                     Delete a memory bank.
-  stats &lt;memoryBankId&gt;                      Get memory bank statistics.
+  stats [options] &lt;memoryBankId&gt;            Get memory bank statistics. --start-date and --end-date together replace --days; either one alone is refused, because the API would ignore it, and so are both with --days, because the API would ignore --days.
   agents &lt;memoryBankId&gt;                     List agents using a memory bank.
   compact &lt;memoryBankId&gt;                    Compact a memory bank.
   delete-source &lt;memoryBankId&gt;              Delete a memory bank&#39;s source data.
@@ -1389,6 +1400,7 @@ Options:
   --limit &lt;n&gt;         Page size.
   --sort &lt;field&gt;      Sort field.
   --order &lt;asc|desc&gt;  Sort direction.
+  --type &lt;type&gt;       Keep only one bank type: conversation or general.
   -h, --help          display help for command
 </code></pre>
 </section>
@@ -1454,13 +1466,18 @@ Options:
 <h2 class="section-title"><a class="anchor" href="#memory-stats">memory stats</a></h2>
 <pre class="code"><code>Usage: seclai memory stats [options] &lt;memoryBankId&gt;
 
-Get memory bank statistics.
+Get memory bank statistics. --start-date and --end-date together replace --days;
+either one alone is refused, because the API would ignore it, and so are both
+with --days, because the API would ignore --days.
 
 Arguments:
-  memoryBankId  Memory bank ID.
+  memoryBankId         Memory bank ID.
 
 Options:
-  -h, --help    display help for command
+  --days &lt;n&gt;           Days back from today (server default 30).
+  --start-date &lt;date&gt;  First day, YYYY-MM-DD.
+  --end-date &lt;date&gt;    Last day, YYYY-MM-DD.
+  -h, --help           display help for command
 </code></pre>
 </section>
 
@@ -1557,7 +1574,10 @@ Options:
 
 Commands:
   generate [options]                 Generate memory bank config via AI.
-  last                               Get last memory bank AI conversation.
+  last [options]                     Get last memory bank AI conversation.
+                                     --limit is the turns to return (server
+                                     default 5); --offset skips the most recent
+                                     turns.
   accept [options] &lt;conversationId&gt;  Accept a memory bank AI suggestion.
   help [command]                     display help for command
 </code></pre>
@@ -1582,10 +1602,13 @@ Options:
 <h2 class="section-title"><a class="anchor" href="#memory-ai-last">memory ai last</a></h2>
 <pre class="code"><code>Usage: seclai memory ai last [options]
 
-Get last memory bank AI conversation.
+Get last memory bank AI conversation. --limit is the turns to return (server
+default 5); --offset skips the most recent turns.
 
 Options:
-  -h, --help  display help for command
+  --limit &lt;n&gt;   Page size.
+  --offset &lt;n&gt;  Number of items to skip.
+  -h, --help    display help for command
 </code></pre>
 </section>
 
@@ -1621,7 +1644,7 @@ Commands:
   test-draft [options] &lt;agentId&gt;          Test a draft evaluation.
   agent-results [options] &lt;agentId&gt;       List all evaluation results for an agent.
   agent-runs [options] &lt;agentId&gt;          List evaluation run summaries for an agent.
-  non-manual-summary &lt;agentId&gt;            Get non-manual evaluation summary for an agent.
+  non-manual-summary [options] [agentId]  Get the non-manual evaluation summary for an agent, or for the whole account when no agent is given. --start-date with --end-date sets the range; --start-date alone runs through today; otherwise the last --days days apply. --end-date alone, and --days with --start-date, are refused, because the API would ignore them.
   help [command]                          display help for command
 </code></pre>
 </section>
@@ -1762,12 +1785,16 @@ Commands:
 List results for criteria.
 
 Arguments:
-  criteriaId   Criteria ID.
+  criteriaId          Criteria ID.
 
 Options:
-  --page &lt;n&gt;   Page number.
-  --limit &lt;n&gt;  Page size.
-  -h, --help   display help for command
+  --page &lt;n&gt;          Page number.
+  --limit &lt;n&gt;         Page size.
+  --status &lt;status&gt;   Keep only one result status.
+  --flagged-only      Keep only flagged results.
+  --time-from &lt;time&gt;  Earliest time, ISO 8601.
+  --time-to &lt;time&gt;    Latest time, ISO 8601.
+  -h, --help          display help for command
 </code></pre>
 </section>
 
@@ -1794,12 +1821,13 @@ Options:
 List runs compatible with criteria.
 
 Arguments:
-  criteriaId   Criteria ID.
+  criteriaId              Criteria ID.
 
 Options:
-  --page &lt;n&gt;   Page number.
-  --limit &lt;n&gt;  Page size.
-  -h, --help   display help for command
+  --page &lt;n&gt;              Page number.
+  --limit &lt;n&gt;             Page size.
+  --started-after &lt;time&gt;  Only runs started after this time, ISO 8601.
+  -h, --help              display help for command
 </code></pre>
 </section>
 
@@ -1826,12 +1854,17 @@ Options:
 List all evaluation results for an agent.
 
 Arguments:
-  agentId      Agent ID.
+  agentId             Agent ID.
 
 Options:
-  --page &lt;n&gt;   Page number.
-  --limit &lt;n&gt;  Page size.
-  -h, --help   display help for command
+  --page &lt;n&gt;          Page number.
+  --limit &lt;n&gt;         Page size.
+  --status &lt;status&gt;   Keep only one result status.
+  --flagged-only      Keep only flagged results.
+  --step &lt;stepId&gt;     Keep only results for this agent step.
+  --time-from &lt;time&gt;  Earliest time, ISO 8601.
+  --time-to &lt;time&gt;    Latest time, ISO 8601.
+  -h, --help          display help for command
 </code></pre>
 </section>
 
@@ -1842,26 +1875,37 @@ Options:
 List evaluation run summaries for an agent.
 
 Arguments:
-  agentId      Agent ID.
+  agentId             Agent ID.
 
 Options:
-  --page &lt;n&gt;   Page number.
-  --limit &lt;n&gt;  Page size.
-  -h, --help   display help for command
+  --page &lt;n&gt;          Page number.
+  --limit &lt;n&gt;         Page size.
+  --status &lt;status&gt;   Keep only one result status.
+  --step &lt;stepId&gt;     Keep only runs for this agent step.
+  --time-from &lt;time&gt;  Earliest time, ISO 8601.
+  --time-to &lt;time&gt;    Latest time, ISO 8601.
+  -h, --help          display help for command
 </code></pre>
 </section>
 
 <section class="section" id="evals-non-manual-summary">
 <h2 class="section-title"><a class="anchor" href="#evals-non-manual-summary">evals non-manual-summary</a></h2>
-<pre class="code"><code>Usage: seclai evals non-manual-summary [options] &lt;agentId&gt;
+<pre class="code"><code>Usage: seclai evals non-manual-summary [options] [agentId]
 
-Get non-manual evaluation summary for an agent.
+Get the non-manual evaluation summary for an agent, or for the whole account
+when no agent is given. --start-date with --end-date sets the range;
+--start-date alone runs through today; otherwise the last --days days apply.
+--end-date alone, and --days with --start-date, are refused, because the API
+would ignore them.
 
 Arguments:
-  agentId     Agent ID.
+  agentId              Agent ID. Omit for the account-wide summary.
 
 Options:
-  -h, --help  display help for command
+  --days &lt;n&gt;           Days back from today (server default 30).
+  --start-date &lt;date&gt;  First day, YYYY-MM-DD.
+  --end-date &lt;date&gt;    Last day, YYYY-MM-DD.
+  -h, --help           display help for command
 </code></pre>
 </section>
 
@@ -1901,6 +1945,8 @@ Options:
   --limit &lt;n&gt;         Page size.
   --sort &lt;field&gt;      Sort field.
   --order &lt;asc|desc&gt;  Sort direction.
+  --search &lt;text&gt;     Keep solutions whose name contains this text
+                      (case-insensitive).
   -h, --help          display help for command
 </code></pre>
 </section>
@@ -2193,7 +2239,7 @@ Options:
 
 Commands:
   generate [options]        Generate a governance AI plan.
-  list                      List governance AI conversations.
+  list [options]            List governance AI conversations.
   accept &lt;conversationId&gt;   Accept a governance AI plan.
   decline &lt;conversationId&gt;  Decline a governance AI plan.
   help [command]            display help for command
@@ -2222,7 +2268,8 @@ Options:
 List governance AI conversations.
 
 Options:
-  -h, --help  display help for command
+  --limit &lt;n&gt;  How many conversations (server default 20).
+  -h, --help   display help for command
 </code></pre>
 </section>
 
@@ -2283,10 +2330,14 @@ Commands:
 List alerts.
 
 Options:
-  --page &lt;n&gt;         Page number.
-  --limit &lt;n&gt;        Page size.
-  --status &lt;status&gt;  Filter by status.
-  -h, --help         display help for command
+  --page &lt;n&gt;                   Page number.
+  --limit &lt;n&gt;                  Page size.
+  --status &lt;status&gt;            Filter by status.
+  --agent-id &lt;id&gt;              Keep only alerts for this agent.
+  --source-connection-id &lt;id&gt;  Keep only alerts for this source connection.
+  --time-from &lt;time&gt;           Earliest time, ISO 8601.
+  --time-to &lt;time&gt;             Latest time, ISO 8601.
+  -h, --help                   display help for command
 </code></pre>
 </section>
 
@@ -2390,11 +2441,15 @@ Commands:
 List alert configurations.
 
 Options:
-  --page &lt;n&gt;   Page number.
-  --limit &lt;n&gt;  Page size.
-  --paged      Wrap the results in {data: [...]}, the shape this endpoint moves
-               to from --api-version 2026-07-27.
-  -h, --help   display help for command
+  --page &lt;n&gt;                   Page number.
+  --limit &lt;n&gt;                  Page size.
+  --agent-id &lt;id&gt;              Keep only configs for this agent.
+  --source-connection-id &lt;id&gt;  Keep only configs for this source connection.
+  --scope &lt;scope&gt;              &#39;source&#39; lists the account-level source alert
+                               configs.
+  --paged                      Wrap the results in {data: [...]}, the shape this
+                               endpoint moves to from --api-version 2026-07-27.
+  -h, --help                   display help for command
 </code></pre>
 </section>
 
@@ -2465,7 +2520,7 @@ Options:
   -h, --help                                     display help for command
 
 Commands:
-  list                                           List organization alert preferences.
+  list [options]                                 List organization alert preferences.
   update [options] &lt;organizationId&gt; &lt;alertType&gt;  Update an organization alert preference.
   help [command]                                 display help for command
 </code></pre>
@@ -2478,7 +2533,10 @@ Commands:
 List organization alert preferences.
 
 Options:
-  -h, --help  display help for command
+  --organization-id &lt;id&gt;  Keep only one organization&#39;s preferences.
+  --include-defaults      Also list the default subscription for every alert
+                          type.
+  -h, --help              display help for command
 </code></pre>
 </section>
 
@@ -2506,21 +2564,22 @@ Options:
 Models, model alerts, recommendations, and playground experiments.
 
 Options:
-  -h, --help                 display help for command
+  -h, --help                           display help for command
 
 Commands:
-  list [options]             List models grouped by provider.
-  tiers                      Show each media-generation modality and tier with
-                             its model and cost.
-  embedders [options]        List the embedding models a source can index with,
-                             their supported dimensions and pricing.
-  rerankers [options]        List the reranker models a knowledge base can use,
-                             and their pricing.
-  get &lt;modelId&gt;              Get full details for a specific model.
-  alerts                     Model alerts.
-  recommendations &lt;modelId&gt;  Get model recommendations.
-  experiments                Model playground experiments.
-  help [command]             display help for command
+  list [options]                       List models grouped by provider.
+  tiers                                Show each media-generation modality and
+                                       tier with its model and cost.
+  embedders [options]                  List the embedding models a source can
+                                       index with, their supported dimensions
+                                       and pricing.
+  rerankers [options]                  List the reranker models a knowledge base
+                                       can use, and their pricing.
+  get &lt;modelId&gt;                        Get full details for a specific model.
+  alerts                               Model alerts.
+  recommendations [options] &lt;modelId&gt;  Get model recommendations.
+  experiments                          Model playground experiments.
+  help [command]                       display help for command
 </code></pre>
 </section>
 
@@ -2580,11 +2639,13 @@ Commands:
 List model alerts.
 
 Options:
-  --page &lt;n&gt;   Page number.
-  --limit &lt;n&gt;  Page size.
-  --paged      Wrap the results in {data: [...]}, the shape this endpoint moves
-               to from --api-version 2026-07-27.
-  -h, --help   display help for command
+  --page &lt;n&gt;       Page number.
+  --limit &lt;n&gt;      Page size.
+  --agent-id &lt;id&gt;  Keep only alerts for this agent.
+  --unread-only    Keep only unread alerts.
+  --paged          Wrap the results in {data: [...]}, the shape this endpoint
+                   moves to from --api-version 2026-07-27.
+  -h, --help       display help for command
 </code></pre>
 </section>
 
@@ -2631,10 +2692,15 @@ Options:
 Get model recommendations.
 
 Arguments:
-  modelId     Model ID.
+  modelId                      Model ID.
 
 Options:
-  -h, --help  display help for command
+  --require-tool-use           Only models that support tool use.
+  --require-structured-output  Only models that support structured output.
+  --require-thinking           Only models that support thinking.
+  --min-context-tokens &lt;n&gt;     Smallest acceptable context window, in tokens.
+  --min-output-tokens &lt;n&gt;      Smallest acceptable output limit, in tokens.
+  -h, --help                   display help for command
 </code></pre>
 </section>
 
@@ -2819,7 +2885,7 @@ Commands:
   source [options]                          AI assistant for sources.
   solution [options]                        AI assistant for solutions.
   memory [options]                          AI assistant for memory banks.
-  memory-history                            Get AI assistant memory bank conversation history.
+  memory-history [options]                  Get AI assistant memory bank conversation history. --limit is the turns to return (server default 5); --offset skips the most recent turns.
   accept [options] &lt;conversationId&gt;         Accept an AI assistant plan.
   decline &lt;conversationId&gt;                  Decline an AI assistant plan.
   memory-accept [options] &lt;conversationId&gt;  Accept an AI memory bank suggestion.
@@ -2904,10 +2970,13 @@ Options:
 <h2 class="section-title"><a class="anchor" href="#ai-memory-history">ai memory-history</a></h2>
 <pre class="code"><code>Usage: seclai ai memory-history [options]
 
-Get AI assistant memory bank conversation history.
+Get AI assistant memory bank conversation history. --limit is the turns to
+return (server default 5); --offset skips the most recent turns.
 
 Options:
-  -h, --help  display help for command
+  --limit &lt;n&gt;   Page size.
+  --offset &lt;n&gt;  Number of items to skip.
+  -h, --help    display help for command
 </code></pre>
 </section>
 
@@ -2983,6 +3052,13 @@ Versions (each includes the changes of the ones before it):
   2026-09-28  Agent-definition writes such as `agents def update` use the current file-list grammar for a step&#39;s attachments.
   2026-09-30  A run&#39;s and a step&#39;s output, and a step&#39;s input, are the text rather than a JSON manifest. Files are in attachments on every version.
   2026-10-03  A new LLM step written without attachments takes its parent&#39;s files.
+  2026-10-05  An item held for review by a governance policy reports content_status completed instead of failed; read held_for_review to find holds.
+  2026-10-13  `sources create` and `sources update` reject a media_types value other than images or video, or any value on a source that is not a website or RSS feed, with a 400 where it was dropped.
+  2026-10-16  An upload of any type is ready at once, and its extracted text is no longer written into a run&#39;s input.
+  2026-10-18  A source&#39;s document_images defaults to true on a text-only embedder.
+  2026-10-19  `sources create` rejects polling_max_items on any source but an RSS feed with a 400 where it was stored.
+  2026-10-21  An evaluation result whose evaluator returned no verdict (status error) is left out of the failed counts, rates and average scores, and `evals test-draft` returns its score and passed as null instead of 0.5 and false.
+  2026-10-28  An if_else or switch step&#39;s output is the result of the arm it took instead of a {branch} marker; read the arm from the step&#39;s decision, which is set on every version.
 
 </code></pre>
 </section>

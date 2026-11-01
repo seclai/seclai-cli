@@ -1,0 +1,3123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Seclai CLI Docs (v1.8.0)</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --border: rgba(127,127,127,0.35);
+      --muted: rgba(127,127,127,0.85);
+      --bg: color-mix(in srgb, Canvas 92%, transparent);
+      --card: color-mix(in srgb, Canvas 98%, transparent);
+      --link: LinkText;
+    }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.45;
+    }
+    .wrap {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    header {
+      padding: 16px 0 18px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 18px;
+    }
+    h1 { margin: 0 0 6px; font-size: 28px; }
+    .meta { margin: 0; color: var(--muted); }
+    .layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+    nav {
+      position: sticky;
+      top: 18px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--card);
+      padding: 12px;
+      max-height: calc(100vh - 48px);
+      overflow: auto;
+    }
+    .toc-title-h {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin: 0 0 10px;
+    }
+    .toc-item {
+      display: block;
+      padding: 6px 8px;
+      border-radius: 8px;
+      text-decoration: none;
+      color: inherit;
+    }
+    .toc-item:hover { background: var(--bg); }
+    .toc-title { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 13px; }
+    main { min-width: 0; }
+    .section {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      background: var(--card);
+      margin: 0 0 14px;
+    }
+    .section-title {
+      margin: 0 0 10px;
+      font-size: 16px;
+      font-weight: 650;
+    }
+    .anchor { color: inherit; text-decoration: none; }
+    .anchor:hover { color: var(--link); text-decoration: underline; }
+    .code {
+      margin: 0;
+      padding: 12px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12.5px;
+    }
+    @media (max-width: 920px) {
+      .layout { grid-template-columns: 1fr; }
+      nav { position: relative; top: 0; max-height: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Seclai CLI</h1>
+      <p class="meta">Version: <code>1.8.0</code> · Generated command reference from <code>--help</code> output</p>
+    </header>
+    <div class="layout">
+      <nav aria-label="Table of contents">
+        <p class="toc-title-h">Contents</p>
+        <a class="toc-item" href="#overview"><span class="toc-title">Overview</span></a>
+<a class="toc-item" href="#agents"><span class="toc-title">agents</span></a>
+<a class="toc-item" href="#agents-list"><span class="toc-title">agents list</span></a>
+<a class="toc-item" href="#agents-create"><span class="toc-title">agents create</span></a>
+<a class="toc-item" href="#agents-get"><span class="toc-title">agents get</span></a>
+<a class="toc-item" href="#agents-update"><span class="toc-title">agents update</span></a>
+<a class="toc-item" href="#agents-delete"><span class="toc-title">agents delete</span></a>
+<a class="toc-item" href="#agents-run"><span class="toc-title">agents run</span></a>
+<a class="toc-item" href="#agents-runs"><span class="toc-title">agents runs</span></a>
+<a class="toc-item" href="#agents-runs-list"><span class="toc-title">agents runs list</span></a>
+<a class="toc-item" href="#agents-runs-get"><span class="toc-title">agents runs get</span></a>
+<a class="toc-item" href="#agents-runs-delete"><span class="toc-title">agents runs delete</span></a>
+<a class="toc-item" href="#agents-runs-cancel"><span class="toc-title">agents runs cancel</span></a>
+<a class="toc-item" href="#agents-runs-search"><span class="toc-title">agents runs search</span></a>
+<a class="toc-item" href="#agents-runs-eval-results"><span class="toc-title">agents runs eval-results</span></a>
+<a class="toc-item" href="#agents-def"><span class="toc-title">agents def</span></a>
+<a class="toc-item" href="#agents-def-get"><span class="toc-title">agents def get</span></a>
+<a class="toc-item" href="#agents-def-update"><span class="toc-title">agents def update</span></a>
+<a class="toc-item" href="#agents-upload-input"><span class="toc-title">agents upload-input</span></a>
+<a class="toc-item" href="#agents-input-status"><span class="toc-title">agents input-status</span></a>
+<a class="toc-item" href="#agents-ai"><span class="toc-title">agents ai</span></a>
+<a class="toc-item" href="#agents-ai-gen-steps"><span class="toc-title">agents ai gen-steps</span></a>
+<a class="toc-item" href="#agents-ai-step-config"><span class="toc-title">agents ai step-config</span></a>
+<a class="toc-item" href="#agents-ai-history"><span class="toc-title">agents ai history</span></a>
+<a class="toc-item" href="#agents-ai-mark"><span class="toc-title">agents ai mark</span></a>
+<a class="toc-item" href="#sources"><span class="toc-title">sources</span></a>
+<a class="toc-item" href="#sources-list"><span class="toc-title">sources list</span></a>
+<a class="toc-item" href="#sources-create"><span class="toc-title">sources create</span></a>
+<a class="toc-item" href="#sources-get"><span class="toc-title">sources get</span></a>
+<a class="toc-item" href="#sources-update"><span class="toc-title">sources update</span></a>
+<a class="toc-item" href="#sources-delete"><span class="toc-title">sources delete</span></a>
+<a class="toc-item" href="#sources-upload"><span class="toc-title">sources upload</span></a>
+<a class="toc-item" href="#sources-upload-text"><span class="toc-title">sources upload-text</span></a>
+<a class="toc-item" href="#sources-contents"><span class="toc-title">sources contents</span></a>
+<a class="toc-item" href="#sources-contents-list"><span class="toc-title">sources contents list</span></a>
+<a class="toc-item" href="#sources-contents-status"><span class="toc-title">sources contents status</span></a>
+<a class="toc-item" href="#sources-exports"><span class="toc-title">sources exports</span></a>
+<a class="toc-item" href="#sources-exports-list"><span class="toc-title">sources exports list</span></a>
+<a class="toc-item" href="#sources-exports-create"><span class="toc-title">sources exports create</span></a>
+<a class="toc-item" href="#sources-exports-get"><span class="toc-title">sources exports get</span></a>
+<a class="toc-item" href="#sources-exports-cancel"><span class="toc-title">sources exports cancel</span></a>
+<a class="toc-item" href="#sources-exports-delete"><span class="toc-title">sources exports delete</span></a>
+<a class="toc-item" href="#sources-exports-download"><span class="toc-title">sources exports download</span></a>
+<a class="toc-item" href="#sources-exports-estimate"><span class="toc-title">sources exports estimate</span></a>
+<a class="toc-item" href="#sources-migration"><span class="toc-title">sources migration</span></a>
+<a class="toc-item" href="#sources-migration-get"><span class="toc-title">sources migration get</span></a>
+<a class="toc-item" href="#sources-migration-start"><span class="toc-title">sources migration start</span></a>
+<a class="toc-item" href="#sources-migration-cancel"><span class="toc-title">sources migration cancel</span></a>
+<a class="toc-item" href="#contents"><span class="toc-title">contents</span></a>
+<a class="toc-item" href="#contents-get"><span class="toc-title">contents get</span></a>
+<a class="toc-item" href="#contents-delete"><span class="toc-title">contents delete</span></a>
+<a class="toc-item" href="#contents-upload"><span class="toc-title">contents upload</span></a>
+<a class="toc-item" href="#contents-replace-text"><span class="toc-title">contents replace-text</span></a>
+<a class="toc-item" href="#contents-embeddings"><span class="toc-title">contents embeddings</span></a>
+<a class="toc-item" href="#kb"><span class="toc-title">kb</span></a>
+<a class="toc-item" href="#kb-list"><span class="toc-title">kb list</span></a>
+<a class="toc-item" href="#kb-create"><span class="toc-title">kb create</span></a>
+<a class="toc-item" href="#kb-get"><span class="toc-title">kb get</span></a>
+<a class="toc-item" href="#kb-update"><span class="toc-title">kb update</span></a>
+<a class="toc-item" href="#kb-delete"><span class="toc-title">kb delete</span></a>
+<a class="toc-item" href="#memory"><span class="toc-title">memory</span></a>
+<a class="toc-item" href="#memory-list"><span class="toc-title">memory list</span></a>
+<a class="toc-item" href="#memory-create"><span class="toc-title">memory create</span></a>
+<a class="toc-item" href="#memory-get"><span class="toc-title">memory get</span></a>
+<a class="toc-item" href="#memory-update"><span class="toc-title">memory update</span></a>
+<a class="toc-item" href="#memory-delete"><span class="toc-title">memory delete</span></a>
+<a class="toc-item" href="#memory-stats"><span class="toc-title">memory stats</span></a>
+<a class="toc-item" href="#memory-agents"><span class="toc-title">memory agents</span></a>
+<a class="toc-item" href="#memory-compact"><span class="toc-title">memory compact</span></a>
+<a class="toc-item" href="#memory-delete-source"><span class="toc-title">memory delete-source</span></a>
+<a class="toc-item" href="#memory-templates"><span class="toc-title">memory templates</span></a>
+<a class="toc-item" href="#memory-test-compaction"><span class="toc-title">memory test-compaction</span></a>
+<a class="toc-item" href="#memory-test-compaction-standalone"><span class="toc-title">memory test-compaction-standalone</span></a>
+<a class="toc-item" href="#memory-ai"><span class="toc-title">memory ai</span></a>
+<a class="toc-item" href="#memory-ai-generate"><span class="toc-title">memory ai generate</span></a>
+<a class="toc-item" href="#memory-ai-last"><span class="toc-title">memory ai last</span></a>
+<a class="toc-item" href="#memory-ai-accept"><span class="toc-title">memory ai accept</span></a>
+<a class="toc-item" href="#evals"><span class="toc-title">evals</span></a>
+<a class="toc-item" href="#evals-criteria"><span class="toc-title">evals criteria</span></a>
+<a class="toc-item" href="#evals-criteria-list"><span class="toc-title">evals criteria list</span></a>
+<a class="toc-item" href="#evals-criteria-create"><span class="toc-title">evals criteria create</span></a>
+<a class="toc-item" href="#evals-criteria-get"><span class="toc-title">evals criteria get</span></a>
+<a class="toc-item" href="#evals-criteria-update"><span class="toc-title">evals criteria update</span></a>
+<a class="toc-item" href="#evals-criteria-delete"><span class="toc-title">evals criteria delete</span></a>
+<a class="toc-item" href="#evals-criteria-summary"><span class="toc-title">evals criteria summary</span></a>
+<a class="toc-item" href="#evals-results"><span class="toc-title">evals results</span></a>
+<a class="toc-item" href="#evals-results-list"><span class="toc-title">evals results list</span></a>
+<a class="toc-item" href="#evals-results-create"><span class="toc-title">evals results create</span></a>
+<a class="toc-item" href="#evals-compatible-runs"><span class="toc-title">evals compatible-runs</span></a>
+<a class="toc-item" href="#evals-test-draft"><span class="toc-title">evals test-draft</span></a>
+<a class="toc-item" href="#evals-agent-results"><span class="toc-title">evals agent-results</span></a>
+<a class="toc-item" href="#evals-agent-runs"><span class="toc-title">evals agent-runs</span></a>
+<a class="toc-item" href="#evals-non-manual-summary"><span class="toc-title">evals non-manual-summary</span></a>
+<a class="toc-item" href="#solutions"><span class="toc-title">solutions</span></a>
+<a class="toc-item" href="#solutions-list"><span class="toc-title">solutions list</span></a>
+<a class="toc-item" href="#solutions-create"><span class="toc-title">solutions create</span></a>
+<a class="toc-item" href="#solutions-get"><span class="toc-title">solutions get</span></a>
+<a class="toc-item" href="#solutions-update"><span class="toc-title">solutions update</span></a>
+<a class="toc-item" href="#solutions-delete"><span class="toc-title">solutions delete</span></a>
+<a class="toc-item" href="#solutions-link"><span class="toc-title">solutions link</span></a>
+<a class="toc-item" href="#solutions-unlink"><span class="toc-title">solutions unlink</span></a>
+<a class="toc-item" href="#solutions-convos"><span class="toc-title">solutions convos</span></a>
+<a class="toc-item" href="#solutions-convos-list"><span class="toc-title">solutions convos list</span></a>
+<a class="toc-item" href="#solutions-convos-add"><span class="toc-title">solutions convos add</span></a>
+<a class="toc-item" href="#solutions-convos-mark"><span class="toc-title">solutions convos mark</span></a>
+<a class="toc-item" href="#solutions-ai"><span class="toc-title">solutions ai</span></a>
+<a class="toc-item" href="#solutions-ai-generate"><span class="toc-title">solutions ai generate</span></a>
+<a class="toc-item" href="#solutions-ai-kb"><span class="toc-title">solutions ai kb</span></a>
+<a class="toc-item" href="#solutions-ai-source"><span class="toc-title">solutions ai source</span></a>
+<a class="toc-item" href="#solutions-ai-accept"><span class="toc-title">solutions ai accept</span></a>
+<a class="toc-item" href="#solutions-ai-decline"><span class="toc-title">solutions ai decline</span></a>
+<a class="toc-item" href="#governance"><span class="toc-title">governance</span></a>
+<a class="toc-item" href="#governance-ai"><span class="toc-title">governance ai</span></a>
+<a class="toc-item" href="#governance-ai-generate"><span class="toc-title">governance ai generate</span></a>
+<a class="toc-item" href="#governance-ai-list"><span class="toc-title">governance ai list</span></a>
+<a class="toc-item" href="#governance-ai-accept"><span class="toc-title">governance ai accept</span></a>
+<a class="toc-item" href="#governance-ai-decline"><span class="toc-title">governance ai decline</span></a>
+<a class="toc-item" href="#alerts"><span class="toc-title">alerts</span></a>
+<a class="toc-item" href="#alerts-list"><span class="toc-title">alerts list</span></a>
+<a class="toc-item" href="#alerts-get"><span class="toc-title">alerts get</span></a>
+<a class="toc-item" href="#alerts-status"><span class="toc-title">alerts status</span></a>
+<a class="toc-item" href="#alerts-comment"><span class="toc-title">alerts comment</span></a>
+<a class="toc-item" href="#alerts-subscribe"><span class="toc-title">alerts subscribe</span></a>
+<a class="toc-item" href="#alerts-unsubscribe"><span class="toc-title">alerts unsubscribe</span></a>
+<a class="toc-item" href="#alerts-configs"><span class="toc-title">alerts configs</span></a>
+<a class="toc-item" href="#alerts-configs-list"><span class="toc-title">alerts configs list</span></a>
+<a class="toc-item" href="#alerts-configs-create"><span class="toc-title">alerts configs create</span></a>
+<a class="toc-item" href="#alerts-configs-get"><span class="toc-title">alerts configs get</span></a>
+<a class="toc-item" href="#alerts-configs-update"><span class="toc-title">alerts configs update</span></a>
+<a class="toc-item" href="#alerts-configs-delete"><span class="toc-title">alerts configs delete</span></a>
+<a class="toc-item" href="#alerts-prefs"><span class="toc-title">alerts prefs</span></a>
+<a class="toc-item" href="#alerts-prefs-list"><span class="toc-title">alerts prefs list</span></a>
+<a class="toc-item" href="#alerts-prefs-update"><span class="toc-title">alerts prefs update</span></a>
+<a class="toc-item" href="#models"><span class="toc-title">models</span></a>
+<a class="toc-item" href="#models-embedders"><span class="toc-title">models embedders</span></a>
+<a class="toc-item" href="#models-rerankers"><span class="toc-title">models rerankers</span></a>
+<a class="toc-item" href="#models-alerts"><span class="toc-title">models alerts</span></a>
+<a class="toc-item" href="#models-alerts-list"><span class="toc-title">models alerts list</span></a>
+<a class="toc-item" href="#models-alerts-mark-read"><span class="toc-title">models alerts mark-read</span></a>
+<a class="toc-item" href="#models-alerts-mark-all-read"><span class="toc-title">models alerts mark-all-read</span></a>
+<a class="toc-item" href="#models-alerts-unread-count"><span class="toc-title">models alerts unread-count</span></a>
+<a class="toc-item" href="#models-recommendations"><span class="toc-title">models recommendations</span></a>
+<a class="toc-item" href="#cloud-drives"><span class="toc-title">cloud-drives</span></a>
+<a class="toc-item" href="#cloud-drives-providers"><span class="toc-title">cloud-drives providers</span></a>
+<a class="toc-item" href="#cloud-drives-list"><span class="toc-title">cloud-drives list</span></a>
+<a class="toc-item" href="#cloud-drives-get"><span class="toc-title">cloud-drives get</span></a>
+<a class="toc-item" href="#cloud-drives-update"><span class="toc-title">cloud-drives update</span></a>
+<a class="toc-item" href="#cloud-drives-disconnect"><span class="toc-title">cloud-drives disconnect</span></a>
+<a class="toc-item" href="#cloud-drives-delete"><span class="toc-title">cloud-drives delete</span></a>
+<a class="toc-item" href="#cloud-drives-agents"><span class="toc-title">cloud-drives agents</span></a>
+<a class="toc-item" href="#cloud-drives-rejections"><span class="toc-title">cloud-drives rejections</span></a>
+<a class="toc-item" href="#search"><span class="toc-title">search</span></a>
+<a class="toc-item" href="#ai"><span class="toc-title">ai</span></a>
+<a class="toc-item" href="#ai-feedback"><span class="toc-title">ai feedback</span></a>
+<a class="toc-item" href="#ai-kb"><span class="toc-title">ai kb</span></a>
+<a class="toc-item" href="#ai-source"><span class="toc-title">ai source</span></a>
+<a class="toc-item" href="#ai-solution"><span class="toc-title">ai solution</span></a>
+<a class="toc-item" href="#ai-memory"><span class="toc-title">ai memory</span></a>
+<a class="toc-item" href="#ai-memory-history"><span class="toc-title">ai memory-history</span></a>
+<a class="toc-item" href="#ai-accept"><span class="toc-title">ai accept</span></a>
+<a class="toc-item" href="#ai-decline"><span class="toc-title">ai decline</span></a>
+<a class="toc-item" href="#ai-memory-accept"><span class="toc-title">ai memory-accept</span></a>
+<a class="toc-item" href="#api-version"><span class="toc-title">api-version</span></a>
+<a class="toc-item" href="#skills"><span class="toc-title">skills</span></a>
+<a class="toc-item" href="#skills-install"><span class="toc-title">skills install</span></a>
+<a class="toc-item" href="#completion"><span class="toc-title">completion</span></a>
+      </nav>
+      <main>
+        
+<section class="section" id="overview">
+<h2 class="section-title"><a class="anchor" href="#overview">Overview</a></h2>
+<pre class="code"><code>Usage: seclai [options] [command]
+
+Seclai Command Line Interface (v1.8.0)
+
+Manage agents, knowledge bases, sources, memory banks, evaluations, and more
+from the terminal.
+
+All commands return JSON to stdout, making it easy to pipe into jq or other
+tools.
+
+Options:
+  -V, --version                output the version
+  --api-key &lt;key&gt;              Seclai API key (defaults to SECLAI_API_KEY).
+  --profile &lt;name&gt;             SSO profile name (defaults to SECLAI_PROFILE,
+                               then &#39;default&#39;).
+  --account-id &lt;id&gt;            Account ID for multi-org targeting (X-Account-Id
+                               header).
+  --config-dir &lt;path&gt;          Config directory (defaults to SECLAI_CONFIG_DIR,
+                               then ~/.seclai).
+  --api-version &lt;date&gt;         Opt into dated API changes released on or before
+                               this YYYY-MM-DD (defaults to SECLAI_API_VERSION;
+                               omitted means the account default). &#39;seclai
+                               api-version --help&#39; lists the versions.
+  --allow-unknown-api-version  Send an --api-version this CLI was not built
+                               against instead of rejecting it.
+  --compact                    Output compact JSON (no indentation).
+  -h, --help                   display help for command
+
+Commands:
+  agents                       Manage agents, runs, definitions, export, and AI
+                               assistance.
+  sources|source               Manage content sources.
+  contents                     Manage indexed content and embeddings.
+  kb                           Manage knowledge bases.
+  memory                       Manage memory banks.
+  evals                        Manage evaluations.
+  solutions                    Manage solutions.
+  governance                   Governance AI assistant.
+  alerts                       Manage alerts and alert configurations.
+  email                        Agent email: sending domains, inbound blocklist,
+                               inbound health, and opt-outs.
+  cloud-drives                 Manage cloud-drive connections (connecting a
+                               drive happens in the app).
+  me                           Show the authenticated user&#39;s account ID and
+                               organization memberships.
+  api-version                  Read or pin the account&#39;s dated API version.
+  models                       Models, model alerts, recommendations, and
+                               playground experiments.
+  search [options]             Search across Seclai resources.
+  docs                         Seclai documentation.
+  ai                           Top-level AI assistant.
+  skills                       Install Seclai CLI skill files for AI coding
+                               tools.
+  mcp                          Configure the Seclai MCP server for AI coding
+                               tools.
+  completion &lt;shell&gt;           Generate shell completion scripts.
+  auth                         SSO authentication (login/logout/status/refresh).
+  configure                    Configure CLI profiles and settings.
+  help [command]               display help for command
+
+Environment:
+  SECLAI_API_KEY      Default API key (alternative to --api-key)
+  SECLAI_API_URL      Override API base URL (default: https://api.seclai.com)
+  SECLAI_PROFILE      Default SSO profile (alternative to --profile)
+  SECLAI_CONFIG_DIR   Config directory (alternative to --config-dir)
+  SECLAI_API_VERSION  Dated API version (alternative to --api-version)
+
+Examples:
+  seclai agents list
+  seclai agents run &lt;agentId&gt; --json &#39;{&quot;input&quot;:&quot;Hello&quot;}&#39;
+  seclai agents run &lt;agentId&gt; --json &#39;{&quot;input&quot;:&quot;Hi&quot;}&#39; --events
+  seclai configure sso
+  seclai auth login
+  seclai auth status
+  seclai sources list --profile dev
+  npx @seclai/cli agents list
+
+</code></pre>
+</section>
+
+<section class="section" id="agents">
+<h2 class="section-title"><a class="anchor" href="#agents">agents</a></h2>
+<pre class="code"><code>Usage: seclai agents [options] [command]
+
+Manage agents, runs, definitions, export, and AI assistance.
+
+Options:
+  -h, --help                         display help for command
+
+Commands:
+  list [options]                     List agents.
+  create [options]                   Create a new agent. To start from the
+                                     gallery, pass an entry&#39;s key from &#39;agents
+                                     examples list&#39; as agent_template, with
+                                     resource_bindings or
+                                     create_missing_resources for the resources
+                                     it needs.
+  get &lt;agentId&gt;                      Get an agent by ID.
+  update [options] &lt;agentId&gt;         Update an agent.
+  delete &lt;agentId&gt;                   Delete an agent.
+  disable &lt;agentId&gt;                  Pause an agent across every trigger path
+                                     (API, schedule, email, sub-agent calls).
+  enable &lt;agentId&gt;                   Resume a paused agent.
+  callers &lt;agentId&gt;                  List the live agents that call this agent
+                                     via a call_agent step.
+  examples                           The agent gallery: ready-made agents to
+                                     create from.
+  triggers                           Agent trigger configuration.
+  run [options] &lt;agentId&gt;            Run an agent. Use --stream/--events/--poll
+                                     for different modes.
+  runs                               Manage agent runs.
+  def                                Agent definition (step workflow).
+  export [options] &lt;agentId&gt;         Export an agent definition as a portable
+                                     JSON snapshot.
+  preview-import [options]           Validate an agent_definition payload
+                                     without creating any agent. Reports
+                                     step/schedule/alert/criteria/policy counts
+                                     and any unresolved_refs (workflow refs to
+                                     KBs, memory banks, source connections, or
+                                     sub-agents that don&#39;t exist in this
+                                     account).
+  upload-input [options] &lt;agentId&gt;   Upload a file as agent input.
+  input-status &lt;agentId&gt; &lt;uploadId&gt;  Check agent input upload status.
+  attachment-references &lt;agentId&gt;    Show which files (if any) an agent&#39;s
+                                     templates expect on a run. Call before
+                                     staging uploads: requires_uploads reports
+                                     whether the agent accepts files, and the
+                                     agent block lists the exact names / indexes
+                                     / patterns a run-time batch must satisfy.
+  ai                                 Agent AI assistant.
+  help [command]                     display help for command
+</code></pre>
+</section>
+
+<section class="section" id="agents-list">
+<h2 class="section-title"><a class="anchor" href="#agents-list">agents list</a></h2>
+<pre class="code"><code>Usage: seclai agents list [options]
+
+List agents.
+
+Options:
+  --page &lt;n&gt;   Page number.
+  --limit &lt;n&gt;  Page size.
+  -h, --help   display help for command
+</code></pre>
+</section>
+
+<section class="section" id="agents-create">
+<h2 class="section-title"><a class="anchor" href="#agents-create">agents create</a></h2>
+<pre class="code"><code>Usage: seclai agents create [options]
+
+Create a new agent. To start from the gallery, pass an entry&#39;s key from &#39;agents
+examples list&#39; as agent_template, with resource_bindings or
+create_missing_resources for the resources it needs.
+
+Options:
+  --json &lt;json&gt;       Inline JSON body. Use &#39;-&#39; for stdin.
+  --json-file &lt;path&gt;  JSON file path. Use &#39;-&#39; for stdin.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="agents-get">
+<h2 class="section-title"><a class="anchor" href="#agents-get">agents get</a></h2>
+<pre class="code"><code>Usage: seclai agents get [options] &lt;agentId&gt;
+
+Get an agent by ID.
+
+Arguments:
+  agentId     Agent ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="agents-update">
+<h2 class="section-title"><a class="anchor" href="#agents-update">agents update</a></h2>
+<pre class="code"><code>Usage: seclai agents update [options] &lt;agentId&gt;
+
+Update an agent.
+
+Arguments:
+  agentId             Agent ID.
+
+Options:
+  --json &lt;json&gt;       Inline JSON body.
+  --json-file &lt;path&gt;  JSON file path.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="agents-delete">
+<h2 class="section-title"><a class="anchor" href="#agents-delete">agents delete</a></h2>
+<pre class="code"><code>Usage: seclai agents delete [options] &lt;agentId&gt;
+
+Delete an agent.
+
+Arguments:
+  agentId     Agent ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="agents-run">
+<h2 class="section-title"><a class="anchor" href="#agents-run">agents run</a></h2>
+<pre class="code"><code>Usage: seclai agents run [options] &lt;agentId&gt;
+
+Run an agent. Use --stream/--events/--poll for different modes.
+
+Arguments:
+  agentId                 Agent ID.
+
+Options:
+  --json &lt;json&gt;           Inline JSON body. Use &#39;-&#39; for stdin.
+  --json-file &lt;path&gt;      JSON file path. Use &#39;-&#39; for stdin.
+  --stream                Stream and print final result when done.
+  --events                Stream SSE events as newline-delimited JSON.
+  --event-filter &lt;types&gt;  Comma-separated event types to show (with --events).
+  --output &lt;mode&gt;         Output mode: &#39;full&#39; prints entire event, &#39;data&#39; prints
+                          only the data field, &#39;status&#39; prints a one-line
+                          summary. (default: &quot;full&quot;)
+  --poll                  Poll until completion instead of streaming.
+  --poll-interval-ms &lt;n&gt;  Poll interval in ms (with --poll).
+  --timeout-ms &lt;n&gt;        Client-side timeout in ms.
+  --include-step-outputs  Include step outputs (with --poll).
+  -h, --help              display help for command
+</code></pre>
+</section>
+
+<section class="section" id="agents-runs">
+<h2 class="section-title"><a class="anchor" href="#agents-runs">agents runs</a></h2>
+<pre class="code"><code>Usage: seclai agents runs [options] [command]
+
+Manage agent runs.
+
+Options:
+  -h, --help                                            display help for command
+
+Commands:
+  list [options] &lt;agentId&gt;                              List runs for an agent.
+  get [options] &lt;runId&gt;                                 Get a specific run.
+  delete &lt;runId&gt;                                        Deprecated alias for &#39;runs cancel&#39;. The API has no delete-a-run operation.
+  cancel &lt;runId&gt;                                        Cancel a running agent run.
+  search [options]                                      Search agent runs.
+  download-attachment [options] &lt;runId&gt; &lt;attachmentId&gt;  Download a file attachment emitted by a step in an agent run. The attachmentId is the URL-safe-base64 storage_key from run output manifests / webhooks.
+  eval-results [options] &lt;agentId&gt; &lt;runId&gt;              List evaluation results for a run.
+  help [command]                                        display help for command
+</code></pre>
+</section>
+
+<section class="section" id="agents-runs-list">
+<h2 class="section-title"><a class="anchor" href="#agents-runs-list">agents runs list</a></h2>
+<pre class="code"><code>Usage: seclai agents runs list [options] &lt;agentId&gt;
+
+List runs for an agent.
+
+Arguments:
+  agentId            Agent ID.
+
+Options:
+  --page &lt;n&gt;         Page number.
+  --limit &lt;n&gt;        Page size.
+  --status &lt;status&gt;  Filter by run status (e.g. queued, running, completed,
+                     failed, cancelled).
+  -h, --help         display help for command
+</code></pre>
+</section>
+
+<section class="section" id="agents-runs-get">
+<h2 class="section-title"><a class="anchor" href="#agents-runs-get">agents runs get</a></h2>
+<pre class="code"><code>Usage: seclai agents runs get [options] &lt;runId&gt;
+
+Get a specific run.
+
+Arguments:
+  runId                   Run ID.
+
+Options:
+  --include-step-outputs  Include step-level outputs.
+  -h, --help              display help for command
+</code></pre>
+</section>
+
+<section class="section" id="agents-runs-delete">
+<h2 class="section-title"><a class="anchor" href="#agents-runs-delete">agents runs delete</a></h2>
+<pre class="code"><code>Usage: seclai agents runs delete [options] &lt;runId&gt;
+
+Deprecated alias for &#39;runs cancel&#39;. The API has no delete-a-run operation.
+
+Arguments:
+  runId       Run ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="agents-runs-cancel">
+<h2 class="section-title"><a class="anchor" href="#agents-runs-cancel">agents runs cancel</a></h2>
+<pre class="code"><code>Usage: seclai agents runs cancel [options] &lt;runId&gt;
+
+Cancel a running agent run.
+
+Arguments:
+  runId       Run ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="agents-runs-search">
+<h2 class="section-title"><a class="anchor" href="#agents-runs-search">agents runs search</a></h2>
+<pre class="code"><code>Usage: seclai agents runs search [options]
+
+Search agent runs.
+
+Options:
+  --json &lt;json&gt;       Search body JSON.
+  --json-file &lt;path&gt;  Search body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="agents-runs-eval-results">
+<h2 class="section-title"><a class="anchor" href="#agents-runs-eval-results">agents runs eval-results</a></h2>
+<pre class="code"><code>Usage: seclai agents runs eval-results [options] &lt;agentId&gt; &lt;runId&gt;
+
+List evaluation results for a run.
+
+Arguments:
+  agentId      Agent ID.
+  runId        Run ID.
+
+Options:
+  --page &lt;n&gt;   Page number.
+  --limit &lt;n&gt;  Page size.
+  --paged      Wrap the results in {data: [...]}, the shape this endpoint moves
+               to from --api-version 2026-07-27.
+  -h, --help   display help for command
+</code></pre>
+</section>
+
+<section class="section" id="agents-def">
+<h2 class="section-title"><a class="anchor" href="#agents-def">agents def</a></h2>
+<pre class="code"><code>Usage: seclai agents def [options] [command]
+
+Agent definition (step workflow).
+
+Options:
+  -h, --help                  display help for command
+
+Commands:
+  get &lt;agentId&gt;               Get agent definition.
+  update [options] &lt;agentId&gt;  Update agent definition.
+  help [command]              display help for command
+</code></pre>
+</section>
+
+<section class="section" id="agents-def-get">
+<h2 class="section-title"><a class="anchor" href="#agents-def-get">agents def get</a></h2>
+<pre class="code"><code>Usage: seclai agents def get [options] &lt;agentId&gt;
+
+Get agent definition.
+
+Arguments:
+  agentId     Agent ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="agents-def-update">
+<h2 class="section-title"><a class="anchor" href="#agents-def-update">agents def update</a></h2>
+<pre class="code"><code>Usage: seclai agents def update [options] &lt;agentId&gt;
+
+Update agent definition.
+
+Arguments:
+  agentId             Agent ID.
+
+Options:
+  --json &lt;json&gt;       Definition JSON body.
+  --json-file &lt;path&gt;  Definition JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="agents-upload-input">
+<h2 class="section-title"><a class="anchor" href="#agents-upload-input">agents upload-input</a></h2>
+<pre class="code"><code>Usage: seclai agents upload-input [options] &lt;agentId&gt;
+
+Upload a file as agent input.
+
+Arguments:
+  agentId             Agent ID.
+
+Options:
+  --file &lt;path&gt;       File to upload.
+  --file-name &lt;name&gt;  Override filename.
+  --mime-type &lt;type&gt;  MIME type.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="agents-input-status">
+<h2 class="section-title"><a class="anchor" href="#agents-input-status">agents input-status</a></h2>
+<pre class="code"><code>Usage: seclai agents input-status [options] &lt;agentId&gt; &lt;uploadId&gt;
+
+Check agent input upload status.
+
+Arguments:
+  agentId     Agent ID.
+  uploadId    Upload ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="agents-ai">
+<h2 class="section-title"><a class="anchor" href="#agents-ai">agents ai</a></h2>
+<pre class="code"><code>Usage: seclai agents ai [options] [command]
+
+Agent AI assistant.
+
+Options:
+  -h, --help                                 display help for command
+
+Commands:
+  gen-steps [options] &lt;agentId&gt;              Generate agent steps via AI.
+  step-config [options] &lt;agentId&gt;            Generate step config via AI.
+  history [options] &lt;agentId&gt;                Get agent AI conversation history for one step type.
+  mark [options] &lt;agentId&gt; &lt;conversationId&gt;  Mark an AI suggestion (accept/reject).
+  help [command]                             display help for command
+</code></pre>
+</section>
+
+<section class="section" id="agents-ai-gen-steps">
+<h2 class="section-title"><a class="anchor" href="#agents-ai-gen-steps">agents ai gen-steps</a></h2>
+<pre class="code"><code>Usage: seclai agents ai gen-steps [options] &lt;agentId&gt;
+
+Generate agent steps via AI.
+
+Arguments:
+  agentId              Agent ID.
+
+Options:
+  --user-input &lt;text&gt;  User input text (shorthand for --json
+                       &#39;{&quot;user_input&quot;:&quot;...&quot;}&#39;)
+  --json &lt;json&gt;        Full request body JSON.
+  --json-file &lt;path&gt;   Request body JSON file.
+  -h, --help           display help for command
+</code></pre>
+</section>
+
+<section class="section" id="agents-ai-step-config">
+<h2 class="section-title"><a class="anchor" href="#agents-ai-step-config">agents ai step-config</a></h2>
+<pre class="code"><code>Usage: seclai agents ai step-config [options] &lt;agentId&gt;
+
+Generate step config via AI.
+
+Arguments:
+  agentId              Agent ID.
+
+Options:
+  --user-input &lt;text&gt;  User input text (shorthand for --json
+                       &#39;{&quot;user_input&quot;:&quot;...&quot;}&#39;)
+  --json &lt;json&gt;        Full request body JSON.
+  --json-file &lt;path&gt;   Request body JSON file.
+  -h, --help           display help for command
+</code></pre>
+</section>
+
+<section class="section" id="agents-ai-history">
+<h2 class="section-title"><a class="anchor" href="#agents-ai-history">agents ai history</a></h2>
+<pre class="code"><code>Usage: seclai agents ai history [options] &lt;agentId&gt;
+
+Get agent AI conversation history for one step type.
+
+Arguments:
+  agentId             Agent ID.
+
+Options:
+  --step-type &lt;type&gt;  Step type to read history for (e.g. llm). Required by the
+                      API.
+  --step-id &lt;id&gt;      Restrict to a single step.
+  --limit &lt;n&gt;         Page size.
+  --offset &lt;n&gt;        Number of items to skip.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="agents-ai-mark">
+<h2 class="section-title"><a class="anchor" href="#agents-ai-mark">agents ai mark</a></h2>
+<pre class="code"><code>Usage: seclai agents ai mark [options] &lt;agentId&gt; &lt;conversationId&gt;
+
+Mark an AI suggestion (accept/reject).
+
+Arguments:
+  agentId             Agent ID.
+  conversationId      Conversation ID.
+
+Options:
+  --json &lt;json&gt;       Mark body JSON.
+  --json-file &lt;path&gt;  Mark body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="sources">
+<h2 class="section-title"><a class="anchor" href="#sources">sources</a></h2>
+<pre class="code"><code>Usage: seclai sources|source [options] [command]
+
+Manage content sources.
+
+Options:
+  -h, --help                             display help for command
+
+Commands:
+  list [options]                         List sources.
+  create [options]                       Create a source.
+  get &lt;sourceId&gt;                         Get a source by ID.
+  update [options] &lt;sourceId&gt;            Update a source.
+  delete &lt;sourceId&gt;                      Delete a source.
+  upload [options] &lt;sourceId&gt;            Upload a file to a source.
+  upload-text [options] &lt;sourceId&gt;       Upload inline text to a source.
+  contents                               Indexing status of a source&#39;s content items.
+  exports                                Manage source exports.
+  email-rejections [options] &lt;sourceId&gt;  List mail an email source refused, newest first: sender and reason, never subject or body. To accept an authenticated sender, add it to the source&#39;s email_allowed_senders. Requires an account owner or administrator.
+  migration                              Source embedding migrations.
+  help [command]                         display help for command
+</code></pre>
+</section>
+
+<section class="section" id="sources-list">
+<h2 class="section-title"><a class="anchor" href="#sources-list">sources list</a></h2>
+<pre class="code"><code>Usage: seclai sources list [options]
+
+List sources.
+
+Options:
+  --page &lt;n&gt;          Page number.
+  --limit &lt;n&gt;         Page size.
+  --sort &lt;field&gt;      Sort field.
+  --order &lt;asc|desc&gt;  Sort direction.
+  --account-id &lt;id&gt;   Filter by account ID.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="sources-create">
+<h2 class="section-title"><a class="anchor" href="#sources-create">sources create</a></h2>
+<pre class="code"><code>Usage: seclai sources create [options]
+
+Create a source.
+
+Options:
+  --json &lt;json&gt;       Source body JSON.
+  --json-file &lt;path&gt;  Source body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="sources-get">
+<h2 class="section-title"><a class="anchor" href="#sources-get">sources get</a></h2>
+<pre class="code"><code>Usage: seclai sources get [options] &lt;sourceId&gt;
+
+Get a source by ID.
+
+Arguments:
+  sourceId    Source ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="sources-update">
+<h2 class="section-title"><a class="anchor" href="#sources-update">sources update</a></h2>
+<pre class="code"><code>Usage: seclai sources update [options] &lt;sourceId&gt;
+
+Update a source.
+
+Arguments:
+  sourceId            Source ID.
+
+Options:
+  --json &lt;json&gt;       Update body JSON.
+  --json-file &lt;path&gt;  Update body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="sources-delete">
+<h2 class="section-title"><a class="anchor" href="#sources-delete">sources delete</a></h2>
+<pre class="code"><code>Usage: seclai sources delete [options] &lt;sourceId&gt;
+
+Delete a source.
+
+Arguments:
+  sourceId    Source ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="sources-upload">
+<h2 class="section-title"><a class="anchor" href="#sources-upload">sources upload</a></h2>
+<pre class="code"><code>Usage: seclai sources upload [options] &lt;sourceId&gt;
+
+Upload a file to a source.
+
+Arguments:
+  sourceId                Source ID.
+
+Options:
+  --file &lt;path&gt;           Path to a local file to upload.
+  --title &lt;title&gt;         Optional title.
+  --metadata &lt;json&gt;       Metadata JSON object. Use &#39;-&#39; for stdin.
+  --metadata-file &lt;path&gt;  Path to metadata JSON file. Use &#39;-&#39; for stdin.
+  --file-name &lt;name&gt;      Override filename sent to API.
+  --mime-type &lt;type&gt;      Explicit MIME type.
+  -h, --help              display help for command
+</code></pre>
+</section>
+
+<section class="section" id="sources-upload-text">
+<h2 class="section-title"><a class="anchor" href="#sources-upload-text">sources upload-text</a></h2>
+<pre class="code"><code>Usage: seclai sources upload-text [options] &lt;sourceId&gt;
+
+Upload inline text to a source.
+
+Arguments:
+  sourceId            Source ID.
+
+Options:
+  --json &lt;json&gt;       Inline text body JSON.
+  --json-file &lt;path&gt;  Inline text body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="sources-contents">
+<h2 class="section-title"><a class="anchor" href="#sources-contents">sources contents</a></h2>
+<pre class="code"><code>Usage: seclai sources contents [options] [command]
+
+Indexing status of a source&#39;s content items.
+
+Options:
+  -h, --help                            display help for command
+
+Commands:
+  list [options] &lt;sourceId&gt;             List a source&#39;s content items and their
+                                        indexing status.
+  status &lt;sourceId&gt; &lt;contentVersionId&gt;  Get one content item&#39;s indexing status.
+  help [command]                        display help for command
+</code></pre>
+</section>
+
+<section class="section" id="sources-contents-list">
+<h2 class="section-title"><a class="anchor" href="#sources-contents-list">sources contents list</a></h2>
+<pre class="code"><code>Usage: seclai sources contents list [options] &lt;sourceId&gt;
+
+List a source&#39;s content items and their indexing status.
+
+Arguments:
+  sourceId                   Source ID.
+
+Options:
+  --page &lt;n&gt;                 Page number.
+  --limit &lt;n&gt;                Page size (1-100, default 20).
+  --sort &lt;field&gt;             Sort field: created_at, title or status.
+  --order &lt;asc|desc&gt;         Sort direction.
+  --status &lt;status&gt;          Only items in one status: pending, fetching,
+                             transcribing, scanning, indexing, completed or
+                             failed.
+  --content-version-id &lt;id&gt;  Only this item, by the content_version_id an upload
+                             returned. Repeat to poll a batch; keep one request
+                             to about 100 ids, because they travel in the URL
+                             and one over 8,192 bytes is rejected with a 414.
+  -h, --help                 display help for command
+</code></pre>
+</section>
+
+<section class="section" id="sources-contents-status">
+<h2 class="section-title"><a class="anchor" href="#sources-contents-status">sources contents status</a></h2>
+<pre class="code"><code>Usage: seclai sources contents status [options] &lt;sourceId&gt; &lt;contentVersionId&gt;
+
+Get one content item&#39;s indexing status.
+
+Arguments:
+  sourceId          Source ID.
+  contentVersionId  The content_version_id an upload returned.
+
+Options:
+  -h, --help        display help for command
+</code></pre>
+</section>
+
+<section class="section" id="sources-exports">
+<h2 class="section-title"><a class="anchor" href="#sources-exports">sources exports</a></h2>
+<pre class="code"><code>Usage: seclai sources exports [options] [command]
+
+Manage source exports.
+
+Options:
+  -h, --help                      display help for command
+
+Commands:
+  list [options] &lt;sourceId&gt;       List exports for a source.
+  create [options] &lt;sourceId&gt;     Create an export.
+  get &lt;sourceId&gt; &lt;exportId&gt;       Get an export.
+  cancel &lt;sourceId&gt; &lt;exportId&gt;    Cancel an export.
+  delete &lt;sourceId&gt; &lt;exportId&gt;    Delete an export.
+  download &lt;sourceId&gt; &lt;exportId&gt;  Download an export (prints raw response body).
+  estimate [options] &lt;sourceId&gt;   Estimate an export.
+  help [command]                  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="sources-exports-list">
+<h2 class="section-title"><a class="anchor" href="#sources-exports-list">sources exports list</a></h2>
+<pre class="code"><code>Usage: seclai sources exports list [options] &lt;sourceId&gt;
+
+List exports for a source.
+
+Arguments:
+  sourceId     Source ID.
+
+Options:
+  --page &lt;n&gt;   Page number.
+  --limit &lt;n&gt;  Page size.
+  -h, --help   display help for command
+</code></pre>
+</section>
+
+<section class="section" id="sources-exports-create">
+<h2 class="section-title"><a class="anchor" href="#sources-exports-create">sources exports create</a></h2>
+<pre class="code"><code>Usage: seclai sources exports create [options] &lt;sourceId&gt;
+
+Create an export.
+
+Arguments:
+  sourceId            Source ID.
+
+Options:
+  --json &lt;json&gt;       Export body JSON.
+  --json-file &lt;path&gt;  Export body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="sources-exports-get">
+<h2 class="section-title"><a class="anchor" href="#sources-exports-get">sources exports get</a></h2>
+<pre class="code"><code>Usage: seclai sources exports get [options] &lt;sourceId&gt; &lt;exportId&gt;
+
+Get an export.
+
+Arguments:
+  sourceId    Source ID.
+  exportId    Export ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="sources-exports-cancel">
+<h2 class="section-title"><a class="anchor" href="#sources-exports-cancel">sources exports cancel</a></h2>
+<pre class="code"><code>Usage: seclai sources exports cancel [options] &lt;sourceId&gt; &lt;exportId&gt;
+
+Cancel an export.
+
+Arguments:
+  sourceId    Source ID.
+  exportId    Export ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="sources-exports-delete">
+<h2 class="section-title"><a class="anchor" href="#sources-exports-delete">sources exports delete</a></h2>
+<pre class="code"><code>Usage: seclai sources exports delete [options] &lt;sourceId&gt; &lt;exportId&gt;
+
+Delete an export.
+
+Arguments:
+  sourceId    Source ID.
+  exportId    Export ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="sources-exports-download">
+<h2 class="section-title"><a class="anchor" href="#sources-exports-download">sources exports download</a></h2>
+<pre class="code"><code>Usage: seclai sources exports download [options] &lt;sourceId&gt; &lt;exportId&gt;
+
+Download an export (prints raw response body).
+
+Arguments:
+  sourceId    Source ID.
+  exportId    Export ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="sources-exports-estimate">
+<h2 class="section-title"><a class="anchor" href="#sources-exports-estimate">sources exports estimate</a></h2>
+<pre class="code"><code>Usage: seclai sources exports estimate [options] &lt;sourceId&gt;
+
+Estimate an export.
+
+Arguments:
+  sourceId            Source ID.
+
+Options:
+  --json &lt;json&gt;       Estimate body JSON.
+  --json-file &lt;path&gt;  Estimate body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="sources-migration">
+<h2 class="section-title"><a class="anchor" href="#sources-migration">sources migration</a></h2>
+<pre class="code"><code>Usage: seclai sources migration [options] [command]
+
+Source embedding migrations.
+
+Options:
+  -h, --help                  display help for command
+
+Commands:
+  get &lt;sourceId&gt;              Get migration status.
+  start [options] &lt;sourceId&gt;  Start an embedding migration.
+  cancel &lt;sourceId&gt;           Cancel an embedding migration.
+  help [command]              display help for command
+</code></pre>
+</section>
+
+<section class="section" id="sources-migration-get">
+<h2 class="section-title"><a class="anchor" href="#sources-migration-get">sources migration get</a></h2>
+<pre class="code"><code>Usage: seclai sources migration get [options] &lt;sourceId&gt;
+
+Get migration status.
+
+Arguments:
+  sourceId    Source ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="sources-migration-start">
+<h2 class="section-title"><a class="anchor" href="#sources-migration-start">sources migration start</a></h2>
+<pre class="code"><code>Usage: seclai sources migration start [options] &lt;sourceId&gt;
+
+Start an embedding migration.
+
+Arguments:
+  sourceId            Source ID.
+
+Options:
+  --json &lt;json&gt;       Migration config JSON.
+  --json-file &lt;path&gt;  Migration config JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="sources-migration-cancel">
+<h2 class="section-title"><a class="anchor" href="#sources-migration-cancel">sources migration cancel</a></h2>
+<pre class="code"><code>Usage: seclai sources migration cancel [options] &lt;sourceId&gt;
+
+Cancel an embedding migration.
+
+Arguments:
+  sourceId    Source ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="contents">
+<h2 class="section-title"><a class="anchor" href="#contents">contents</a></h2>
+<pre class="code"><code>Usage: seclai contents [options] [command]
+
+Manage indexed content and embeddings.
+
+Options:
+  -h, --help                                   display help for command
+
+Commands:
+  get [options] &lt;contentVersionId&gt;             Get content version details.
+  delete &lt;contentVersionId&gt;                    Delete a content version.
+  upload|replace [options] &lt;contentVersionId&gt;  Upload/replace content file.
+  replace-text [options] &lt;contentVersionId&gt;    Replace content with inline text.
+  embeddings [options] &lt;contentVersionId&gt;      List embeddings for a content version.
+  attachments                                  Files attached to a content item: email attachments, feed enclosures, page media, document images.
+  help [command]                               display help for command
+</code></pre>
+</section>
+
+<section class="section" id="contents-get">
+<h2 class="section-title"><a class="anchor" href="#contents-get">contents get</a></h2>
+<pre class="code"><code>Usage: seclai contents get [options] &lt;contentVersionId&gt;
+
+Get content version details.
+
+Arguments:
+  contentVersionId  Content version ID.
+
+Options:
+  --start &lt;n&gt;       Text start offset (0-based).
+  --end &lt;n&gt;         Text end offset (exclusive).
+  -h, --help        display help for command
+</code></pre>
+</section>
+
+<section class="section" id="contents-delete">
+<h2 class="section-title"><a class="anchor" href="#contents-delete">contents delete</a></h2>
+<pre class="code"><code>Usage: seclai contents delete [options] &lt;contentVersionId&gt;
+
+Delete a content version.
+
+Arguments:
+  contentVersionId  Content version ID.
+
+Options:
+  -h, --help        display help for command
+</code></pre>
+</section>
+
+<section class="section" id="contents-upload">
+<h2 class="section-title"><a class="anchor" href="#contents-upload">contents upload</a></h2>
+<pre class="code"><code>Usage: seclai contents upload|replace [options] &lt;contentVersionId&gt;
+
+Upload/replace content file.
+
+Arguments:
+  contentVersionId        Content version ID.
+
+Options:
+  --file &lt;path&gt;           Path to a local file to upload.
+  --title &lt;title&gt;         Optional title.
+  --metadata &lt;json&gt;       Metadata JSON object. Use &#39;-&#39; for stdin.
+  --metadata-file &lt;path&gt;  Path to metadata JSON file. Use &#39;-&#39; for stdin.
+  --file-name &lt;name&gt;      Override filename sent to API.
+  --mime-type &lt;type&gt;      Explicit MIME type.
+  -h, --help              display help for command
+</code></pre>
+</section>
+
+<section class="section" id="contents-replace-text">
+<h2 class="section-title"><a class="anchor" href="#contents-replace-text">contents replace-text</a></h2>
+<pre class="code"><code>Usage: seclai contents replace-text [options] &lt;contentVersionId&gt;
+
+Replace content with inline text.
+
+Arguments:
+  contentVersionId    Content version ID.
+
+Options:
+  --json &lt;json&gt;       Inline text body JSON.
+  --json-file &lt;path&gt;  Inline text body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="contents-embeddings">
+<h2 class="section-title"><a class="anchor" href="#contents-embeddings">contents embeddings</a></h2>
+<pre class="code"><code>Usage: seclai contents embeddings [options] &lt;contentVersionId&gt;
+
+List embeddings for a content version.
+
+Arguments:
+  contentVersionId  Content version ID.
+
+Options:
+  --page &lt;n&gt;        Page number.
+  --limit &lt;n&gt;       Page size.
+  -h, --help        display help for command
+</code></pre>
+</section>
+
+<section class="section" id="kb">
+<h2 class="section-title"><a class="anchor" href="#kb">kb</a></h2>
+<pre class="code"><code>Usage: seclai kb [options] [command]
+
+Manage knowledge bases.
+
+Options:
+  -h, --help               display help for command
+
+Commands:
+  list [options]           List knowledge bases.
+  create [options]         Create a knowledge base.
+  get &lt;kbId&gt;               Get a knowledge base.
+  update [options] &lt;kbId&gt;  Update a knowledge base.
+  delete &lt;kbId&gt;            Delete a knowledge base.
+  help [command]           display help for command
+</code></pre>
+</section>
+
+<section class="section" id="kb-list">
+<h2 class="section-title"><a class="anchor" href="#kb-list">kb list</a></h2>
+<pre class="code"><code>Usage: seclai kb list [options]
+
+List knowledge bases.
+
+Options:
+  --page &lt;n&gt;          Page number.
+  --limit &lt;n&gt;         Page size.
+  --sort &lt;field&gt;      Sort field.
+  --order &lt;asc|desc&gt;  Sort direction.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="kb-create">
+<h2 class="section-title"><a class="anchor" href="#kb-create">kb create</a></h2>
+<pre class="code"><code>Usage: seclai kb create [options]
+
+Create a knowledge base.
+
+Options:
+  --json &lt;json&gt;       Body JSON.
+  --json-file &lt;path&gt;  Body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="kb-get">
+<h2 class="section-title"><a class="anchor" href="#kb-get">kb get</a></h2>
+<pre class="code"><code>Usage: seclai kb get [options] &lt;kbId&gt;
+
+Get a knowledge base.
+
+Arguments:
+  kbId        Knowledge base ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="kb-update">
+<h2 class="section-title"><a class="anchor" href="#kb-update">kb update</a></h2>
+<pre class="code"><code>Usage: seclai kb update [options] &lt;kbId&gt;
+
+Update a knowledge base.
+
+Arguments:
+  kbId                Knowledge base ID.
+
+Options:
+  --json &lt;json&gt;       Update body JSON.
+  --json-file &lt;path&gt;  Update body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="kb-delete">
+<h2 class="section-title"><a class="anchor" href="#kb-delete">kb delete</a></h2>
+<pre class="code"><code>Usage: seclai kb delete [options] &lt;kbId&gt;
+
+Delete a knowledge base.
+
+Arguments:
+  kbId        Knowledge base ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="memory">
+<h2 class="section-title"><a class="anchor" href="#memory">memory</a></h2>
+<pre class="code"><code>Usage: seclai memory [options] [command]
+
+Manage memory banks.
+
+Options:
+  -h, --help                                display help for command
+
+Commands:
+  list [options]                            List memory banks.
+  create [options]                          Create a memory bank.
+  get &lt;memoryBankId&gt;                        Get a memory bank.
+  update [options] &lt;memoryBankId&gt;           Update a memory bank.
+  delete &lt;memoryBankId&gt;                     Delete a memory bank.
+  stats [options] &lt;memoryBankId&gt;            Get memory bank statistics. --start-date and --end-date together replace --days; either one alone is refused, because the API would ignore it, and so are both with --days, because the API would ignore --days.
+  agents &lt;memoryBankId&gt;                     List agents using a memory bank.
+  compact &lt;memoryBankId&gt;                    Compact a memory bank.
+  delete-source &lt;memoryBankId&gt;              Delete a memory bank&#39;s source data.
+  templates                                 List memory bank templates.
+  test-compaction [options] &lt;memoryBankId&gt;  Test compaction on a memory bank.
+  test-compaction-standalone [options]      Test compaction prompt standalone (no memory bank required).
+  ai                                        Memory bank AI assistant.
+  help [command]                            display help for command
+</code></pre>
+</section>
+
+<section class="section" id="memory-list">
+<h2 class="section-title"><a class="anchor" href="#memory-list">memory list</a></h2>
+<pre class="code"><code>Usage: seclai memory list [options]
+
+List memory banks.
+
+Options:
+  --page &lt;n&gt;          Page number.
+  --limit &lt;n&gt;         Page size.
+  --sort &lt;field&gt;      Sort field.
+  --order &lt;asc|desc&gt;  Sort direction.
+  --type &lt;type&gt;       Keep only one bank type: conversation or general.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="memory-create">
+<h2 class="section-title"><a class="anchor" href="#memory-create">memory create</a></h2>
+<pre class="code"><code>Usage: seclai memory create [options]
+
+Create a memory bank.
+
+Options:
+  --json &lt;json&gt;       Body JSON.
+  --json-file &lt;path&gt;  Body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="memory-get">
+<h2 class="section-title"><a class="anchor" href="#memory-get">memory get</a></h2>
+<pre class="code"><code>Usage: seclai memory get [options] &lt;memoryBankId&gt;
+
+Get a memory bank.
+
+Arguments:
+  memoryBankId  Memory bank ID.
+
+Options:
+  -h, --help    display help for command
+</code></pre>
+</section>
+
+<section class="section" id="memory-update">
+<h2 class="section-title"><a class="anchor" href="#memory-update">memory update</a></h2>
+<pre class="code"><code>Usage: seclai memory update [options] &lt;memoryBankId&gt;
+
+Update a memory bank.
+
+Arguments:
+  memoryBankId        Memory bank ID.
+
+Options:
+  --json &lt;json&gt;       Update body JSON.
+  --json-file &lt;path&gt;  Update body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="memory-delete">
+<h2 class="section-title"><a class="anchor" href="#memory-delete">memory delete</a></h2>
+<pre class="code"><code>Usage: seclai memory delete [options] &lt;memoryBankId&gt;
+
+Delete a memory bank.
+
+Arguments:
+  memoryBankId  Memory bank ID.
+
+Options:
+  -h, --help    display help for command
+</code></pre>
+</section>
+
+<section class="section" id="memory-stats">
+<h2 class="section-title"><a class="anchor" href="#memory-stats">memory stats</a></h2>
+<pre class="code"><code>Usage: seclai memory stats [options] &lt;memoryBankId&gt;
+
+Get memory bank statistics. --start-date and --end-date together replace --days;
+either one alone is refused, because the API would ignore it, and so are both
+with --days, because the API would ignore --days.
+
+Arguments:
+  memoryBankId         Memory bank ID.
+
+Options:
+  --days &lt;n&gt;           Days back from today (server default 30).
+  --start-date &lt;date&gt;  First day, YYYY-MM-DD.
+  --end-date &lt;date&gt;    Last day, YYYY-MM-DD.
+  -h, --help           display help for command
+</code></pre>
+</section>
+
+<section class="section" id="memory-agents">
+<h2 class="section-title"><a class="anchor" href="#memory-agents">memory agents</a></h2>
+<pre class="code"><code>Usage: seclai memory agents [options] &lt;memoryBankId&gt;
+
+List agents using a memory bank.
+
+Arguments:
+  memoryBankId  Memory bank ID.
+
+Options:
+  -h, --help    display help for command
+</code></pre>
+</section>
+
+<section class="section" id="memory-compact">
+<h2 class="section-title"><a class="anchor" href="#memory-compact">memory compact</a></h2>
+<pre class="code"><code>Usage: seclai memory compact [options] &lt;memoryBankId&gt;
+
+Compact a memory bank.
+
+Arguments:
+  memoryBankId  Memory bank ID.
+
+Options:
+  -h, --help    display help for command
+</code></pre>
+</section>
+
+<section class="section" id="memory-delete-source">
+<h2 class="section-title"><a class="anchor" href="#memory-delete-source">memory delete-source</a></h2>
+<pre class="code"><code>Usage: seclai memory delete-source [options] &lt;memoryBankId&gt;
+
+Delete a memory bank&#39;s source data.
+
+Arguments:
+  memoryBankId  Memory bank ID.
+
+Options:
+  -h, --help    display help for command
+</code></pre>
+</section>
+
+<section class="section" id="memory-templates">
+<h2 class="section-title"><a class="anchor" href="#memory-templates">memory templates</a></h2>
+<pre class="code"><code>Usage: seclai memory templates [options]
+
+List memory bank templates.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="memory-test-compaction">
+<h2 class="section-title"><a class="anchor" href="#memory-test-compaction">memory test-compaction</a></h2>
+<pre class="code"><code>Usage: seclai memory test-compaction [options] &lt;memoryBankId&gt;
+
+Test compaction on a memory bank.
+
+Arguments:
+  memoryBankId        Memory bank ID.
+
+Options:
+  --json &lt;json&gt;       Test config JSON.
+  --json-file &lt;path&gt;  Test config JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="memory-test-compaction-standalone">
+<h2 class="section-title"><a class="anchor" href="#memory-test-compaction-standalone">memory test-compaction-standalone</a></h2>
+<pre class="code"><code>Usage: seclai memory test-compaction-standalone [options]
+
+Test compaction prompt standalone (no memory bank required).
+
+Options:
+  --json &lt;json&gt;       Test config JSON.
+  --json-file &lt;path&gt;  Test config JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="memory-ai">
+<h2 class="section-title"><a class="anchor" href="#memory-ai">memory ai</a></h2>
+<pre class="code"><code>Usage: seclai memory ai [options] [command]
+
+Memory bank AI assistant.
+
+Options:
+  -h, --help                         display help for command
+
+Commands:
+  generate [options]                 Generate memory bank config via AI.
+  last [options]                     Get last memory bank AI conversation.
+                                     --limit is the turns to return (server
+                                     default 5); --offset skips the most recent
+                                     turns.
+  accept [options] &lt;conversationId&gt;  Accept a memory bank AI suggestion.
+  help [command]                     display help for command
+</code></pre>
+</section>
+
+<section class="section" id="memory-ai-generate">
+<h2 class="section-title"><a class="anchor" href="#memory-ai-generate">memory ai generate</a></h2>
+<pre class="code"><code>Usage: seclai memory ai generate [options]
+
+Generate memory bank config via AI.
+
+Options:
+  --user-input &lt;text&gt;  User input text (shorthand for --json
+                       &#39;{&quot;user_input&quot;:&quot;...&quot;}&#39;)
+  --json &lt;json&gt;        Full request body JSON.
+  --json-file &lt;path&gt;   Request body JSON file.
+  -h, --help           display help for command
+</code></pre>
+</section>
+
+<section class="section" id="memory-ai-last">
+<h2 class="section-title"><a class="anchor" href="#memory-ai-last">memory ai last</a></h2>
+<pre class="code"><code>Usage: seclai memory ai last [options]
+
+Get last memory bank AI conversation. --limit is the turns to return (server
+default 5); --offset skips the most recent turns.
+
+Options:
+  --limit &lt;n&gt;   Page size.
+  --offset &lt;n&gt;  Number of items to skip.
+  -h, --help    display help for command
+</code></pre>
+</section>
+
+<section class="section" id="memory-ai-accept">
+<h2 class="section-title"><a class="anchor" href="#memory-ai-accept">memory ai accept</a></h2>
+<pre class="code"><code>Usage: seclai memory ai accept [options] &lt;conversationId&gt;
+
+Accept a memory bank AI suggestion.
+
+Arguments:
+  conversationId      Conversation ID.
+
+Options:
+  --json &lt;json&gt;       Accept body JSON.
+  --json-file &lt;path&gt;  Accept body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="evals">
+<h2 class="section-title"><a class="anchor" href="#evals">evals</a></h2>
+<pre class="code"><code>Usage: seclai evals [options] [command]
+
+Manage evaluations.
+
+Options:
+  -h, --help                              display help for command
+
+Commands:
+  criteria                                Evaluation criteria.
+  results                                 Evaluation results.
+  compatible-runs [options] &lt;criteriaId&gt;  List runs compatible with criteria.
+  test-draft [options] &lt;agentId&gt;          Test a draft evaluation.
+  agent-results [options] &lt;agentId&gt;       List all evaluation results for an agent.
+  agent-runs [options] &lt;agentId&gt;          List evaluation run summaries for an agent.
+  non-manual-summary [options] [agentId]  Get the non-manual evaluation summary for an agent, or for the whole account when no agent is given. --start-date with --end-date sets the range; --start-date alone runs through today; otherwise the last --days days apply. --end-date alone, and --days with --start-date, are refused, because the API would ignore them.
+  help [command]                          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="evals-criteria">
+<h2 class="section-title"><a class="anchor" href="#evals-criteria">evals criteria</a></h2>
+<pre class="code"><code>Usage: seclai evals criteria [options] [command]
+
+Evaluation criteria.
+
+Options:
+  -h, --help                     display help for command
+
+Commands:
+  list [options] &lt;agentId&gt;       List evaluation criteria for an agent.
+  create [options] &lt;agentId&gt;     Create evaluation criteria.
+  get &lt;criteriaId&gt;               Get evaluation criteria.
+  update [options] &lt;criteriaId&gt;  Update evaluation criteria.
+  delete &lt;criteriaId&gt;            Delete evaluation criteria.
+  summary &lt;criteriaId&gt;           Get criteria evaluation summary.
+  help [command]                 display help for command
+</code></pre>
+</section>
+
+<section class="section" id="evals-criteria-list">
+<h2 class="section-title"><a class="anchor" href="#evals-criteria-list">evals criteria list</a></h2>
+<pre class="code"><code>Usage: seclai evals criteria list [options] &lt;agentId&gt;
+
+List evaluation criteria for an agent.
+
+Arguments:
+  agentId      Agent ID.
+
+Options:
+  --page &lt;n&gt;   Page number.
+  --limit &lt;n&gt;  Page size.
+  --paged      Wrap the results in {data: [...]} instead of returning a bare
+               array. The pagination block is included once the API sends one,
+               from --api-version 2026-07-27.
+  -h, --help   display help for command
+</code></pre>
+</section>
+
+<section class="section" id="evals-criteria-create">
+<h2 class="section-title"><a class="anchor" href="#evals-criteria-create">evals criteria create</a></h2>
+<pre class="code"><code>Usage: seclai evals criteria create [options] &lt;agentId&gt;
+
+Create evaluation criteria.
+
+Arguments:
+  agentId             Agent ID.
+
+Options:
+  --json &lt;json&gt;       Criteria body JSON.
+  --json-file &lt;path&gt;  Criteria body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="evals-criteria-get">
+<h2 class="section-title"><a class="anchor" href="#evals-criteria-get">evals criteria get</a></h2>
+<pre class="code"><code>Usage: seclai evals criteria get [options] &lt;criteriaId&gt;
+
+Get evaluation criteria.
+
+Arguments:
+  criteriaId  Criteria ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="evals-criteria-update">
+<h2 class="section-title"><a class="anchor" href="#evals-criteria-update">evals criteria update</a></h2>
+<pre class="code"><code>Usage: seclai evals criteria update [options] &lt;criteriaId&gt;
+
+Update evaluation criteria.
+
+Arguments:
+  criteriaId          Criteria ID.
+
+Options:
+  --json &lt;json&gt;       Update body JSON.
+  --json-file &lt;path&gt;  Update body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="evals-criteria-delete">
+<h2 class="section-title"><a class="anchor" href="#evals-criteria-delete">evals criteria delete</a></h2>
+<pre class="code"><code>Usage: seclai evals criteria delete [options] &lt;criteriaId&gt;
+
+Delete evaluation criteria.
+
+Arguments:
+  criteriaId  Criteria ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="evals-criteria-summary">
+<h2 class="section-title"><a class="anchor" href="#evals-criteria-summary">evals criteria summary</a></h2>
+<pre class="code"><code>Usage: seclai evals criteria summary [options] &lt;criteriaId&gt;
+
+Get criteria evaluation summary.
+
+Arguments:
+  criteriaId  Criteria ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="evals-results">
+<h2 class="section-title"><a class="anchor" href="#evals-results">evals results</a></h2>
+<pre class="code"><code>Usage: seclai evals results [options] [command]
+
+Evaluation results.
+
+Options:
+  -h, --help                     display help for command
+
+Commands:
+  list [options] &lt;criteriaId&gt;    List results for criteria.
+  create [options] &lt;criteriaId&gt;  Create an evaluation result.
+  help [command]                 display help for command
+</code></pre>
+</section>
+
+<section class="section" id="evals-results-list">
+<h2 class="section-title"><a class="anchor" href="#evals-results-list">evals results list</a></h2>
+<pre class="code"><code>Usage: seclai evals results list [options] &lt;criteriaId&gt;
+
+List results for criteria.
+
+Arguments:
+  criteriaId          Criteria ID.
+
+Options:
+  --page &lt;n&gt;          Page number.
+  --limit &lt;n&gt;         Page size.
+  --status &lt;status&gt;   Keep only one result status.
+  --flagged-only      Keep only flagged results.
+  --time-from &lt;time&gt;  Earliest time, ISO 8601.
+  --time-to &lt;time&gt;    Latest time, ISO 8601.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="evals-results-create">
+<h2 class="section-title"><a class="anchor" href="#evals-results-create">evals results create</a></h2>
+<pre class="code"><code>Usage: seclai evals results create [options] &lt;criteriaId&gt;
+
+Create an evaluation result.
+
+Arguments:
+  criteriaId          Criteria ID.
+
+Options:
+  --json &lt;json&gt;       Result body JSON.
+  --json-file &lt;path&gt;  Result body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="evals-compatible-runs">
+<h2 class="section-title"><a class="anchor" href="#evals-compatible-runs">evals compatible-runs</a></h2>
+<pre class="code"><code>Usage: seclai evals compatible-runs [options] &lt;criteriaId&gt;
+
+List runs compatible with criteria.
+
+Arguments:
+  criteriaId              Criteria ID.
+
+Options:
+  --page &lt;n&gt;              Page number.
+  --limit &lt;n&gt;             Page size.
+  --started-after &lt;time&gt;  Only runs started after this time, ISO 8601.
+  -h, --help              display help for command
+</code></pre>
+</section>
+
+<section class="section" id="evals-test-draft">
+<h2 class="section-title"><a class="anchor" href="#evals-test-draft">evals test-draft</a></h2>
+<pre class="code"><code>Usage: seclai evals test-draft [options] &lt;agentId&gt;
+
+Test a draft evaluation.
+
+Arguments:
+  agentId             Agent ID.
+
+Options:
+  --json &lt;json&gt;       Test body JSON.
+  --json-file &lt;path&gt;  Test body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="evals-agent-results">
+<h2 class="section-title"><a class="anchor" href="#evals-agent-results">evals agent-results</a></h2>
+<pre class="code"><code>Usage: seclai evals agent-results [options] &lt;agentId&gt;
+
+List all evaluation results for an agent.
+
+Arguments:
+  agentId             Agent ID.
+
+Options:
+  --page &lt;n&gt;          Page number.
+  --limit &lt;n&gt;         Page size.
+  --status &lt;status&gt;   Keep only one result status.
+  --flagged-only      Keep only flagged results.
+  --step &lt;stepId&gt;     Keep only results for this agent step.
+  --time-from &lt;time&gt;  Earliest time, ISO 8601.
+  --time-to &lt;time&gt;    Latest time, ISO 8601.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="evals-agent-runs">
+<h2 class="section-title"><a class="anchor" href="#evals-agent-runs">evals agent-runs</a></h2>
+<pre class="code"><code>Usage: seclai evals agent-runs [options] &lt;agentId&gt;
+
+List evaluation run summaries for an agent.
+
+Arguments:
+  agentId             Agent ID.
+
+Options:
+  --page &lt;n&gt;          Page number.
+  --limit &lt;n&gt;         Page size.
+  --status &lt;status&gt;   Keep only one result status.
+  --step &lt;stepId&gt;     Keep only runs for this agent step.
+  --time-from &lt;time&gt;  Earliest time, ISO 8601.
+  --time-to &lt;time&gt;    Latest time, ISO 8601.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="evals-non-manual-summary">
+<h2 class="section-title"><a class="anchor" href="#evals-non-manual-summary">evals non-manual-summary</a></h2>
+<pre class="code"><code>Usage: seclai evals non-manual-summary [options] [agentId]
+
+Get the non-manual evaluation summary for an agent, or for the whole account
+when no agent is given. --start-date with --end-date sets the range;
+--start-date alone runs through today; otherwise the last --days days apply.
+--end-date alone, and --days with --start-date, are refused, because the API
+would ignore them.
+
+Arguments:
+  agentId              Agent ID. Omit for the account-wide summary.
+
+Options:
+  --days &lt;n&gt;           Days back from today (server default 30).
+  --start-date &lt;date&gt;  First day, YYYY-MM-DD.
+  --end-date &lt;date&gt;    Last day, YYYY-MM-DD.
+  -h, --help           display help for command
+</code></pre>
+</section>
+
+<section class="section" id="solutions">
+<h2 class="section-title"><a class="anchor" href="#solutions">solutions</a></h2>
+<pre class="code"><code>Usage: seclai solutions [options] [command]
+
+Manage solutions.
+
+Options:
+  -h, --help                     display help for command
+
+Commands:
+  list [options]                 List solutions.
+  create [options]               Create a solution.
+  get &lt;solutionId&gt;               Get a solution.
+  update [options] &lt;solutionId&gt;  Update a solution.
+  delete &lt;solutionId&gt;            Delete a solution.
+  link [options] &lt;solutionId&gt;    Link resources to a solution. Use --agents,
+                                 --kb, or --sources with JSON array of IDs.
+  unlink [options] &lt;solutionId&gt;  Unlink resources from a solution. Use --agents,
+                                 --kb, or --sources with JSON array of IDs.
+  convos                         Solution conversations.
+  ai                             Solution AI assistant.
+  help [command]                 display help for command
+</code></pre>
+</section>
+
+<section class="section" id="solutions-list">
+<h2 class="section-title"><a class="anchor" href="#solutions-list">solutions list</a></h2>
+<pre class="code"><code>Usage: seclai solutions list [options]
+
+List solutions.
+
+Options:
+  --page &lt;n&gt;          Page number.
+  --limit &lt;n&gt;         Page size.
+  --sort &lt;field&gt;      Sort field.
+  --order &lt;asc|desc&gt;  Sort direction.
+  --search &lt;text&gt;     Keep solutions whose name contains this text
+                      (case-insensitive).
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="solutions-create">
+<h2 class="section-title"><a class="anchor" href="#solutions-create">solutions create</a></h2>
+<pre class="code"><code>Usage: seclai solutions create [options]
+
+Create a solution.
+
+Options:
+  --json &lt;json&gt;       Body JSON.
+  --json-file &lt;path&gt;  Body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="solutions-get">
+<h2 class="section-title"><a class="anchor" href="#solutions-get">solutions get</a></h2>
+<pre class="code"><code>Usage: seclai solutions get [options] &lt;solutionId&gt;
+
+Get a solution.
+
+Arguments:
+  solutionId  Solution ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="solutions-update">
+<h2 class="section-title"><a class="anchor" href="#solutions-update">solutions update</a></h2>
+<pre class="code"><code>Usage: seclai solutions update [options] &lt;solutionId&gt;
+
+Update a solution.
+
+Arguments:
+  solutionId          Solution ID.
+
+Options:
+  --json &lt;json&gt;       Update body JSON.
+  --json-file &lt;path&gt;  Update body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="solutions-delete">
+<h2 class="section-title"><a class="anchor" href="#solutions-delete">solutions delete</a></h2>
+<pre class="code"><code>Usage: seclai solutions delete [options] &lt;solutionId&gt;
+
+Delete a solution.
+
+Arguments:
+  solutionId  Solution ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="solutions-link">
+<h2 class="section-title"><a class="anchor" href="#solutions-link">solutions link</a></h2>
+<pre class="code"><code>Usage: seclai solutions link [options] &lt;solutionId&gt;
+
+Link resources to a solution. Use --agents, --kb, or --sources with JSON array
+of IDs.
+
+Arguments:
+  solutionId        Solution ID.
+
+Options:
+  --agents &lt;json&gt;   Link agents (JSON body).
+  --kb &lt;json&gt;       Link knowledge bases (JSON body).
+  --sources &lt;json&gt;  Link sources (JSON body).
+  -h, --help        display help for command
+</code></pre>
+</section>
+
+<section class="section" id="solutions-unlink">
+<h2 class="section-title"><a class="anchor" href="#solutions-unlink">solutions unlink</a></h2>
+<pre class="code"><code>Usage: seclai solutions unlink [options] &lt;solutionId&gt;
+
+Unlink resources from a solution. Use --agents, --kb, or --sources with JSON
+array of IDs.
+
+Arguments:
+  solutionId        Solution ID.
+
+Options:
+  --agents &lt;json&gt;   Unlink agents (JSON body).
+  --kb &lt;json&gt;       Unlink knowledge bases (JSON body).
+  --sources &lt;json&gt;  Unlink sources (JSON body).
+  -h, --help        display help for command
+</code></pre>
+</section>
+
+<section class="section" id="solutions-convos">
+<h2 class="section-title"><a class="anchor" href="#solutions-convos">solutions convos</a></h2>
+<pre class="code"><code>Usage: seclai solutions convos [options] [command]
+
+Solution conversations.
+
+Options:
+  -h, --help                                    display help for command
+
+Commands:
+  list &lt;solutionId&gt;                             List conversations for a solution.
+  add [options] &lt;solutionId&gt;                    Add a conversation turn.
+  mark [options] &lt;solutionId&gt; &lt;conversationId&gt;  Mark a conversation turn.
+  help [command]                                display help for command
+</code></pre>
+</section>
+
+<section class="section" id="solutions-convos-list">
+<h2 class="section-title"><a class="anchor" href="#solutions-convos-list">solutions convos list</a></h2>
+<pre class="code"><code>Usage: seclai solutions convos list [options] &lt;solutionId&gt;
+
+List conversations for a solution.
+
+Arguments:
+  solutionId  Solution ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="solutions-convos-add">
+<h2 class="section-title"><a class="anchor" href="#solutions-convos-add">solutions convos add</a></h2>
+<pre class="code"><code>Usage: seclai solutions convos add [options] &lt;solutionId&gt;
+
+Add a conversation turn.
+
+Arguments:
+  solutionId          Solution ID.
+
+Options:
+  --json &lt;json&gt;       Turn body JSON.
+  --json-file &lt;path&gt;  Turn body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="solutions-convos-mark">
+<h2 class="section-title"><a class="anchor" href="#solutions-convos-mark">solutions convos mark</a></h2>
+<pre class="code"><code>Usage: seclai solutions convos mark [options] &lt;solutionId&gt; &lt;conversationId&gt;
+
+Mark a conversation turn.
+
+Arguments:
+  solutionId          Solution ID.
+  conversationId      Conversation ID.
+
+Options:
+  --json &lt;json&gt;       Mark body JSON.
+  --json-file &lt;path&gt;  Mark body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="solutions-ai">
+<h2 class="section-title"><a class="anchor" href="#solutions-ai">solutions ai</a></h2>
+<pre class="code"><code>Usage: seclai solutions ai [options] [command]
+
+Solution AI assistant.
+
+Options:
+  -h, --help                                      display help for command
+
+Commands:
+  generate [options] &lt;solutionId&gt;                 Generate a solution AI plan.
+  kb [options] &lt;solutionId&gt;                       Generate a KB plan via solution AI.
+  source [options] &lt;solutionId&gt;                   Generate a source plan via solution AI.
+  accept [options] &lt;solutionId&gt; &lt;conversationId&gt;  Accept a solution AI plan.
+  decline &lt;solutionId&gt; &lt;conversationId&gt;           Decline a solution AI plan.
+  help [command]                                  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="solutions-ai-generate">
+<h2 class="section-title"><a class="anchor" href="#solutions-ai-generate">solutions ai generate</a></h2>
+<pre class="code"><code>Usage: seclai solutions ai generate [options] &lt;solutionId&gt;
+
+Generate a solution AI plan.
+
+Arguments:
+  solutionId           Solution ID.
+
+Options:
+  --user-input &lt;text&gt;  User input text (shorthand for --json
+                       &#39;{&quot;user_input&quot;:&quot;...&quot;}&#39;)
+  --json &lt;json&gt;        Full request body JSON.
+  --json-file &lt;path&gt;   Request body JSON file.
+  -h, --help           display help for command
+</code></pre>
+</section>
+
+<section class="section" id="solutions-ai-kb">
+<h2 class="section-title"><a class="anchor" href="#solutions-ai-kb">solutions ai kb</a></h2>
+<pre class="code"><code>Usage: seclai solutions ai kb [options] &lt;solutionId&gt;
+
+Generate a KB plan via solution AI.
+
+Arguments:
+  solutionId           Solution ID.
+
+Options:
+  --user-input &lt;text&gt;  User input text (shorthand for --json
+                       &#39;{&quot;user_input&quot;:&quot;...&quot;}&#39;)
+  --json &lt;json&gt;        Full request body JSON.
+  --json-file &lt;path&gt;   Request body JSON file.
+  -h, --help           display help for command
+</code></pre>
+</section>
+
+<section class="section" id="solutions-ai-source">
+<h2 class="section-title"><a class="anchor" href="#solutions-ai-source">solutions ai source</a></h2>
+<pre class="code"><code>Usage: seclai solutions ai source [options] &lt;solutionId&gt;
+
+Generate a source plan via solution AI.
+
+Arguments:
+  solutionId           Solution ID.
+
+Options:
+  --user-input &lt;text&gt;  User input text (shorthand for --json
+                       &#39;{&quot;user_input&quot;:&quot;...&quot;}&#39;)
+  --json &lt;json&gt;        Full request body JSON.
+  --json-file &lt;path&gt;   Request body JSON file.
+  -h, --help           display help for command
+</code></pre>
+</section>
+
+<section class="section" id="solutions-ai-accept">
+<h2 class="section-title"><a class="anchor" href="#solutions-ai-accept">solutions ai accept</a></h2>
+<pre class="code"><code>Usage: seclai solutions ai accept [options] &lt;solutionId&gt; &lt;conversationId&gt;
+
+Accept a solution AI plan.
+
+Arguments:
+  solutionId          Solution ID.
+  conversationId      Conversation ID.
+
+Options:
+  --json &lt;json&gt;       Accept body JSON.
+  --json-file &lt;path&gt;  Accept body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="solutions-ai-decline">
+<h2 class="section-title"><a class="anchor" href="#solutions-ai-decline">solutions ai decline</a></h2>
+<pre class="code"><code>Usage: seclai solutions ai decline [options] &lt;solutionId&gt; &lt;conversationId&gt;
+
+Decline a solution AI plan.
+
+Arguments:
+  solutionId      Solution ID.
+  conversationId  Conversation ID.
+
+Options:
+  -h, --help      display help for command
+</code></pre>
+</section>
+
+<section class="section" id="governance">
+<h2 class="section-title"><a class="anchor" href="#governance">governance</a></h2>
+<pre class="code"><code>Usage: seclai governance [options] [command]
+
+Governance AI assistant.
+
+Options:
+  -h, --help      display help for command
+
+Commands:
+  ai              Governance AI operations.
+  help [command]  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="governance-ai">
+<h2 class="section-title"><a class="anchor" href="#governance-ai">governance ai</a></h2>
+<pre class="code"><code>Usage: seclai governance ai [options] [command]
+
+Governance AI operations.
+
+Options:
+  -h, --help                display help for command
+
+Commands:
+  generate [options]        Generate a governance AI plan.
+  list [options]            List governance AI conversations.
+  accept &lt;conversationId&gt;   Accept a governance AI plan.
+  decline &lt;conversationId&gt;  Decline a governance AI plan.
+  help [command]            display help for command
+</code></pre>
+</section>
+
+<section class="section" id="governance-ai-generate">
+<h2 class="section-title"><a class="anchor" href="#governance-ai-generate">governance ai generate</a></h2>
+<pre class="code"><code>Usage: seclai governance ai generate [options]
+
+Generate a governance AI plan.
+
+Options:
+  --user-input &lt;text&gt;  User input text (shorthand for --json
+                       &#39;{&quot;user_input&quot;:&quot;...&quot;}&#39;)
+  --json &lt;json&gt;        Full request body JSON.
+  --json-file &lt;path&gt;   Request body JSON file.
+  -h, --help           display help for command
+</code></pre>
+</section>
+
+<section class="section" id="governance-ai-list">
+<h2 class="section-title"><a class="anchor" href="#governance-ai-list">governance ai list</a></h2>
+<pre class="code"><code>Usage: seclai governance ai list [options]
+
+List governance AI conversations.
+
+Options:
+  --limit &lt;n&gt;  How many conversations (server default 20).
+  -h, --help   display help for command
+</code></pre>
+</section>
+
+<section class="section" id="governance-ai-accept">
+<h2 class="section-title"><a class="anchor" href="#governance-ai-accept">governance ai accept</a></h2>
+<pre class="code"><code>Usage: seclai governance ai accept [options] &lt;conversationId&gt;
+
+Accept a governance AI plan.
+
+Arguments:
+  conversationId  Conversation ID.
+
+Options:
+  -h, --help      display help for command
+</code></pre>
+</section>
+
+<section class="section" id="governance-ai-decline">
+<h2 class="section-title"><a class="anchor" href="#governance-ai-decline">governance ai decline</a></h2>
+<pre class="code"><code>Usage: seclai governance ai decline [options] &lt;conversationId&gt;
+
+Decline a governance AI plan.
+
+Arguments:
+  conversationId  Conversation ID.
+
+Options:
+  -h, --help      display help for command
+</code></pre>
+</section>
+
+<section class="section" id="alerts">
+<h2 class="section-title"><a class="anchor" href="#alerts">alerts</a></h2>
+<pre class="code"><code>Usage: seclai alerts [options] [command]
+
+Manage alerts and alert configurations.
+
+Options:
+  -h, --help                   display help for command
+
+Commands:
+  list [options]               List alerts.
+  get &lt;alertId&gt;                Get an alert.
+  status [options] &lt;alertId&gt;   Change alert status.
+  comment [options] &lt;alertId&gt;  Add a comment to an alert.
+  subscribe &lt;alertId&gt;          Subscribe to an alert.
+  unsubscribe &lt;alertId&gt;        Unsubscribe from an alert.
+  configs                      Alert configurations.
+  prefs                        Organization alert preferences.
+  help [command]               display help for command
+</code></pre>
+</section>
+
+<section class="section" id="alerts-list">
+<h2 class="section-title"><a class="anchor" href="#alerts-list">alerts list</a></h2>
+<pre class="code"><code>Usage: seclai alerts list [options]
+
+List alerts.
+
+Options:
+  --page &lt;n&gt;                   Page number.
+  --limit &lt;n&gt;                  Page size.
+  --status &lt;status&gt;            Filter by status.
+  --agent-id &lt;id&gt;              Keep only alerts for this agent.
+  --source-connection-id &lt;id&gt;  Keep only alerts for this source connection.
+  --time-from &lt;time&gt;           Earliest time, ISO 8601.
+  --time-to &lt;time&gt;             Latest time, ISO 8601.
+  -h, --help                   display help for command
+</code></pre>
+</section>
+
+<section class="section" id="alerts-get">
+<h2 class="section-title"><a class="anchor" href="#alerts-get">alerts get</a></h2>
+<pre class="code"><code>Usage: seclai alerts get [options] &lt;alertId&gt;
+
+Get an alert.
+
+Arguments:
+  alertId     Alert ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="alerts-status">
+<h2 class="section-title"><a class="anchor" href="#alerts-status">alerts status</a></h2>
+<pre class="code"><code>Usage: seclai alerts status [options] &lt;alertId&gt;
+
+Change alert status.
+
+Arguments:
+  alertId             Alert ID.
+
+Options:
+  --json &lt;json&gt;       Status body JSON.
+  --json-file &lt;path&gt;  Status body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="alerts-comment">
+<h2 class="section-title"><a class="anchor" href="#alerts-comment">alerts comment</a></h2>
+<pre class="code"><code>Usage: seclai alerts comment [options] &lt;alertId&gt;
+
+Add a comment to an alert.
+
+Arguments:
+  alertId             Alert ID.
+
+Options:
+  --json &lt;json&gt;       Comment body JSON.
+  --json-file &lt;path&gt;  Comment body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="alerts-subscribe">
+<h2 class="section-title"><a class="anchor" href="#alerts-subscribe">alerts subscribe</a></h2>
+<pre class="code"><code>Usage: seclai alerts subscribe [options] &lt;alertId&gt;
+
+Subscribe to an alert.
+
+Arguments:
+  alertId     Alert ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="alerts-unsubscribe">
+<h2 class="section-title"><a class="anchor" href="#alerts-unsubscribe">alerts unsubscribe</a></h2>
+<pre class="code"><code>Usage: seclai alerts unsubscribe [options] &lt;alertId&gt;
+
+Unsubscribe from an alert.
+
+Arguments:
+  alertId     Alert ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="alerts-configs">
+<h2 class="section-title"><a class="anchor" href="#alerts-configs">alerts configs</a></h2>
+<pre class="code"><code>Usage: seclai alerts configs [options] [command]
+
+Alert configurations.
+
+Options:
+  -h, --help                   display help for command
+
+Commands:
+  list [options]               List alert configurations.
+  create [options]             Create an alert configuration.
+  get &lt;configId&gt;               Get an alert configuration.
+  update [options] &lt;configId&gt;  Update an alert configuration.
+  delete &lt;configId&gt;            Delete an alert configuration.
+  help [command]               display help for command
+</code></pre>
+</section>
+
+<section class="section" id="alerts-configs-list">
+<h2 class="section-title"><a class="anchor" href="#alerts-configs-list">alerts configs list</a></h2>
+<pre class="code"><code>Usage: seclai alerts configs list [options]
+
+List alert configurations.
+
+Options:
+  --page &lt;n&gt;                   Page number.
+  --limit &lt;n&gt;                  Page size.
+  --agent-id &lt;id&gt;              Keep only configs for this agent.
+  --source-connection-id &lt;id&gt;  Keep only configs for this source connection.
+  --scope &lt;scope&gt;              &#39;source&#39; lists the account-level source alert
+                               configs.
+  --paged                      Wrap the results in {data: [...]}, the shape this
+                               endpoint moves to from --api-version 2026-07-27.
+  -h, --help                   display help for command
+</code></pre>
+</section>
+
+<section class="section" id="alerts-configs-create">
+<h2 class="section-title"><a class="anchor" href="#alerts-configs-create">alerts configs create</a></h2>
+<pre class="code"><code>Usage: seclai alerts configs create [options]
+
+Create an alert configuration.
+
+Options:
+  --json &lt;json&gt;       Config body JSON.
+  --json-file &lt;path&gt;  Config body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="alerts-configs-get">
+<h2 class="section-title"><a class="anchor" href="#alerts-configs-get">alerts configs get</a></h2>
+<pre class="code"><code>Usage: seclai alerts configs get [options] &lt;configId&gt;
+
+Get an alert configuration.
+
+Arguments:
+  configId    Config ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="alerts-configs-update">
+<h2 class="section-title"><a class="anchor" href="#alerts-configs-update">alerts configs update</a></h2>
+<pre class="code"><code>Usage: seclai alerts configs update [options] &lt;configId&gt;
+
+Update an alert configuration.
+
+Arguments:
+  configId            Config ID.
+
+Options:
+  --json &lt;json&gt;       Update body JSON.
+  --json-file &lt;path&gt;  Update body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="alerts-configs-delete">
+<h2 class="section-title"><a class="anchor" href="#alerts-configs-delete">alerts configs delete</a></h2>
+<pre class="code"><code>Usage: seclai alerts configs delete [options] &lt;configId&gt;
+
+Delete an alert configuration.
+
+Arguments:
+  configId    Config ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="alerts-prefs">
+<h2 class="section-title"><a class="anchor" href="#alerts-prefs">alerts prefs</a></h2>
+<pre class="code"><code>Usage: seclai alerts prefs [options] [command]
+
+Organization alert preferences.
+
+Options:
+  -h, --help                                     display help for command
+
+Commands:
+  list [options]                                 List organization alert preferences.
+  update [options] &lt;organizationId&gt; &lt;alertType&gt;  Update an organization alert preference.
+  help [command]                                 display help for command
+</code></pre>
+</section>
+
+<section class="section" id="alerts-prefs-list">
+<h2 class="section-title"><a class="anchor" href="#alerts-prefs-list">alerts prefs list</a></h2>
+<pre class="code"><code>Usage: seclai alerts prefs list [options]
+
+List organization alert preferences.
+
+Options:
+  --organization-id &lt;id&gt;  Keep only one organization&#39;s preferences.
+  --include-defaults      Also list the default subscription for every alert
+                          type.
+  -h, --help              display help for command
+</code></pre>
+</section>
+
+<section class="section" id="alerts-prefs-update">
+<h2 class="section-title"><a class="anchor" href="#alerts-prefs-update">alerts prefs update</a></h2>
+<pre class="code"><code>Usage: seclai alerts prefs update [options] &lt;organizationId&gt; &lt;alertType&gt;
+
+Update an organization alert preference.
+
+Arguments:
+  organizationId      Organization ID.
+  alertType           Alert type.
+
+Options:
+  --json &lt;json&gt;       Preference body JSON.
+  --json-file &lt;path&gt;  Preference body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="models">
+<h2 class="section-title"><a class="anchor" href="#models">models</a></h2>
+<pre class="code"><code>Usage: seclai models [options] [command]
+
+Models, model alerts, recommendations, and playground experiments.
+
+Options:
+  -h, --help                           display help for command
+
+Commands:
+  list [options]                       List models grouped by provider.
+  tiers                                Show each media-generation modality and
+                                       tier with its model and cost.
+  embedders [options]                  List the embedding models a source can
+                                       index with, their supported dimensions
+                                       and pricing.
+  rerankers [options]                  List the reranker models a knowledge base
+                                       can use, and their pricing.
+  get &lt;modelId&gt;                        Get full details for a specific model.
+  alerts                               Model alerts.
+  recommendations [options] &lt;modelId&gt;  Get model recommendations.
+  experiments                          Model playground experiments.
+  help [command]                       display help for command
+</code></pre>
+</section>
+
+<section class="section" id="models-embedders">
+<h2 class="section-title"><a class="anchor" href="#models-embedders">models embedders</a></h2>
+<pre class="code"><code>Usage: seclai models embedders [options]
+
+List the embedding models a source can index with, their supported dimensions
+and pricing.
+
+Options:
+  --supports-input-media &lt;media&gt;  Only embedders that can index this input:
+                                  text, image, video, audio, or a full MIME
+                                  type.
+  --paged                         Print the list under `data` instead of
+                                  `models`, with the pagination block when the
+                                  API sends one.
+  -h, --help                      display help for command
+</code></pre>
+</section>
+
+<section class="section" id="models-rerankers">
+<h2 class="section-title"><a class="anchor" href="#models-rerankers">models rerankers</a></h2>
+<pre class="code"><code>Usage: seclai models rerankers [options]
+
+List the reranker models a knowledge base can use, and their pricing.
+
+Options:
+  --paged     Print the list under `data` instead of `models`, with the
+              pagination block when the API sends one.
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="models-alerts">
+<h2 class="section-title"><a class="anchor" href="#models-alerts">models alerts</a></h2>
+<pre class="code"><code>Usage: seclai models alerts [options] [command]
+
+Model alerts.
+
+Options:
+  -h, --help           display help for command
+
+Commands:
+  list [options]       List model alerts.
+  mark-read &lt;alertId&gt;  Mark a model alert as read.
+  mark-all-read        Mark all model alerts as read.
+  unread-count         Get unread model alert count.
+  help [command]       display help for command
+</code></pre>
+</section>
+
+<section class="section" id="models-alerts-list">
+<h2 class="section-title"><a class="anchor" href="#models-alerts-list">models alerts list</a></h2>
+<pre class="code"><code>Usage: seclai models alerts list [options]
+
+List model alerts.
+
+Options:
+  --page &lt;n&gt;       Page number.
+  --limit &lt;n&gt;      Page size.
+  --agent-id &lt;id&gt;  Keep only alerts for this agent.
+  --unread-only    Keep only unread alerts.
+  --paged          Wrap the results in {data: [...]}, the shape this endpoint
+                   moves to from --api-version 2026-07-27.
+  -h, --help       display help for command
+</code></pre>
+</section>
+
+<section class="section" id="models-alerts-mark-read">
+<h2 class="section-title"><a class="anchor" href="#models-alerts-mark-read">models alerts mark-read</a></h2>
+<pre class="code"><code>Usage: seclai models alerts mark-read [options] &lt;alertId&gt;
+
+Mark a model alert as read.
+
+Arguments:
+  alertId     Alert ID.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="models-alerts-mark-all-read">
+<h2 class="section-title"><a class="anchor" href="#models-alerts-mark-all-read">models alerts mark-all-read</a></h2>
+<pre class="code"><code>Usage: seclai models alerts mark-all-read [options]
+
+Mark all model alerts as read.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="models-alerts-unread-count">
+<h2 class="section-title"><a class="anchor" href="#models-alerts-unread-count">models alerts unread-count</a></h2>
+<pre class="code"><code>Usage: seclai models alerts unread-count [options]
+
+Get unread model alert count.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="models-recommendations">
+<h2 class="section-title"><a class="anchor" href="#models-recommendations">models recommendations</a></h2>
+<pre class="code"><code>Usage: seclai models recommendations [options] &lt;modelId&gt;
+
+Get model recommendations.
+
+Arguments:
+  modelId                      Model ID.
+
+Options:
+  --require-tool-use           Only models that support tool use.
+  --require-structured-output  Only models that support structured output.
+  --require-thinking           Only models that support thinking.
+  --min-context-tokens &lt;n&gt;     Smallest acceptable context window, in tokens.
+  --min-output-tokens &lt;n&gt;      Smallest acceptable output limit, in tokens.
+  -h, --help                   display help for command
+</code></pre>
+</section>
+
+<section class="section" id="cloud-drives">
+<h2 class="section-title"><a class="anchor" href="#cloud-drives">cloud-drives</a></h2>
+<pre class="code"><code>Usage: seclai cloud-drives [options] [command]
+
+Manage cloud-drive connections (connecting a drive happens in the app).
+
+Options:
+  -h, --help                           display help for command
+
+Commands:
+  providers                            List the cloud-drive providers that can
+                                       be connected.
+  list                                 List the account&#39;s cloud-drive
+                                       connections.
+  get &lt;connectionId&gt;                   Get a cloud-drive connection.
+  update [options] &lt;connectionId&gt;      Rename a connection and/or change the
+                                       folder it watches. Changing the folder
+                                       resets the sync cursor, so files already
+                                       in the new folder do not fire triggers.
+  disconnect &lt;connectionId&gt;            Revoke a connection&#39;s tokens and stop its
+                                       change notifications, keeping the
+                                       connection so it can be reconnected from
+                                       the app.
+  delete &lt;connectionId&gt;                Delete a connection. Refused with a 409
+                                       while an agent trigger or a content
+                                       source still depends on it.
+  agents &lt;connectionId&gt;                List the agents using a connection.
+                                       Content sources that use it are not
+                                       listed.
+  rejections [options] &lt;connectionId&gt;  List the files a connection skipped,
+                                       newest first, with the reason. A skipped
+                                       file fires no trigger.
+  help [command]                       display help for command
+</code></pre>
+</section>
+
+<section class="section" id="cloud-drives-providers">
+<h2 class="section-title"><a class="anchor" href="#cloud-drives-providers">cloud-drives providers</a></h2>
+<pre class="code"><code>Usage: seclai cloud-drives providers [options]
+
+List the cloud-drive providers that can be connected.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="cloud-drives-list">
+<h2 class="section-title"><a class="anchor" href="#cloud-drives-list">cloud-drives list</a></h2>
+<pre class="code"><code>Usage: seclai cloud-drives list [options]
+
+List the account&#39;s cloud-drive connections.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+
+<section class="section" id="cloud-drives-get">
+<h2 class="section-title"><a class="anchor" href="#cloud-drives-get">cloud-drives get</a></h2>
+<pre class="code"><code>Usage: seclai cloud-drives get [options] &lt;connectionId&gt;
+
+Get a cloud-drive connection.
+
+Arguments:
+  connectionId  Cloud-drive connection ID.
+
+Options:
+  -h, --help    display help for command
+</code></pre>
+</section>
+
+<section class="section" id="cloud-drives-update">
+<h2 class="section-title"><a class="anchor" href="#cloud-drives-update">cloud-drives update</a></h2>
+<pre class="code"><code>Usage: seclai cloud-drives update [options] &lt;connectionId&gt;
+
+Rename a connection and/or change the folder it watches. Changing the folder
+resets the sync cursor, so files already in the new folder do not fire triggers.
+
+Arguments:
+  connectionId          Cloud-drive connection ID.
+
+Options:
+  --name &lt;name&gt;         New display name.
+  --folder-path &lt;path&gt;  New watched folder. A shared-drive folder is &#39;/Shared
+                        drives/&lt;drive name&gt;/&lt;folder&gt;&#39;.
+  --whole-drive         Watch the whole drive instead of one folder.
+  -h, --help            display help for command
+</code></pre>
+</section>
+
+<section class="section" id="cloud-drives-disconnect">
+<h2 class="section-title"><a class="anchor" href="#cloud-drives-disconnect">cloud-drives disconnect</a></h2>
+<pre class="code"><code>Usage: seclai cloud-drives disconnect [options] &lt;connectionId&gt;
+
+Revoke a connection&#39;s tokens and stop its change notifications, keeping the
+connection so it can be reconnected from the app.
+
+Arguments:
+  connectionId  Cloud-drive connection ID.
+
+Options:
+  -h, --help    display help for command
+</code></pre>
+</section>
+
+<section class="section" id="cloud-drives-delete">
+<h2 class="section-title"><a class="anchor" href="#cloud-drives-delete">cloud-drives delete</a></h2>
+<pre class="code"><code>Usage: seclai cloud-drives delete [options] &lt;connectionId&gt;
+
+Delete a connection. Refused with a 409 while an agent trigger or a content
+source still depends on it.
+
+Arguments:
+  connectionId  Cloud-drive connection ID.
+
+Options:
+  -h, --help    display help for command
+</code></pre>
+</section>
+
+<section class="section" id="cloud-drives-agents">
+<h2 class="section-title"><a class="anchor" href="#cloud-drives-agents">cloud-drives agents</a></h2>
+<pre class="code"><code>Usage: seclai cloud-drives agents [options] &lt;connectionId&gt;
+
+List the agents using a connection. Content sources that use it are not listed.
+
+Arguments:
+  connectionId  Cloud-drive connection ID.
+
+Options:
+  -h, --help    display help for command
+</code></pre>
+</section>
+
+<section class="section" id="cloud-drives-rejections">
+<h2 class="section-title"><a class="anchor" href="#cloud-drives-rejections">cloud-drives rejections</a></h2>
+<pre class="code"><code>Usage: seclai cloud-drives rejections [options] &lt;connectionId&gt;
+
+List the files a connection skipped, newest first, with the reason. A skipped
+file fires no trigger.
+
+Arguments:
+  connectionId  Cloud-drive connection ID.
+
+Options:
+  --limit &lt;n&gt;   Maximum rejections to return (1-200, default 50).
+  -h, --help    display help for command
+</code></pre>
+</section>
+
+<section class="section" id="search">
+<h2 class="section-title"><a class="anchor" href="#search">search</a></h2>
+<pre class="code"><code>Usage: seclai search [options]
+
+Search across Seclai resources.
+
+Options:
+  --query &lt;text&gt;        Search query text.
+  --limit &lt;n&gt;           Max results.
+  --entity-type &lt;type&gt;  Filter by entity type (e.g. agent, source,
+                        knowledge_base, memory_bank).
+  -h, --help            display help for command
+</code></pre>
+</section>
+
+<section class="section" id="ai">
+<h2 class="section-title"><a class="anchor" href="#ai">ai</a></h2>
+<pre class="code"><code>Usage: seclai ai [options] [command]
+
+Top-level AI assistant.
+
+Options:
+  -h, --help                                display help for command
+
+Commands:
+  feedback [options]                        Submit AI feedback.
+  kb [options]                              AI assistant for knowledge bases.
+  source [options]                          AI assistant for sources.
+  solution [options]                        AI assistant for solutions.
+  memory [options]                          AI assistant for memory banks.
+  memory-history [options]                  Get AI assistant memory bank conversation history. --limit is the turns to return (server default 5); --offset skips the most recent turns.
+  accept [options] &lt;conversationId&gt;         Accept an AI assistant plan.
+  decline &lt;conversationId&gt;                  Decline an AI assistant plan.
+  memory-accept [options] &lt;conversationId&gt;  Accept an AI memory bank suggestion.
+  help [command]                            display help for command
+</code></pre>
+</section>
+
+<section class="section" id="ai-feedback">
+<h2 class="section-title"><a class="anchor" href="#ai-feedback">ai feedback</a></h2>
+<pre class="code"><code>Usage: seclai ai feedback [options]
+
+Submit AI feedback.
+
+Options:
+  --json &lt;json&gt;       Feedback body JSON.
+  --json-file &lt;path&gt;  Feedback body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="ai-kb">
+<h2 class="section-title"><a class="anchor" href="#ai-kb">ai kb</a></h2>
+<pre class="code"><code>Usage: seclai ai kb [options]
+
+AI assistant for knowledge bases.
+
+Options:
+  --user-input &lt;text&gt;  User input text (shorthand for --json
+                       &#39;{&quot;user_input&quot;:&quot;...&quot;}&#39;)
+  --json &lt;json&gt;        Full request body JSON.
+  --json-file &lt;path&gt;   Request body JSON file.
+  -h, --help           display help for command
+</code></pre>
+</section>
+
+<section class="section" id="ai-source">
+<h2 class="section-title"><a class="anchor" href="#ai-source">ai source</a></h2>
+<pre class="code"><code>Usage: seclai ai source [options]
+
+AI assistant for sources.
+
+Options:
+  --user-input &lt;text&gt;  User input text (shorthand for --json
+                       &#39;{&quot;user_input&quot;:&quot;...&quot;}&#39;)
+  --json &lt;json&gt;        Full request body JSON.
+  --json-file &lt;path&gt;   Request body JSON file.
+  -h, --help           display help for command
+</code></pre>
+</section>
+
+<section class="section" id="ai-solution">
+<h2 class="section-title"><a class="anchor" href="#ai-solution">ai solution</a></h2>
+<pre class="code"><code>Usage: seclai ai solution [options]
+
+AI assistant for solutions.
+
+Options:
+  --user-input &lt;text&gt;  User input text (shorthand for --json
+                       &#39;{&quot;user_input&quot;:&quot;...&quot;}&#39;)
+  --json &lt;json&gt;        Full request body JSON.
+  --json-file &lt;path&gt;   Request body JSON file.
+  -h, --help           display help for command
+</code></pre>
+</section>
+
+<section class="section" id="ai-memory">
+<h2 class="section-title"><a class="anchor" href="#ai-memory">ai memory</a></h2>
+<pre class="code"><code>Usage: seclai ai memory [options]
+
+AI assistant for memory banks.
+
+Options:
+  --user-input &lt;text&gt;  User input text (shorthand for --json
+                       &#39;{&quot;user_input&quot;:&quot;...&quot;}&#39;)
+  --json &lt;json&gt;        Full request body JSON.
+  --json-file &lt;path&gt;   Request body JSON file.
+  -h, --help           display help for command
+</code></pre>
+</section>
+
+<section class="section" id="ai-memory-history">
+<h2 class="section-title"><a class="anchor" href="#ai-memory-history">ai memory-history</a></h2>
+<pre class="code"><code>Usage: seclai ai memory-history [options]
+
+Get AI assistant memory bank conversation history. --limit is the turns to
+return (server default 5); --offset skips the most recent turns.
+
+Options:
+  --limit &lt;n&gt;   Page size.
+  --offset &lt;n&gt;  Number of items to skip.
+  -h, --help    display help for command
+</code></pre>
+</section>
+
+<section class="section" id="ai-accept">
+<h2 class="section-title"><a class="anchor" href="#ai-accept">ai accept</a></h2>
+<pre class="code"><code>Usage: seclai ai accept [options] &lt;conversationId&gt;
+
+Accept an AI assistant plan.
+
+Arguments:
+  conversationId      Conversation ID.
+
+Options:
+  --json &lt;json&gt;       Accept body JSON.
+  --json-file &lt;path&gt;  Accept body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="ai-decline">
+<h2 class="section-title"><a class="anchor" href="#ai-decline">ai decline</a></h2>
+<pre class="code"><code>Usage: seclai ai decline [options] &lt;conversationId&gt;
+
+Decline an AI assistant plan.
+
+Arguments:
+  conversationId  Conversation ID.
+
+Options:
+  -h, --help      display help for command
+</code></pre>
+</section>
+
+<section class="section" id="ai-memory-accept">
+<h2 class="section-title"><a class="anchor" href="#ai-memory-accept">ai memory-accept</a></h2>
+<pre class="code"><code>Usage: seclai ai memory-accept [options] &lt;conversationId&gt;
+
+Accept an AI memory bank suggestion.
+
+Arguments:
+  conversationId      Conversation ID.
+
+Options:
+  --json &lt;json&gt;       Accept body JSON.
+  --json-file &lt;path&gt;  Accept body JSON file.
+  -h, --help          display help for command
+</code></pre>
+</section>
+
+<section class="section" id="api-version">
+<h2 class="section-title"><a class="anchor" href="#api-version">api-version</a></h2>
+<pre class="code"><code>Usage: seclai api-version [options] [command]
+
+Read or pin the account&#39;s dated API version.
+
+Options:
+  -h, --help      display help for command
+
+Commands:
+  get             Show the version a request resolves to. Reflects --api-version
+                  when passed, otherwise the account pin, otherwise the default.
+  set &lt;date&gt;      Pin the account to a dated API version. Affects every client,
+                  not just this CLI.
+  clear           Remove the account&#39;s version pin, reverting to the default
+                  version.
+  help [command]  display help for command
+
+Versions (each includes the changes of the ones before it):
+  2026-07-01  The baseline, applied when no version is sent and the account is not pinned.
+  2026-07-27  List responses move to {data, pagination}, and a query parameter the endpoint does not declare is rejected with a 422.
+  2026-08-03  `memory create` and `memory update` reject a non-zero max_age_days, which reads as null; an omitted retention_days on create resolves per bank type.
+  2026-08-21  `sources create` rejects an embedding dimension its embedder does not support. `models embedders` reports the supported ones.
+  2026-09-28  Agent-definition writes such as `agents def update` use the current file-list grammar for a step&#39;s attachments.
+  2026-09-30  A run&#39;s and a step&#39;s output, and a step&#39;s input, are the text rather than a JSON manifest. Files are in attachments on every version.
+  2026-10-03  A new LLM step written without attachments takes its parent&#39;s files.
+  2026-10-05  An item held for review by a governance policy reports content_status completed instead of failed; read held_for_review to find holds.
+  2026-10-13  `sources create` and `sources update` reject a media_types value other than images or video, or any value on a source that is not a website or RSS feed, with a 400 where it was dropped.
+  2026-10-16  An upload of any type is ready at once, and its extracted text is no longer written into a run&#39;s input.
+  2026-10-18  A source&#39;s document_images defaults to true on a text-only embedder.
+  2026-10-19  `sources create` rejects polling_max_items on any source but an RSS feed with a 400 where it was stored.
+  2026-10-21  An evaluation result whose evaluator returned no verdict (status error) is left out of the failed counts, rates and average scores, and `evals test-draft` returns its score and passed as null instead of 0.5 and false.
+  2026-10-28  An if_else or switch step&#39;s output is the result of the arm it took instead of a {branch} marker; read the arm from the step&#39;s decision, which is set on every version.
+
+</code></pre>
+</section>
+
+<section class="section" id="skills">
+<h2 class="section-title"><a class="anchor" href="#skills">skills</a></h2>
+<pre class="code"><code>Usage: seclai skills [options] [command]
+
+Install Seclai CLI skill files for AI coding tools.
+
+Options:
+  -h, --help         display help for command
+
+Commands:
+  install [options]  Write Seclai CLI skill/instruction files into the current
+                     workspace.
+                     
+                     Detected tools: copilot, claude, cursor, windsurf, codex,
+                     kiro, cline, roo, gemini, antigravity.
+                     Use --tool to target a specific tool, or &#39;all&#39; for all
+                     supported tools.
+  help [command]     display help for command
+</code></pre>
+</section>
+
+<section class="section" id="skills-install">
+<h2 class="section-title"><a class="anchor" href="#skills-install">skills install</a></h2>
+<pre class="code"><code>Usage: seclai skills install [options]
+
+Write Seclai CLI skill/instruction files into the current workspace.
+
+Detected tools: copilot, claude, cursor, windsurf, codex, kiro, cline, roo,
+gemini, antigravity.
+Use --tool to target a specific tool, or &#39;all&#39; for all supported tools.
+
+Options:
+  --tool &lt;name&gt;  Target tool
+                 (copilot|claude|cursor|windsurf|codex|kiro|cline|roo|gemini|antigravity|all).
+                 Auto-detects if omitted.
+  --dir &lt;path&gt;   Target directory (default: current directory). (default: &quot;.&quot;)
+  -h, --help     display help for command
+</code></pre>
+</section>
+
+<section class="section" id="completion">
+<h2 class="section-title"><a class="anchor" href="#completion">completion</a></h2>
+<pre class="code"><code>Usage: seclai completion [options] &lt;shell&gt;
+
+Generate shell completion scripts.
+
+Arguments:
+  shell       Shell type: bash, zsh, or fish.
+
+Options:
+  -h, --help  display help for command
+</code></pre>
+</section>
+      </main>
+    </div>
+  </div>
+</body>
+</html>
