@@ -381,10 +381,10 @@ export function withJsonInputOptions(cmd: Command): Command {
 /** Help for the --file-name option of every upload command. */
 export const FILE_NAME_HELP =
   "Filename sent to the API. Defaults to the name of --file. " +
-  "The server types the file by its extension, so keep the extension when you rename it.";
+  "The file is typed by its extension, so keep the extension when you rename it.";
 /** Help for the --mime-type option of every upload command. */
 export const MIME_TYPE_HELP =
-  "MIME type sent to the API. Without it, the server types the file by the file name's extension.";
+  "MIME type sent to the API. Without it, the type comes from the file name's extension.";
 
 /** Add file upload options */
 export function withFileUploadOptions(cmd: Command): Command {
@@ -396,10 +396,6 @@ export function withFileUploadOptions(cmd: Command): Command {
     .option("--file-name <name>", FILE_NAME_HELP, parseFilter)
     .option("--mime-type <type>", MIME_TYPE_HELP, parseFilter);
 }
-
-const MIME_TOKEN = "[A-Za-z0-9!#$&^_.+-]+";
-/** type/subtype, then optional parameters such as `; charset=utf-8`. */
-const MIME_TYPE_PATTERN = new RegExp(`^${MIME_TOKEN}/${MIME_TOKEN}(\\s*;[\\x20-\\x7e]*)?$`);
 
 /** Build upload opts from CLI flags */
 export async function buildUploadOpts(
@@ -421,10 +417,13 @@ export async function buildUploadOpts(
   mimeType?: string;
 }> {
   // Blank values are refused, and values trimmed, by parseFilter on the option.
-  // Blob drops a type with characters outside printable ASCII and sends the part
-  // as application/octet-stream, so the type is held to RFC 6838 tokens.
-  if (opts.mimeType !== undefined && !MIME_TYPE_PATTERN.test(opts.mimeType)) {
-    throw new Error(`--mime-type "${opts.mimeType}" is not a MIME type. Pass a type such as image/png.`);
+  // Blob silently drops a type with any character outside printable ASCII, and
+  // the part then goes up untyped. The server copes with any other value.
+  if (opts.mimeType !== undefined && !/^[\x20-\x7e]+$/.test(opts.mimeType)) {
+    throw new Error(
+      `--mime-type ${JSON.stringify(opts.mimeType)} has a character a MIME type can't hold. ` +
+        "Use printable ASCII only, such as image/png.",
+    );
   }
   const bytes = new Uint8Array(await readFile(opts.file));
   const result: {

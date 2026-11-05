@@ -9,7 +9,7 @@
 ### Fixed
 
 - Name an upload after the `--file` it reads when `--file-name` is not given, in `agents upload-input`, `sources upload` and `contents upload`. The file was sent as `upload`, so the server could not type it by its extension and read it as `application/octet-stream`, which an agent that declares the file types it accepts rejected
-- Trim `--file-name` and `--mime-type` on the upload commands, and refuse an empty value or a `--mime-type` that is not a MIME type. An unset shell variable passed as `--mime-type "$TYPE"` sent the file with no type, and a trailing newline from `$(cat type.txt)` sent a type no agent accepts
+- Trim `--file-name` and `--mime-type` on the upload commands, and refuse an empty value, or a `--mime-type` with a character outside printable ASCII. An unset shell variable passed as `--mime-type "$TYPE"`, a trailing newline from `$(cat type.txt)`, or a tab or `ñ` in the type each sent the file untyped, without an error
 
 ## [1.8.0] - 2026-10-31
 

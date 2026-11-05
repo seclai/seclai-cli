@@ -1000,7 +1000,7 @@ describe("seclai CLI", () => {
     const [id, opts] = client.uploadAgentInput.mock.calls[0];
     expect(id).toBe("agent_1");
     expect(opts.fileName).toBe("photo.jpg");
-    // The server types the file by the name's extension.
+    // The type comes from the name's extension, in the SDK or on the server.
     expect(opts).not.toHaveProperty("mimeType");
     expect(opts.file).toBeInstanceOf(Uint8Array);
   });
@@ -1078,7 +1078,7 @@ describe("seclai CLI", () => {
     expect(opts.mimeType).toBe("text/plain; charset=utf-8");
   });
 
-  test.each(["png", "image/pñg", "image/png/x"])("upload refuses --mime-type %j", async (type) => {
+  test.each(["image/pñg", "text/plain\t; charset=utf-8"])("upload refuses --mime-type %j", async (type) => {
     const { runCli } = await importCli();
     const io = makeRuntime();
 
@@ -1090,7 +1090,7 @@ describe("seclai CLI", () => {
     });
 
     expect(io.exitCode).toBe(1);
-    expect(io.stderr).toContain(`--mime-type "${type}" is not a MIME type`);
+    expect(io.stderr).toContain(`--mime-type ${JSON.stringify(type)} has a character a MIME type can't hold`);
     expect(mockState.instances[0]?.uploadFileToContent).not.toHaveBeenCalled();
   });
 

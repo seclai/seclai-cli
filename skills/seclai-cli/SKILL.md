@@ -137,9 +137,9 @@ instead and take `--limit` / `--offset`.
 
 **Uploads.** Upload commands take `--file <path>`, plus optional `--title`,
 `--metadata '{"k":"v"}'`, `--metadata-file`, `--file-name` and `--mime-type`.
-The file name defaults to the name of `--file`, and the server types the file
-by that name's extension, so keep the extension when renaming with `--file-name`,
-and pass `--mime-type` only for an extension the server does not know.
+The file name defaults to the name of `--file`, and the file is typed by that
+name's extension, so keep the extension when renaming with `--file-name`, and
+pass `--mime-type` only for an extension that is not recognized.
 
 ## Search and account
 
