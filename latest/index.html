@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Seclai CLI Docs (v1.8.0)</title>
+  <title>Seclai CLI Docs (v1.8.1)</title>
   <style>
     :root {
       color-scheme: light dark;
@@ -98,7 +98,7 @@
   <div class="wrap">
     <header>
       <h1>Seclai CLI</h1>
-      <p class="meta">Version: <code>1.8.0</code> · Generated command reference from <code>--help</code> output</p>
+      <p class="meta">Version: <code>1.8.1</code> · Generated command reference from <code>--help</code> output</p>
     </header>
     <div class="layout">
       <nav aria-label="Table of contents">
@@ -276,7 +276,7 @@
 <h2 class="section-title"><a class="anchor" href="#overview">Overview</a></h2>
 <pre class="code"><code>Usage: seclai [options] [command]
 
-Seclai Command Line Interface (v1.8.0)
+Seclai Command Line Interface (v1.8.1)
 
 Manage agents, knowledge bases, sources, memory banks, evaluations, and more
 from the terminal.
@@ -521,7 +521,7 @@ Commands:
   delete &lt;runId&gt;                                        Deprecated alias for &#39;runs cancel&#39;. The API has no delete-a-run operation.
   cancel &lt;runId&gt;                                        Cancel a running agent run.
   search [options]                                      Search agent runs.
-  download-attachment [options] &lt;runId&gt; &lt;attachmentId&gt;  Download a file attachment emitted by a step in an agent run. The attachmentId is the URL-safe-base64 storage_key from run output manifests / webhooks.
+  download-attachment [options] &lt;runId&gt; &lt;attachmentId&gt;  Download a file attachment emitted by a step in an agent run. The attachmentId is the file id that run status (`agents runs get`) lists; the URL-safe-base64 storage_key from run output manifests / webhooks also works.
   eval-results [options] &lt;agentId&gt; &lt;runId&gt;              List evaluation results for a run.
   help [command]                                        display help for command
 </code></pre>
@@ -677,8 +677,11 @@ Arguments:
 
 Options:
   --file &lt;path&gt;       File to upload.
-  --file-name &lt;name&gt;  Override filename.
-  --mime-type &lt;type&gt;  MIME type.
+  --file-name &lt;name&gt;  Filename sent to the API. Defaults to the name of --file.
+                      The file is typed by its extension, so keep the extension
+                      when you rename it.
+  --mime-type &lt;type&gt;  MIME type sent to the API. Without it, the type comes from
+                      the file name&#39;s extension.
   -h, --help          display help for command
 </code></pre>
 </section>
@@ -900,8 +903,11 @@ Options:
   --title &lt;title&gt;         Optional title.
   --metadata &lt;json&gt;       Metadata JSON object. Use &#39;-&#39; for stdin.
   --metadata-file &lt;path&gt;  Path to metadata JSON file. Use &#39;-&#39; for stdin.
-  --file-name &lt;name&gt;      Override filename sent to API.
-  --mime-type &lt;type&gt;      Explicit MIME type.
+  --file-name &lt;name&gt;      Filename sent to the API. Defaults to the name of
+                          --file. The file is typed by its extension, so keep
+                          the extension when you rename it.
+  --mime-type &lt;type&gt;      MIME type sent to the API. Without it, the type comes
+                          from the file name&#39;s extension.
   -h, --help              display help for command
 </code></pre>
 </section>
@@ -1233,8 +1239,11 @@ Options:
   --title &lt;title&gt;         Optional title.
   --metadata &lt;json&gt;       Metadata JSON object. Use &#39;-&#39; for stdin.
   --metadata-file &lt;path&gt;  Path to metadata JSON file. Use &#39;-&#39; for stdin.
-  --file-name &lt;name&gt;      Override filename sent to API.
-  --mime-type &lt;type&gt;      Explicit MIME type.
+  --file-name &lt;name&gt;      Filename sent to the API. Defaults to the name of
+                          --file. The file is typed by its extension, so keep
+                          the extension when you rename it.
+  --mime-type &lt;type&gt;      MIME type sent to the API. Without it, the type comes
+                          from the file name&#39;s extension.
   -h, --help              display help for command
 </code></pre>
 </section>
