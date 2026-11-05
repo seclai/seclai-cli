@@ -8,8 +8,8 @@
 
 ### Fixed
 
-- Name an upload after the `--file` it reads when `--file-name` is not given, and send the MIME type for its extension when `--mime-type` is not given, in `agents upload-input`, `sources upload` and `contents upload`. The file was sent as `upload` with type `application/octet-stream`, so an agent that declares the file types it accepts rejected it. The CLI recognizes about 70 extensions, more than the SDK, including `.heic`, `.svg`, `.yaml`, `.webm` and `.jsonl`
-- Trim `--file-name` and `--mime-type` on the upload commands, and refuse an empty value or a `--mime-type` without a `/`. An unset shell variable passed as `--mime-type "$TYPE"` sent the file with no type, and a trailing newline from `$(cat type.txt)` sent a type no agent accepts
+- Name an upload after the `--file` it reads when `--file-name` is not given, in `agents upload-input`, `sources upload` and `contents upload`. The file was sent as `upload`, so the server could not type it by its extension and read it as `application/octet-stream`, which an agent that declares the file types it accepts rejected
+- Trim `--file-name` and `--mime-type` on the upload commands, and refuse an empty value or a `--mime-type` that is not a MIME type. An unset shell variable passed as `--mime-type "$TYPE"` sent the file with no type, and a trailing newline from `$(cat type.txt)` sent a type no agent accepts
 
 ## [1.8.0] - 2026-10-31
 

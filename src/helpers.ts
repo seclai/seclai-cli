@@ -3,7 +3,6 @@ import { readFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import process from "node:process";
-import { mimeTypeForFileName } from "./mime.js";
 
 import {
   Seclai,
@@ -380,11 +379,12 @@ export function withJsonInputOptions(cmd: Command): Command {
 }
 
 /** Help for the --file-name option of every upload command. */
-export const FILE_NAME_HELP = "Filename sent to the API. Defaults to the name of --file.";
+export const FILE_NAME_HELP =
+  "Filename sent to the API. Defaults to the name of --file. " +
+  "The server types the file by its extension, so keep the extension when you rename it.";
 /** Help for the --mime-type option of every upload command. */
 export const MIME_TYPE_HELP =
-  "MIME type sent to the API. Defaults to the type of the file name's extension, " +
-  "or application/octet-stream when the extension is unknown.";
+  "MIME type sent to the API. Without it, the server types the file by the file name's extension.";
 
 /** Add file upload options */
 export function withFileUploadOptions(cmd: Command): Command {
@@ -393,9 +393,13 @@ export function withFileUploadOptions(cmd: Command): Command {
     .option("--title <title>", "Optional title.")
     .option("--metadata <json>", "Metadata JSON object. Use '-' for stdin.")
     .option("--metadata-file <path>", "Path to metadata JSON file. Use '-' for stdin.")
-    .option("--file-name <name>", FILE_NAME_HELP)
-    .option("--mime-type <type>", MIME_TYPE_HELP);
+    .option("--file-name <name>", FILE_NAME_HELP, parseFilter)
+    .option("--mime-type <type>", MIME_TYPE_HELP, parseFilter);
 }
+
+const MIME_TOKEN = "[A-Za-z0-9!#$&^_.+-]+";
+/** type/subtype, then optional parameters such as `; charset=utf-8`. */
+const MIME_TYPE_PATTERN = new RegExp(`^${MIME_TOKEN}/${MIME_TOKEN}(\\s*;[\\x20-\\x7e]*)?$`);
 
 /** Build upload opts from CLI flags */
 export async function buildUploadOpts(
@@ -416,19 +420,11 @@ export async function buildUploadOpts(
   fileName?: string;
   mimeType?: string;
 }> {
-  // Trimmed, because a value from `$(cat type.txt)` ends in a newline and a part
-  // typed "image/png\n" fails the agent's type check. A shell expanding an unset
-  // variable hands us "", which would otherwise drop the override silently.
-  const fileName = opts.fileName?.trim();
-  const mimeTypeArg = opts.mimeType?.trim();
-  if (fileName === "") {
-    throw new Error("--file-name was given an empty value. Pass a name, or omit the flag to use the name of --file.");
-  }
-  if (mimeTypeArg === "") {
-    throw new Error("--mime-type was given an empty value. Pass a type, or omit the flag to infer it from the file name.");
-  }
-  if (mimeTypeArg !== undefined && !/^[^\s/]+\/[^\s/]+$/.test(mimeTypeArg)) {
-    throw new Error(`--mime-type "${mimeTypeArg}" is not a MIME type. Pass a type such as image/png.`);
+  // Blank values are refused, and values trimmed, by parseFilter on the option.
+  // Blob drops a type with characters outside printable ASCII and sends the part
+  // as application/octet-stream, so the type is held to RFC 6838 tokens.
+  if (opts.mimeType !== undefined && !MIME_TYPE_PATTERN.test(opts.mimeType)) {
+    throw new Error(`--mime-type "${opts.mimeType}" is not a MIME type. Pass a type such as image/png.`);
   }
   const bytes = new Uint8Array(await readFile(opts.file));
   const result: {
@@ -444,11 +440,10 @@ export async function buildUploadOpts(
     const jsonFileArg = opts.metadataFile !== undefined ? { jsonFile: opts.metadataFile } : {};
     result.metadata = await readJsonObjectInput(rt, { ...jsonArg, ...jsonFileArg });
   }
-  // Without a name the SDK sends the file as "upload", typed application/octet-stream,
-  // and an agent that declares the file types it accepts rejects it.
-  result.fileName = fileName ?? basename(opts.file);
-  const mimeType = mimeTypeArg ?? mimeTypeForFileName(result.fileName);
-  if (mimeType !== undefined) result.mimeType = mimeType;
+  // Without a name the SDK sends the file as "upload", and the server, which types
+  // a file by its name's extension, can't tell what it is.
+  result.fileName = opts.fileName ?? basename(opts.file);
+  if (opts.mimeType !== undefined) result.mimeType = opts.mimeType;
   return result;
 }
 

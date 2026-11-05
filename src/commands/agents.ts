@@ -482,8 +482,8 @@ export function register(program: Command, rt: CliRuntime): void {
     .description("Upload a file as agent input.")
     .argument("<agentId>", "Agent ID.")
     .requiredOption("--file <path>", "File to upload.")
-    .option("--file-name <name>", FILE_NAME_HELP)
-    .option("--mime-type <type>", MIME_TYPE_HELP)
+    .option("--file-name <name>", FILE_NAME_HELP, parseFilter)
+    .option("--mime-type <type>", MIME_TYPE_HELP, parseFilter)
     .action(async (agentId: string, opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());

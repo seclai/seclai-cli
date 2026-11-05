@@ -987,7 +987,7 @@ describe("seclai CLI", () => {
     }
   }
 
-  test("agents upload-input with only --file names and types the upload after the file", async () => {
+  test("agents upload-input with only --file names the upload after the file", async () => {
     const { runCli } = await importCli();
     const io = makeRuntime();
 
@@ -1000,7 +1000,8 @@ describe("seclai CLI", () => {
     const [id, opts] = client.uploadAgentInput.mock.calls[0];
     expect(id).toBe("agent_1");
     expect(opts.fileName).toBe("photo.jpg");
-    expect(opts.mimeType).toBe("image/jpeg");
+    // The server types the file by the name's extension.
+    expect(opts).not.toHaveProperty("mimeType");
     expect(opts.file).toBeInstanceOf(Uint8Array);
   });
 
@@ -1024,39 +1025,10 @@ describe("seclai CLI", () => {
     expect(opts.mimeType).toBe("image/webp");
   });
 
-  test("agents upload-input infers the type from --file-name when given", async () => {
-    const { runCli } = await importCli();
-    const io = makeRuntime();
-
-    await withTempFile("blob.bin", "x", async (filePath) => {
-      await runCli(
-        ["node", "seclai", "--api-key", "k", "agents", "upload-input", "agent_1", "--file", filePath, "--file-name", "scan.heic"],
-        io.rt
-      );
-    });
-
-    const [, opts] = mockState.instances[0].uploadAgentInput.mock.calls[0];
-    expect(opts.fileName).toBe("scan.heic");
-    expect(opts.mimeType).toBe("image/heic");
-  });
-
-  test("agents upload-input leaves the type unset for an unknown extension", async () => {
-    const { runCli } = await importCli();
-    const io = makeRuntime();
-
-    await withTempFile("data.qqq", "x", async (filePath) => {
-      await runCli(["node", "seclai", "--api-key", "k", "agents", "upload-input", "agent_1", "--file", filePath], io.rt);
-    });
-
-    const [, opts] = mockState.instances[0].uploadAgentInput.mock.calls[0];
-    expect(opts.fileName).toBe("data.qqq");
-    expect(opts).not.toHaveProperty("mimeType");
-  });
-
   test.each([
-    ["sources", "uploadFileToSource", "notes.yaml", "application/yaml"],
-    ["contents", "uploadFileToContent", "report.pdf", "application/pdf"],
-  ] as const)("%s upload with only --file names and types the upload after the file", async (group, method, name, type) => {
+    ["sources", "uploadFileToSource", "notes.yaml"],
+    ["contents", "uploadFileToContent", "report.pdf"],
+  ] as const)("%s upload with only --file names the upload after the file", async (group, method, name) => {
     const { runCli } = await importCli();
     const io = makeRuntime();
 
@@ -1067,7 +1039,7 @@ describe("seclai CLI", () => {
     expect(io.exitCode).toBe(0);
     const [, opts] = mockState.instances[0][method].mock.calls[0];
     expect(opts.fileName).toBe(name);
-    expect(opts.mimeType).toBe(type);
+    expect(opts).not.toHaveProperty("mimeType");
   });
 
   test("upload trims --file-name and --mime-type", async () => {
@@ -1090,32 +1062,35 @@ describe("seclai CLI", () => {
     expect(opts.mimeType).toBe("image/png");
   });
 
-  test("upload types a dot-leading file name by its extension", async () => {
+  test("upload accepts a --mime-type with parameters", async () => {
     const { runCli } = await importCli();
     const io = makeRuntime();
 
-    await withTempFile(".json", "{}", async (filePath) => {
-      await runCli(["node", "seclai", "--api-key", "k", "sources", "upload", "id_1", "--file", filePath], io.rt);
+    await withTempFile("notes.txt", "x", async (filePath) => {
+      await runCli(
+        ["node", "seclai", "--api-key", "k", "sources", "upload", "id_1", "--file", filePath, "--mime-type", "text/plain; charset=utf-8"],
+        io.rt
+      );
     });
 
+    expect(io.exitCode).toBe(0);
     const [, opts] = mockState.instances[0].uploadFileToSource.mock.calls[0];
-    expect(opts.fileName).toBe(".json");
-    expect(opts.mimeType).toBe("application/json");
+    expect(opts.mimeType).toBe("text/plain; charset=utf-8");
   });
 
-  test("upload refuses a --mime-type that is not a MIME type", async () => {
+  test.each(["png", "image/pñg", "image/png/x"])("upload refuses --mime-type %j", async (type) => {
     const { runCli } = await importCli();
     const io = makeRuntime();
 
     await withTempFile("photo.jpg", "x", async (filePath) => {
       await runCli(
-        ["node", "seclai", "--api-key", "k", "contents", "upload", "id_1", "--file", filePath, "--mime-type", "png"],
+        ["node", "seclai", "--api-key", "k", "contents", "upload", "id_1", "--file", filePath, "--mime-type", type],
         io.rt
       );
     });
 
     expect(io.exitCode).toBe(1);
-    expect(io.stderr).toContain('--mime-type "png" is not a MIME type');
+    expect(io.stderr).toContain(`--mime-type "${type}" is not a MIME type`);
     expect(mockState.instances[0]?.uploadFileToContent).not.toHaveBeenCalled();
   });
 
@@ -1133,11 +1108,10 @@ describe("seclai CLI", () => {
     });
 
     expect(io.exitCode).toBe(1);
-    expect(io.stderr).toContain(`${flag} was given an empty value`);
-    const client = mockState.instances[0];
-    expect(client?.uploadAgentInput).not.toHaveBeenCalled();
-    expect(client?.uploadFileToSource).not.toHaveBeenCalled();
-    expect(client?.uploadFileToContent).not.toHaveBeenCalled();
+    expect(io.stderr).toContain(`option '${flag} `);
+    expect(io.stderr).toContain("Expected a value, not an empty string.");
+    // Refused while parsing, before a client is built.
+    expect(mockState.instances).toHaveLength(0);
   });
 
   test("missing api key produces configuration error and exit code 1", async () => {

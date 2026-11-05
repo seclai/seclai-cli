@@ -1,7 +1,8 @@
 // Runs the real SDK, with only fetch stubbed, and inspects the multipart part
 // each upload command sends. cli.test.ts mocks the SDK, so it only sees the
 // options the CLI passes; these tests catch the SDK changing how it turns them
-// into a request (the file was once sent as "upload", application/octet-stream).
+// into a request. The server types a file by its name's extension, so the name
+// is what matters: it was once sent as "upload", which the server can't type.
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { PassThrough } from "node:stream";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -73,28 +74,25 @@ async function upload(fileName: string, ...cmd: string[]) {
 }
 
 describe("upload multipart part", () => {
-  test("agents upload-input sends the file's name and type", async () => {
+  test("agents upload-input sends the file's name", async () => {
     const { url, part } = await upload("photo.jpg", "agents", "upload-input", "agent_1");
     expect(url).toContain("/agents/agent_1/upload-input");
     expect(part.name).toBe("photo.jpg");
-    expect(part.type).toBe("image/jpeg");
   });
 
-  test("agents upload-input sends a type the SDK's own table lacks", async () => {
-    const { part } = await upload("scan.heic", "agents", "upload-input", "agent_1");
-    expect(part.name).toBe("scan.heic");
-    expect(part.type).toBe("image/heic");
-  });
-
-  test("sources upload sends the file's name and type", async () => {
+  test("sources upload sends the file's name", async () => {
     const { part } = await upload("notes.md", "sources", "upload", "src_1");
     expect(part.name).toBe("notes.md");
-    expect(part.type).toBe("text/markdown");
   });
 
-  test("contents upload sends the file's name and type", async () => {
+  test("contents upload sends the file's name", async () => {
     const { part } = await upload("report.pdf", "contents", "upload", "cv_1");
     expect(part.name).toBe("report.pdf");
-    expect(part.type).toBe("application/pdf");
+  });
+
+  test("an explicit --mime-type reaches the part", async () => {
+    const { part } = await upload("scan.heic", "agents", "upload-input", "agent_1", "--mime-type", "image/heic");
+    expect(part.name).toBe("scan.heic");
+    expect(part.type).toBe("image/heic");
   });
 });
