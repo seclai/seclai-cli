@@ -1,6 +1,7 @@
 import { Command, InvalidArgumentError } from "commander";
 import { readFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
+import { basename } from "node:path";
 import process from "node:process";
 
 import {
@@ -377,6 +378,14 @@ export function withJsonInputOptions(cmd: Command): Command {
     .option("--json-file <path>", "Path to JSON file. Use '-' to read from stdin.");
 }
 
+/** Help for the --file-name option of every upload command. */
+export const FILE_NAME_HELP =
+  "Filename sent to the API. Defaults to the name of --file. " +
+  "The file is typed by its extension, so keep the extension when you rename it.";
+/** Help for the --mime-type option of every upload command. */
+export const MIME_TYPE_HELP =
+  "MIME type sent to the API. Without it, the type comes from the file name's extension.";
+
 /** Add file upload options */
 export function withFileUploadOptions(cmd: Command): Command {
   return cmd
@@ -384,8 +393,8 @@ export function withFileUploadOptions(cmd: Command): Command {
     .option("--title <title>", "Optional title.")
     .option("--metadata <json>", "Metadata JSON object. Use '-' for stdin.")
     .option("--metadata-file <path>", "Path to metadata JSON file. Use '-' for stdin.")
-    .option("--file-name <name>", "Override filename sent to API.")
-    .option("--mime-type <type>", "Explicit MIME type.");
+    .option("--file-name <name>", FILE_NAME_HELP, parseFilter)
+    .option("--mime-type <type>", MIME_TYPE_HELP, parseFilter);
 }
 
 /** Build upload opts from CLI flags */
@@ -407,6 +416,17 @@ export async function buildUploadOpts(
   fileName?: string;
   mimeType?: string;
 }> {
+  // Blank values are refused, and values trimmed, by parseFilter on the option.
+  // Blob silently drops a type with any character outside printable ASCII: the
+  // part goes up as application/octet-stream, and the server, as it does for any
+  // type it doesn't support, falls back to the file name's extension. The type
+  // the user asked for would be lost without an error, so it is refused here.
+  if (opts.mimeType !== undefined && !/^[\x20-\x7e]+$/.test(opts.mimeType)) {
+    throw new Error(
+      `--mime-type ${JSON.stringify(opts.mimeType)} has a character a MIME type can't hold. ` +
+        "Use printable ASCII only, such as image/png.",
+    );
+  }
   const bytes = new Uint8Array(await readFile(opts.file));
   const result: {
     file: Uint8Array;
@@ -421,7 +441,9 @@ export async function buildUploadOpts(
     const jsonFileArg = opts.metadataFile !== undefined ? { jsonFile: opts.metadataFile } : {};
     result.metadata = await readJsonObjectInput(rt, { ...jsonArg, ...jsonFileArg });
   }
-  if (opts.fileName !== undefined) result.fileName = opts.fileName;
+  // Without a name the SDK sends the file as "upload", and the server, which types
+  // a file by its name's extension, can't tell what it is.
+  result.fileName = opts.fileName ?? basename(opts.file);
   if (opts.mimeType !== undefined) result.mimeType = opts.mimeType;
   return result;
 }

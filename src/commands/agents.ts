@@ -16,6 +16,9 @@ import {
   toPagedEnvelope,
   warnDeprecated,
   writeDownload,
+  buildUploadOpts,
+  FILE_NAME_HELP,
+  MIME_TYPE_HELP,
 } from "../helpers.js";
 
 /** Register `agents` commands: CRUD, run (basic/stream/events/poll), runs, definition, export, input uploads, AI assistant. */
@@ -389,10 +392,11 @@ export function register(program: Command, rt: CliRuntime): void {
     .command("download-attachment")
     .description(
       "Download a file attachment emitted by a step in an agent run. " +
-        "The attachmentId is the URL-safe-base64 storage_key from run output manifests / webhooks.",
+        "The attachmentId is the file id that run status (`agents runs get`) lists; " +
+        "the URL-safe-base64 storage_key from run output manifests / webhooks also works.",
     )
     .argument("<runId>", "Run ID.")
-    .argument("<attachmentId>", "Attachment ID (storage_key).")
+    .argument("<attachmentId>", "Attachment ID: the file id from run status, or the storage_key.")
     .option("--download-name <name>", "Filename hint for the download disposition.")
     .option("--output <path>", "Write the attachment bytes to this file. If omitted, raw bytes are written to stdout.")
     .action(async (runId: string, attachmentId: string, opts) => {
@@ -478,17 +482,13 @@ export function register(program: Command, rt: CliRuntime): void {
     .description("Upload a file as agent input.")
     .argument("<agentId>", "Agent ID.")
     .requiredOption("--file <path>", "File to upload.")
-    .option("--file-name <name>", "Override filename.")
-    .option("--mime-type <type>", "MIME type.")
+    .option("--file-name <name>", FILE_NAME_HELP, parseFilter)
+    .option("--mime-type <type>", MIME_TYPE_HELP, parseFilter)
     .action(async (agentId: string, opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
-        const { readFile } = await import("node:fs/promises");
-        const bytes = new Uint8Array(await readFile(opts.file));
-        const o: Record<string, unknown> = { file: bytes };
-        if (opts.fileName) o.fileName = opts.fileName;
-        if (opts.mimeType) o.mimeType = opts.mimeType;
-        printJson(rt, await client.uploadAgentInput(agentId, o as any));
+        // upload-input has no --title or --metadata, so these opts carry neither.
+        printJson(rt, await client.uploadAgentInput(agentId, await buildUploadOpts(rt, opts)));
       });
     });
 

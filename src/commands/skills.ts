@@ -149,6 +149,9 @@ instead and take \`--limit\` / \`--offset\`.
 
 **Uploads.** Upload commands take \`--file <path>\`, plus optional \`--title\`,
 \`--metadata '{"k":"v"}'\`, \`--metadata-file\`, \`--file-name\` and \`--mime-type\`.
+The file name defaults to the name of \`--file\`, and the file is typed by that
+name's extension, so keep the extension when renaming with \`--file-name\`, and
+pass \`--mime-type\` only for an extension that is not recognized.
 
 ## Search and account
 
@@ -237,8 +240,8 @@ seclai agents runs delete <runId>  # deprecated alias for \`runs cancel\`; the A
 seclai agents runs search --json '{"query":"..."}'
 seclai agents runs eval-results <agentId> <runId> [--page N] [--limit N]
 
-# Download a file emitted by a run step. attachmentId is the URL-safe-base64
-# storage_key from run output manifests or webhooks.
+# Download a file emitted by a run step. attachmentId is the file id that
+# \`runs get\` lists; the storage_key from manifests or webhooks also works.
 seclai agents runs download-attachment <runId> <attachmentId> [--download-name <name>] [--output <path>]
 \`\`\`
 
@@ -1044,7 +1047,8 @@ seclai agents input-status <agentId> <uploadId>
 
 ## Download an attachment emitted by a run
 \`\`\`bash
-# attachmentId is the URL-safe-base64 storage_key from run output manifests / webhooks.
+# attachmentId is the file id that \`agents runs get\` lists; the storage_key
+# from run output manifests / webhooks also works.
 seclai agents runs download-attachment <runId> <attachmentId> --output ./out.pdf
 \`\`\`
 

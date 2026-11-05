@@ -931,6 +931,7 @@ describe("seclai CLI", () => {
     expect(opts.mimeType).toBe("text/plain");
     expect(opts.file).toBeInstanceOf(Uint8Array);
     expect((opts.file as Uint8Array).length).toBeGreaterThan(0);
+    await rm(tmpDir, { recursive: true, force: true });
   });
 
   test("contents upload reads file and calls uploadFileToContent", async () => {
@@ -971,6 +972,146 @@ describe("seclai CLI", () => {
     expect(opts.mimeType).toBe("application/pdf");
     expect(opts.file).toBeInstanceOf(Uint8Array);
     expect((opts.file as Uint8Array).length).toBeGreaterThan(0);
+    await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  /** Write `name` into a fresh temp dir, run `fn` with its path, then remove the dir. */
+  async function withTempFile(name: string, content: string, fn: (filePath: string) => Promise<void>) {
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), "seclai-cli-"));
+    try {
+      const filePath = path.join(tmpDir, name);
+      await writeFile(filePath, content, "utf8");
+      await fn(filePath);
+    } finally {
+      await rm(tmpDir, { recursive: true, force: true });
+    }
+  }
+
+  test("agents upload-input with only --file names the upload after the file", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await withTempFile("photo.jpg", "jpeg-bytes", async (filePath) => {
+      await runCli(["node", "seclai", "--api-key", "k", "agents", "upload-input", "agent_1", "--file", filePath], io.rt);
+    });
+
+    expect(io.exitCode).toBe(0);
+    const client = mockState.instances[0];
+    const [id, opts] = client.uploadAgentInput.mock.calls[0];
+    expect(id).toBe("agent_1");
+    expect(opts.fileName).toBe("photo.jpg");
+    // The type comes from the name's extension, in the SDK or on the server.
+    expect(opts).not.toHaveProperty("mimeType");
+    expect(opts.file).toBeInstanceOf(Uint8Array);
+  });
+
+  test("agents upload-input --file-name and --mime-type override the file's name and type", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await withTempFile("photo.jpg", "jpeg-bytes", async (filePath) => {
+      await runCli(
+        [
+          "node", "seclai", "--api-key", "k", "agents", "upload-input", "agent_1",
+          "--file", filePath, "--file-name", "custom.png", "--mime-type", "image/webp",
+        ],
+        io.rt
+      );
+    });
+
+    const client = mockState.instances[0];
+    const [, opts] = client.uploadAgentInput.mock.calls[0];
+    expect(opts.fileName).toBe("custom.png");
+    expect(opts.mimeType).toBe("image/webp");
+  });
+
+  test.each([
+    ["sources", "uploadFileToSource", "notes.yaml"],
+    ["contents", "uploadFileToContent", "report.pdf"],
+  ] as const)("%s upload with only --file names the upload after the file", async (group, method, name) => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await withTempFile(name, "x", async (filePath) => {
+      await runCli(["node", "seclai", "--api-key", "k", group, "upload", "id_1", "--file", filePath], io.rt);
+    });
+
+    expect(io.exitCode).toBe(0);
+    const [, opts] = mockState.instances[0][method].mock.calls[0];
+    expect(opts.fileName).toBe(name);
+    expect(opts).not.toHaveProperty("mimeType");
+  });
+
+  test("upload trims --file-name and --mime-type", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await withTempFile("photo.jpg", "x", async (filePath) => {
+      await runCli(
+        [
+          "node", "seclai", "--api-key", "k", "agents", "upload-input", "agent_1",
+          "--file", filePath, "--file-name", " shot.png ", "--mime-type", "image/png\n",
+        ],
+        io.rt
+      );
+    });
+
+    expect(io.exitCode).toBe(0);
+    const [, opts] = mockState.instances[0].uploadAgentInput.mock.calls[0];
+    expect(opts.fileName).toBe("shot.png");
+    expect(opts.mimeType).toBe("image/png");
+  });
+
+  test("upload accepts a --mime-type with parameters", async () => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await withTempFile("notes.txt", "x", async (filePath) => {
+      await runCli(
+        ["node", "seclai", "--api-key", "k", "sources", "upload", "id_1", "--file", filePath, "--mime-type", "text/plain; charset=utf-8"],
+        io.rt
+      );
+    });
+
+    expect(io.exitCode).toBe(0);
+    const [, opts] = mockState.instances[0].uploadFileToSource.mock.calls[0];
+    expect(opts.mimeType).toBe("text/plain; charset=utf-8");
+  });
+
+  test.each(["image/pñg", "text/plain\t; charset=utf-8"])("upload refuses --mime-type %j", async (type) => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await withTempFile("photo.jpg", "x", async (filePath) => {
+      await runCli(
+        ["node", "seclai", "--api-key", "k", "contents", "upload", "id_1", "--file", filePath, "--mime-type", type],
+        io.rt
+      );
+    });
+
+    expect(io.exitCode).toBe(1);
+    expect(io.stderr).toContain(`--mime-type ${JSON.stringify(type)} has a character a MIME type can't hold`);
+    expect(mockState.instances[0]?.uploadFileToContent).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    [["agents", "upload-input", "agent_1"], "--file-name"],
+    [["agents", "upload-input", "agent_1"], "--mime-type"],
+    [["sources", "upload", "id_1"], "--file-name"],
+    [["contents", "upload", "id_1"], "--mime-type"],
+  ])("%j refuses a blank %s", async (cmd, flag) => {
+    const { runCli } = await importCli();
+    const io = makeRuntime();
+
+    await withTempFile("photo.jpg", "x", async (filePath) => {
+      await runCli(["node", "seclai", "--api-key", "k", ...cmd, "--file", filePath, flag, ""], io.rt);
+    });
+
+    expect(io.exitCode).toBe(1);
+    expect(io.stderr).toContain(`option '${flag} `);
+    expect(io.stderr).toContain("Expected a value, not an empty string.");
+    // Refused while parsing, before a client is built.
+    expect(mockState.instances).toHaveLength(0);
   });
 
   test("missing api key produces configuration error and exit code 1", async () => {

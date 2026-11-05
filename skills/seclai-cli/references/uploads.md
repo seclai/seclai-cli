@@ -37,7 +37,8 @@ seclai agents input-status <agentId> <uploadId>
 
 ## Download an attachment emitted by a run
 ```bash
-# attachmentId is the URL-safe-base64 storage_key from run output manifests / webhooks.
+# attachmentId is the file id that `agents runs get` lists; the storage_key
+# from run output manifests / webhooks also works.
 seclai agents runs download-attachment <runId> <attachmentId> --output ./out.pdf
 ```
 
