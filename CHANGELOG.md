@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.8.1] - 2026-11-04
+
+### Changed
+
+- Describe the `attachmentId` of `agents runs download-attachment` as the file `id` that `agents runs get` lists, which is the value a user has. The `storage_key` from run output manifests and webhooks still works
+
+### Fixed
+
+- Name an upload after the `--file` it reads when `--file-name` is not given, and send the MIME type for its extension when `--mime-type` is not given, in `agents upload-input`, `sources upload` and `contents upload`. The file was sent as `upload` with type `application/octet-stream`, so an agent that declares the file types it accepts rejected it. The CLI recognizes about 70 extensions, more than the SDK, including `.heic`, `.svg`, `.yaml`, `.webm` and `.jsonl`
+- Trim `--file-name` and `--mime-type` on the upload commands, and refuse an empty value or a `--mime-type` without a `/`. An unset shell variable passed as `--mime-type "$TYPE"` sent the file with no type, and a trailing newline from `$(cat type.txt)` sent a type no agent accepts
+
 ## [1.8.0] - 2026-10-31
 
 ### Changed
@@ -204,6 +215,7 @@ _Stable release. No functional changes since 0.0.2._
 
 _Initial release._
 
+[1.8.1]: https://github.com/seclai/seclai-cli/releases/tag/1.8.1
 [1.8.0]: https://github.com/seclai/seclai-cli/releases/tag/1.8.0
 [1.7.0]: https://github.com/seclai/seclai-cli/releases/tag/1.7.0
 [1.6.1]: https://github.com/seclai/seclai-cli/releases/tag/1.6.1

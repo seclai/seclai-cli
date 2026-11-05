@@ -137,6 +137,9 @@ instead and take `--limit` / `--offset`.
 
 **Uploads.** Upload commands take `--file <path>`, plus optional `--title`,
 `--metadata '{"k":"v"}'`, `--metadata-file`, `--file-name` and `--mime-type`.
+The file name defaults to the name of `--file`, and the MIME type to the one
+for its extension, so pass `--mime-type` only for an extension the CLI does not
+know (it then sends `application/octet-stream`).
 
 ## Search and account
 

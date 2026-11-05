@@ -77,8 +77,8 @@ seclai agents runs delete <runId>  # deprecated alias for `runs cancel`; the API
 seclai agents runs search --json '{"query":"..."}'
 seclai agents runs eval-results <agentId> <runId> [--page N] [--limit N]
 
-# Download a file emitted by a run step. attachmentId is the URL-safe-base64
-# storage_key from run output manifests or webhooks.
+# Download a file emitted by a run step. attachmentId is the file id that
+# `runs get` lists; the storage_key from manifests or webhooks also works.
 seclai agents runs download-attachment <runId> <attachmentId> [--download-name <name>] [--output <path>]
 ```
 
