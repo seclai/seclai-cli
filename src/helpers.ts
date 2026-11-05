@@ -418,7 +418,9 @@ export async function buildUploadOpts(
 }> {
   // Blank values are refused, and values trimmed, by parseFilter on the option.
   // Blob silently drops a type with any character outside printable ASCII, and
-  // the part then goes up untyped. The server copes with any other value.
+  // the part then goes up as application/octet-stream. Any other value is sent
+  // as given: the server reads a type it doesn't support (`png`, `image/png/x`)
+  // by the file name's extension instead, and refuses the file when that fails.
   if (opts.mimeType !== undefined && !/^[\x20-\x7e]+$/.test(opts.mimeType)) {
     throw new Error(
       `--mime-type ${JSON.stringify(opts.mimeType)} has a character a MIME type can't hold. ` +

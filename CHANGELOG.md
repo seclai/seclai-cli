@@ -4,12 +4,12 @@
 
 ### Changed
 
-- Describe the `attachmentId` of `agents runs download-attachment` as the file `id` that `agents runs get` lists, which is the value a user has. The `storage_key` from run output manifests and webhooks still works
+- Describe the `attachmentId` of `agents runs download-attachment` as the file `id` that `agents runs get` lists, which is the value a user has. The `storage_key` from run output manifests and webhooks still works ([#19](https://github.com/seclai/seclai-cli/pull/19))
 
 ### Fixed
 
-- Name an upload after the `--file` it reads when `--file-name` is not given, in `agents upload-input`, `sources upload` and `contents upload`. The file was sent as `upload`, so the server could not type it by its extension and read it as `application/octet-stream`, which an agent that declares the file types it accepts rejected
-- Trim `--file-name` and `--mime-type` on the upload commands, and refuse an empty value, or a `--mime-type` with a character outside printable ASCII. An unset shell variable passed as `--mime-type "$TYPE"`, a trailing newline from `$(cat type.txt)`, or a tab or `ñ` in the type each sent the file untyped, without an error
+- Name an upload after the `--file` it reads when `--file-name` is not given, in `agents upload-input`, `sources upload` and `contents upload`. The file was sent as `upload`, so the server could not type it by its extension and read it as `application/octet-stream`, which an agent that declares the file types it accepts rejected ([#19](https://github.com/seclai/seclai-cli/pull/19))
+- Trim `--file-name` and `--mime-type` on the upload commands, and refuse an empty value, or a `--mime-type` with a character outside printable ASCII. An unset shell variable passed as `--mime-type "$TYPE"`, a trailing newline from `$(cat type.txt)`, or a tab or `ñ` in the type each sent the file untyped, without an error ([#19](https://github.com/seclai/seclai-cli/pull/19))
 
 ## [1.8.0] - 2026-10-31
 
