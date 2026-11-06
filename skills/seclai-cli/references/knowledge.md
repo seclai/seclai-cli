@@ -121,6 +121,9 @@ seclai kb create --json '{"name":"Support KB","description":"Customer support ar
 seclai kb get <kbId>
 seclai kb update <kbId> --json '{"name":"Updated KB"}'
 seclai kb delete <kbId>
+# item-metadata keys the KB's content carries, with item counts and top values
+# for all time and the last 30 and 7 days
+seclai kb metadata-key-stats <kbId>
 ```
 
 ## Memory banks

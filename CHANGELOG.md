@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.9.0] - 2026-11-06
+
+### Changed
+
+- Require `@seclai/sdk` 1.9.0
+- Return from `agents run --poll` at once when the run has already ended in the start response, instead of waiting one poll interval first. When `--timeout-ms` elapses during the start request and that run has already ended (or, with `--return-on-result`, has reported its result), it is printed instead of an error
+- Describe `alias` in `agents triggers slack-config --help`, the name people type after `/seclai` to run the agent, and say that the API ignores `input`: a Slack run's input is the text after `/seclai <alias>`, or the message the shortcut was used on
+
+### Added
+
+- Add `agents triggers metadata-keys get` and `set` to read and replace the run metadata keys a trigger declares, which steps reference as `{{metadata.<key>}}`. `set` replaces the whole declaration. A run whose `metadata` sends a custom key the trigger does not declare, or lacks a required one, is refused with a 400 on every API version, so declare custom keys before sending them
+- Add `kb metadata-key-stats` to see which item-metadata keys a knowledge base's content carries, with item counts and top values for all time and the last 30 and 7 days
+- Add `--return-on-result` to `agents run --poll` and `--stream`, to print the run as soon as its answer is in `output`, without waiting for later steps. The run may still be in progress and can still fail, so check `result_reported_at`, not `status`
+- Add `--throw-on-incomplete` to `agents run --stream`, to exit with an error instead of printing a run that has not finished when the stream ends before the run is done or the server answers with plain JSON for an unfinished run. A broken stream exits with an error either way
+- Print the latest snapshot of the run as JSON to stderr, after the error line, when `agents run --stream` or `--poll` gives up, for example on `--timeout-ms` or with `--throw-on-incomplete`, so an answer already in its `output` is not lost. Stdout stays empty and the exit code is 1
+- Accept `2026-11-02` and `2026-11-04` for `--api-version`, `SECLAI_API_VERSION` and `api-version set`. `api-version --help` and the README list what each version changes
+
 ## [1.8.1] - 2026-11-04
 
 ### Changed
@@ -215,6 +232,7 @@ _Stable release. No functional changes since 0.0.2._
 
 _Initial release._
 
+[1.9.0]: https://github.com/seclai/seclai-cli/releases/tag/1.9.0
 [1.8.1]: https://github.com/seclai/seclai-cli/releases/tag/1.8.1
 [1.8.0]: https://github.com/seclai/seclai-cli/releases/tag/1.8.0
 [1.7.0]: https://github.com/seclai/seclai-cli/releases/tag/1.7.0

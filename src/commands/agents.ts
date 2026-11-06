@@ -180,8 +180,10 @@ export function register(program: Command, rt: CliRuntime): void {
   triggers
     .command("slack-config")
     .description(
-      "Configure a SLACK_COMMAND trigger: mcp_client_id (the Slack connection), form, input, scope, channel_ids, " +
-        "activation, allow_dms, visibility, and the turns_* conversation settings. Omitted fields are left unchanged.",
+      "Configure a SLACK_COMMAND trigger: mcp_client_id (the Slack connection), alias (the name people type after " +
+        "/seclai), form, scope, channel_ids, activation, allow_dms, visibility, and the turns_* conversation settings. " +
+        "Omitted fields are left unchanged. input is ignored by the API: a Slack run's input is the text after " +
+        "/seclai <alias>, or the message the shortcut was used on.",
     )
     .argument("<agentId>", "Agent ID.")
     .argument("<triggerId>", "Trigger ID, as 'agents get' returns it.")
@@ -228,6 +230,48 @@ export function register(program: Command, rt: CliRuntime): void {
       });
     });
 
+  const metadataKeys = triggers
+    .command("metadata-keys")
+    .description("The run metadata keys a trigger declares, which steps reference as {{metadata.<key>}}.");
+
+  metadataKeys
+    .command("get")
+    .description("Get the run metadata keys a trigger declares.")
+    .argument("<agentId>", "Agent ID.")
+    .argument("<triggerId>", "Trigger ID, as 'agents get' returns it.")
+    .action(async (agentId: string, triggerId: string) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        printJson(rt, await client.getMetadataKeys(agentId, triggerId));
+      });
+    });
+
+  metadataKeys
+    .command("set")
+    .description(
+      "Replace the run metadata keys a trigger declares. The body is {\"metadata_keys\": [{key, origin, required}]}; " +
+        "required defaults to false. It replaces the whole declaration, so a key left out is no longer declared. " +
+        "A run whose metadata sends a custom key the trigger does not declare, or lacks a required one, is refused.",
+    )
+    .argument("<agentId>", "Agent ID.")
+    .argument("<triggerId>", "Trigger ID, as 'agents get' returns it.")
+    .option("--json <json>", "Metadata keys JSON. Use '-' for stdin.")
+    .option("--json-file <path>", "Metadata keys JSON file. Use '-' for stdin.")
+    .action(async (agentId: string, triggerId: string, opts) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        const body = await readJsonObjectInput(rt, { json: opts.json, jsonFile: opts.jsonFile });
+        printJson(
+          rt,
+          await client.setMetadataKeys(
+            agentId,
+            triggerId,
+            body as Parameters<typeof client.setMetadataKeys>[2],
+          ),
+        );
+      });
+    });
+
   // --- Run ---
 
   agents
@@ -244,6 +288,17 @@ export function register(program: Command, rt: CliRuntime): void {
     .option("--poll-interval-ms <n>", "Poll interval in ms (with --poll).", parseNumber)
     .option("--timeout-ms <n>", "Client-side timeout in ms.", parseNumber)
     .option("--include-step-outputs", "Include step outputs (with --poll).")
+    .option(
+      "--return-on-result",
+      "Return as soon as the run's answer is in output, without waiting for later steps (with --poll or --stream). " +
+        "The run may still be in progress and can still fail: check result_reported_at, not status.",
+    )
+    .option(
+      "--throw-on-incomplete",
+      "Exit with an error instead of printing a run that has not finished, when the stream ends before the run " +
+        "is done or the server answers with plain JSON for an unfinished run (with --stream). A broken stream " +
+        "exits with an error either way.",
+    )
     .action(async (agentId: string, opts) => {
       await run(rt, async () => {
         const client = createClient(program.opts<GlobalOptions>());
@@ -281,17 +336,22 @@ export function register(program: Command, rt: CliRuntime): void {
           if (opts.pollIntervalMs !== undefined) pollOpts.pollIntervalMs = opts.pollIntervalMs;
           if (opts.timeoutMs !== undefined) pollOpts.timeoutMs = opts.timeoutMs;
           if (opts.includeStepOutputs) pollOpts.includeStepOutputs = true;
+          if (opts.returnOnResult) pollOpts.returnOnResult = true;
           printJson(rt, await client.runAgentAndPoll(agentId, body as any, pollOpts as any));
           return;
         }
 
         if (opts.stream) {
+          const streamOpts: Parameters<typeof client.runStreamingAgentAndWait>[2] = {};
+          if (opts.timeoutMs !== undefined) streamOpts.timeoutMs = opts.timeoutMs;
+          if (opts.returnOnResult) streamOpts.returnOnResult = true;
+          if (opts.throwOnIncomplete) streamOpts.throwOnIncomplete = true;
           printJson(
             rt,
             await client.runStreamingAgentAndWait(
               agentId,
               body as any,
-              opts.timeoutMs !== undefined ? { timeoutMs: opts.timeoutMs } : undefined
+              Object.keys(streamOpts).length > 0 ? streamOpts : undefined
             )
           );
           return;

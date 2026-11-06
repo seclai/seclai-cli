@@ -31,11 +31,25 @@ seclai agents triggers email-config <agentId> <triggerId> --json '{"alias":"supp
 seclai agents triggers accepted-attachments <agentId> <triggerId> \
   --json '{"accepted_attachments":[{"name":"invoice","content_types":["application/pdf"],"min":1,"max":1}]}'
 
-# Slack connection, form, channels, activation, reply visibility and conversation
-# settings for a SLACK_COMMAND trigger. Omitted fields are left unchanged.
+# Slack connection, alias (the name people type after /seclai), form, channels,
+# activation, reply visibility and conversation settings for a SLACK_COMMAND
+# trigger. Omitted fields are left unchanged. The API ignores input: a Slack
+# run's input is the text after /seclai <alias>, or the message the shortcut
+# was used on.
 seclai agents triggers slack-config <agentId> <triggerId> \
-  --json '{"mcp_client_id":"<slackClientId>","scope":"selected_channels","channel_ids":["C0123"],"visibility":"private"}'
+  --json '{"mcp_client_id":"<slackClientId>","alias":"support","scope":"selected_channels","channel_ids":["C0123"],"visibility":"private"}'
+
+# Run metadata keys a trigger declares; steps reference them as {{metadata.<key>}}.
+# origin is system, source or custom; required defaults to false. set replaces
+# the whole declaration, so a key left out is no longer declared.
+seclai agents triggers metadata-keys get <agentId> <triggerId>
+seclai agents triggers metadata-keys set <agentId> <triggerId> \
+  --json '{"metadata_keys":[{"key":"customer_id","origin":"custom","required":true}]}'
 ```
+
+A run whose `metadata` sends a custom key the trigger does not declare, or lacks
+a required one, is refused with a 400 on every API version. Declare the keys
+with `seclai agents triggers metadata-keys set` before sending them.
 
 ## Agent gallery
 
@@ -65,7 +79,14 @@ seclai agents run <agentId> --json '{"input":"Hello"}' --events [--output full|d
 
 # poll — submit, then poll until complete
 seclai agents run <agentId> --json '{"input":"Hello"}' --poll [--poll-interval-ms 2000] [--include-step-outputs]
+
+# return once the answer is in output (--poll or --stream); error out on an
+# unfinished run instead of printing it (--stream)
+seclai agents run <agentId> --json '{"input":"Hello"}' --stream --return-on-result --throw-on-incomplete
 ```
+
+With `--return-on-result` the run may still be in progress, and can still fail:
+check `result_reported_at`, not `status`.
 
 ## Runs
 

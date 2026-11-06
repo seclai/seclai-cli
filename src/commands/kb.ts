@@ -2,7 +2,7 @@ import { Command } from "commander";
 import type { CliRuntime, GlobalOptions } from "../helpers.js";
 import { run, createClient, printJson, readJsonInput, listOpts, parseNumber } from "../helpers.js";
 
-/** Register `kb` (knowledge base) commands: list, create, get, update, delete. */
+/** Register `kb` (knowledge base) commands: list, create, get, update, delete, metadata-key-stats. */
 export function register(program: Command, rt: CliRuntime): void {
   const kb = program.command("kb").description("Manage knowledge bases.");
 
@@ -62,6 +62,19 @@ export function register(program: Command, rt: CliRuntime): void {
         const client = createClient(program.opts<GlobalOptions>());
         await client.deleteKnowledgeBase(kbId);
         printJson(rt, { ok: true });
+      });
+    });
+
+  kb.command("metadata-key-stats")
+    .description(
+      "Show which item-metadata keys a knowledge base's content carries, with item counts and top values " +
+        "for all time and the last 30 and 7 days.",
+    )
+    .argument("<kbId>", "Knowledge base ID.")
+    .action(async (kbId: string) => {
+      await run(rt, async () => {
+        const client = createClient(program.opts<GlobalOptions>());
+        printJson(rt, await client.getKnowledgeBaseMetadataKeyStats(kbId));
       });
     });
 }

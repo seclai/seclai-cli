@@ -9,6 +9,7 @@ import {
   SeclaiAPIStatusError,
   SeclaiAPIValidationError,
   SeclaiConfigurationError,
+  SeclaiStreamingError,
 } from "@seclai/sdk";
 
 /**
@@ -270,6 +271,17 @@ export function printError(rt: CliRuntime, err: unknown): void {
       rt.writeErr(`hint: Pass --allow-unknown-api-version to send it anyway.\n`);
     } else {
       rt.writeErr(`hint: Set the SECLAI_API_KEY environment variable or pass --api-key.\n`);
+    }
+    return;
+  }
+
+  if (err instanceof SeclaiStreamingError) {
+    // `--stream` and `--poll` give up with the latest snapshot of the run, whose
+    // `output` may already hold the answer. It goes to stderr, after the error
+    // line, so stdout stays empty for a script that reads it.
+    rt.writeErr(`${err.name}: ${err.message}\n`);
+    if (err.run !== undefined) {
+      rt.writeErr(`${JSON.stringify(err.run, null, rt.compact ? undefined : 2)}\n`);
     }
     return;
   }

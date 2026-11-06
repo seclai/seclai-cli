@@ -177,6 +177,8 @@ prints the same list.
 | `2026-10-19` | `sources create` rejects `polling_max_items` on any source but an RSS feed with a 400 where it was stored |
 | `2026-10-21` | An evaluation result whose evaluator returned no verdict (`status` `error`) is left out of the failed counts, rates and average scores, and `evals test-draft` returns its `score` and `passed` as `null` instead of 0.5 and `false` |
 | `2026-10-28` | An `if_else` or `switch` step's `output` is the result of the arm it took instead of a `{"branch": ...}` marker naming the arm. Read the arm from the step's `decision`, which is set on every version |
+| `2026-11-02` | `agents def update`, and `agents update` when it sets `sampling_config`, refuse a definition or sampling rule that references a metadata key no trigger declares, with a 400 and a 422 respectively, where older versions declare the key as optional. Declare it first with `agents triggers metadata-keys set` |
+| `2026-11-04` | `evals results create` rejects `retry_triggered: true`, `agents update` rejects `evaluation_mode` `eval_and_retry`, and `evals criteria create` and `evals criteria update` reject a `step_id` that does not name a `display_result` or `streaming_result` step, each with a 400 |
 
 `2026-09-30` changes what `agents run` and `agents runs get` print: a script
 that parses `.output` as JSON to find a run's files should read `.attachments`
@@ -228,11 +230,25 @@ seclai agents triggers email-config <agentId> <triggerId> --json '{"alias":"supp
 seclai agents triggers accepted-attachments <agentId> <triggerId> \
   --json '{"accepted_attachments":[{"name":"invoice","content_types":["application/pdf"],"min":1,"max":1}]}'
 
-# Slack connection, form, channels, activation, reply visibility and conversation
-# settings for a SLACK_COMMAND trigger. Omitted fields are left unchanged.
+# Slack connection, alias (the name people type after /seclai), form, channels,
+# activation, reply visibility and conversation settings for a SLACK_COMMAND
+# trigger. Omitted fields are left unchanged. The API ignores input: a Slack
+# run's input is the text after /seclai <alias>, or the message the shortcut
+# was used on.
 seclai agents triggers slack-config <agentId> <triggerId> \
-  --json '{"mcp_client_id":"<slackClientId>","scope":"selected_channels","channel_ids":["C0123"],"visibility":"private"}'
+  --json '{"mcp_client_id":"<slackClientId>","alias":"support","scope":"selected_channels","channel_ids":["C0123"],"visibility":"private"}'
+
+# Run metadata keys a trigger declares; steps reference them as {{metadata.<key>}}.
+# origin is system, source or custom; required defaults to false. set replaces
+# the whole declaration, so a key left out is no longer declared.
+seclai agents triggers metadata-keys get <agentId> <triggerId>
+seclai agents triggers metadata-keys set <agentId> <triggerId> \
+  --json '{"metadata_keys":[{"key":"customer_id","origin":"custom","required":true}]}'
 ```
+
+A run whose `metadata` sends a custom key the trigger does not declare, or lacks
+a required one, is refused with a 400 on every API version. Declare the keys
+with `seclai agents triggers metadata-keys set` before sending them.
 
 #### Agent gallery
 
@@ -264,7 +280,27 @@ seclai agents run <agentId> --json '{"input":"Hi","include_reasoning":true}' --e
 
 # Polling (submit then poll until complete)
 seclai agents run <agentId> --json '{"input":"Hi"}' --poll --poll-interval-ms 2000
+
+# Return as soon as the answer is in output, without waiting for later steps
+seclai agents run <agentId> --json '{"input":"Hi"}' --poll --return-on-result
+seclai agents run <agentId> --json '{"input":"Hi"}' --stream --return-on-result
+
+# Exit with an error instead of printing a run that has not finished, when the
+# stream ends before the run is done or the server answers with plain JSON for
+# an unfinished run (a broken stream exits with an error either way)
+seclai agents run <agentId> --json '{"input":"Hi"}' --stream --throw-on-incomplete
 ```
+
+With `--return-on-result` the run may still be in progress, and can still fail:
+check `result_reported_at`, not `status`, to tell that the answer is in. It
+applies to `--poll` and `--stream`, and `--throw-on-incomplete` to `--stream`;
+like `--poll-interval-ms` and `--include-step-outputs`, they are ignored in the
+other modes.
+
+When `--stream` or `--poll` gives up, for example on `--timeout-ms` or with
+`--throw-on-incomplete`, the command exits 1 and prints nothing on stdout. The
+error line goes to stderr, followed by the latest snapshot of the run as JSON,
+when there is one; its `output` may already hold the answer.
 
 #### Agent Runs
 
@@ -430,6 +466,10 @@ seclai kb create --json '{"name":"Support KB"}'
 seclai kb get <kbId>
 seclai kb update <kbId> --json '{"name":"Renamed"}'
 seclai kb delete <kbId>
+
+# Item-metadata keys the KB's content carries, with item counts and top values
+# for all time and the last 30 and 7 days
+seclai kb metadata-key-stats <kbId>
 ```
 
 ### Memory Banks

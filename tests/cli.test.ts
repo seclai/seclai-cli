@@ -56,6 +56,8 @@ type SeclaiMock = {
   setEmailTriggerConfig: ReturnType<typeof vi.fn>;
   setAcceptedAttachments: ReturnType<typeof vi.fn>;
   setSlackTriggerConfig: ReturnType<typeof vi.fn>;
+  getMetadataKeys: ReturnType<typeof vi.fn>;
+  setMetadataKeys: ReturnType<typeof vi.fn>;
   listAgentExamples: ReturnType<typeof vi.fn>;
   listEmailSourceRejections: ReturnType<typeof vi.fn>;
   // contents
@@ -74,6 +76,7 @@ type SeclaiMock = {
   getKnowledgeBase: ReturnType<typeof vi.fn>;
   updateKnowledgeBase: ReturnType<typeof vi.fn>;
   deleteKnowledgeBase: ReturnType<typeof vi.fn>;
+  getKnowledgeBaseMetadataKeyStats: ReturnType<typeof vi.fn>;
   // memory
   listMemoryBanks: ReturnType<typeof vi.fn>;
   createMemoryBank: ReturnType<typeof vi.fn>;
@@ -226,6 +229,8 @@ const mockState = vi.hoisted(() => {
     instances: [] as SeclaiMock[],
     lastCtorArgs: undefined as unknown,
     nextListSourcesError: undefined as unknown,
+    /** Thrown once by the next runStreamingAgentAndWait or runAgentAndPoll call. */
+    nextRunError: undefined as unknown,
     modelListResponse: { models: [] } as unknown,
   };
 });
@@ -283,6 +288,24 @@ vi.mock("@seclai/sdk", () => {
     }
   }
 
+  class SeclaiStreamingError extends SeclaiError {
+    public readonly runId: string | undefined;
+    public readonly run: unknown;
+    constructor(message: string, runId?: string, run?: unknown) {
+      super(message);
+      this.name = "SeclaiStreamingError";
+      this.runId = runId;
+      this.run = run;
+    }
+  }
+
+  const takeRunError = (): undefined => {
+    const err = mockState.nextRunError;
+    if (err === undefined) return undefined;
+    mockState.nextRunError = undefined;
+    throw err;
+  };
+
   class Seclai {
     public readonly opts: unknown;
 
@@ -331,9 +354,9 @@ vi.mock("@seclai/sdk", () => {
     updateAgent = vi.fn(async () => ({ ok: true }));
     deleteAgent = vi.fn(async () => undefined);
     runAgent = vi.fn(async () => ({ ok: true }));
-    runStreamingAgentAndWait = vi.fn(async () => ({ ok: true }));
+    runStreamingAgentAndWait = vi.fn(async () => takeRunError() ?? { ok: true });
     runStreamingAgent = vi.fn(async function* () { yield { type: "status", data: "done" }; });
-    runAgentAndPoll = vi.fn(async () => ({ ok: true }));
+    runAgentAndPoll = vi.fn(async () => takeRunError() ?? { ok: true });
     listAgentRuns = vi.fn(async () => ({ ok: true }));
     getAgentRun = vi.fn(async () => ({ ok: true }));
     deleteAgentRun = vi.fn(async () => undefined);
@@ -359,6 +382,8 @@ vi.mock("@seclai/sdk", () => {
     getAgentCallers = vi.fn(async () => []);
     setEmailTriggerConfig = vi.fn(async () => ({ ok: true }));
     setAcceptedAttachments = vi.fn(async () => ({ accepted_attachments: [] }));
+    getMetadataKeys = vi.fn(async () => ({ metadata_keys: [] }));
+    setMetadataKeys = vi.fn(async () => ({ metadata_keys: [] }));
     setSlackTriggerConfig = vi.fn(async () => ({ trigger_id: "trig_1", missing_scopes: [] }));
     listAgentExamples = vi.fn(async () => ({ data: [], pagination: {} }));
     listEmailSourceRejections = vi.fn(async () => ({ data: [], pagination: {} }));
@@ -380,6 +405,7 @@ vi.mock("@seclai/sdk", () => {
     getKnowledgeBase = vi.fn(async () => ({ ok: true }));
     updateKnowledgeBase = vi.fn(async () => ({ ok: true }));
     deleteKnowledgeBase = vi.fn(async () => undefined);
+    getKnowledgeBaseMetadataKeyStats = vi.fn(async () => ({ all_time: { keys: [] } }));
 
     // memory
     listMemoryBanks = vi.fn(async () => ({ data: [] }));
@@ -536,6 +562,7 @@ vi.mock("@seclai/sdk", () => {
     SeclaiConfigurationError,
     SeclaiAPIStatusError,
     SeclaiAPIValidationError,
+    SeclaiStreamingError,
     loadSsoProfile: mockSsoFns.loadSsoProfile = vi.fn(async () => ({
       ssoDomain: "auth.seclai.com",
       ssoClientId: "test-client-id",
@@ -615,6 +642,7 @@ beforeEach(() => {
   mockState.instances.length = 0;
   mockState.lastCtorArgs = undefined;
   mockState.nextListSourcesError = undefined;
+  mockState.nextRunError = undefined;
   mockState.modelListResponse = { models: [] };
   delete process.env.SECLAI_API_VERSION;
 });
@@ -2829,6 +2857,98 @@ describe("seclai CLI — SDK 1.7.0 surface", () => {
     expect(io.exitCode).toBe(1);
     expect(io.stderr).toContain("Expected a JSON object");
     expect(client?.setSlackTriggerConfig).not.toHaveBeenCalled();
+  });
+
+  // --- SDK 1.9.0: metadata keys and agents run options ---
+
+  test("agents triggers metadata-keys get calls getMetadataKeys", async () => {
+    const { client, io } = await ok(["agents", "triggers", "metadata-keys", "get", "agent_1", "trig_1"]);
+    expect(client.getMetadataKeys).toHaveBeenCalledWith("agent_1", "trig_1");
+    expect(JSON.parse(io.stdout)).toEqual({ metadata_keys: [] });
+  });
+
+  test("agents triggers metadata-keys set passes the body through", async () => {
+    const body = { metadata_keys: [{ key: "customer_id", origin: "custom", required: true }, { key: "region", origin: "custom" }] };
+    const { client } = await ok([
+      "agents", "triggers", "metadata-keys", "set", "agent_1", "trig_1", "--json", JSON.stringify(body),
+    ]);
+    expect(client.setMetadataKeys).toHaveBeenCalledWith("agent_1", "trig_1", body);
+  });
+
+  test("agents triggers metadata-keys set refuses a body that is not an object", async () => {
+    const { io, client } = await invoke([
+      "agents", "triggers", "metadata-keys", "set", "agent_1", "trig_1", "--json", "[]",
+    ]);
+    expect(io.exitCode).toBe(1);
+    expect(io.stderr).toContain("Expected a JSON object");
+    expect(client?.setMetadataKeys).not.toHaveBeenCalled();
+  });
+
+  test("agents run --stream prints the unfinished run to stderr when it gives up", async () => {
+    const sdk = await import("@seclai/sdk");
+    const run = { run_id: "run_1", status: "processing", output: "the answer", result_reported_at: "2026-11-06T00:00:00Z" };
+    mockState.nextRunError = new (sdk as any).SeclaiStreamingError("Stream ended before the run finished; see `run`.", "run_1", run);
+    const { io } = await invoke(["agents", "run", "a1", "--json", '{"input":"hi"}', "--stream", "--throw-on-incomplete"]);
+    expect(io.exitCode).toBe(1);
+    expect(io.stdout).toBe("");
+    const [first, ...rest] = io.stderr.split("\n");
+    expect(first).toBe("SeclaiStreamingError: Stream ended before the run finished; see `run`.");
+    expect(JSON.parse(rest.join("\n"))).toEqual(run);
+  });
+
+  test("agents run --poll prints the latest run to stderr when it times out", async () => {
+    const sdk = await import("@seclai/sdk");
+    const run = { run_id: "run_3", status: "processing", output: null };
+    mockState.nextRunError = new (sdk as any).SeclaiStreamingError("Polling timed out after 50ms.", "run_3", run);
+    const { io } = await invoke(["agents", "run", "a1", "--json", '{"input":"hi"}', "--poll", "--timeout-ms", "50"]);
+    expect(io.exitCode).toBe(1);
+    expect(io.stdout).toBe("");
+    expect(io.stderr).toBe(`SeclaiStreamingError: Polling timed out after 50ms.\n${JSON.stringify(run, null, 2)}\n`);
+  });
+
+  test("kb metadata-key-stats calls getKnowledgeBaseMetadataKeyStats", async () => {
+    const { client, io } = await ok(["kb", "metadata-key-stats", "kb_1"]);
+    expect(client.getKnowledgeBaseMetadataKeyStats).toHaveBeenCalledWith("kb_1");
+    expect(JSON.parse(io.stdout)).toEqual({ all_time: { keys: [] } });
+  });
+
+  test("agents run --poll sends no returnOnResult unless asked", async () => {
+    const bare = await ok(["agents", "run", "a1", "--json", '{"input":"hi"}', "--poll"]);
+    expect(bare.client.runAgentAndPoll).toHaveBeenCalledWith("a1", { input: "hi" }, {});
+
+    const { client } = await ok([
+      "agents", "run", "a1", "--json", '{"input":"hi"}', "--poll", "--timeout-ms", "900", "--return-on-result",
+    ]);
+    expect(client.runAgentAndPoll).toHaveBeenCalledWith("a1", { input: "hi" }, { timeoutMs: 900, returnOnResult: true });
+  });
+
+  test("agents run --stream sends no options unless asked", async () => {
+    const bare = await ok(["agents", "run", "a1", "--json", '{"input":"hi"}', "--stream"]);
+    expect(bare.client.runStreamingAgentAndWait).toHaveBeenCalledWith("a1", { input: "hi" }, undefined);
+  });
+
+  test("agents run --stream --return-on-result", async () => {
+    const { client } = await ok(["agents", "run", "a1", "--json", '{"input":"hi"}', "--stream", "--return-on-result"]);
+    expect(client.runStreamingAgentAndWait).toHaveBeenCalledWith("a1", { input: "hi" }, { returnOnResult: true });
+  });
+
+  test("agents run --stream --throw-on-incomplete", async () => {
+    const { client } = await ok([
+      "agents", "run", "a1", "--json", '{"input":"hi"}', "--stream", "--timeout-ms", "50", "--throw-on-incomplete",
+    ]);
+    expect(client.runStreamingAgentAndWait).toHaveBeenCalledWith(
+      "a1",
+      { input: "hi" },
+      { timeoutMs: 50, throwOnIncomplete: true },
+    );
+  });
+
+  test("agents run ignores --return-on-result and --throw-on-incomplete without the mode they apply to", async () => {
+    const basic = await ok(["agents", "run", "a1", "--json", '{"input":"hi"}', "--return-on-result", "--throw-on-incomplete"]);
+    expect(basic.client.runAgent).toHaveBeenCalledWith("a1", { input: "hi" });
+
+    const poll = await ok(["agents", "run", "a1", "--json", '{"input":"hi"}', "--poll", "--throw-on-incomplete"]);
+    expect(poll.client.runAgentAndPoll).toHaveBeenCalledWith("a1", { input: "hi" }, {});
   });
 
   // --- SDK 1.8.0: query filters the API declares ---

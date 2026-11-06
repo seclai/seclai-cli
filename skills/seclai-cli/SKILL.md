@@ -110,6 +110,8 @@ Each version includes the changes of the ones before it:
 | `2026-10-19` | `sources create` rejects `polling_max_items` on any source but an RSS feed with a 400 where it was stored |
 | `2026-10-21` | An evaluation result whose evaluator returned no verdict (`status` `error`) is left out of the failed counts, rates and average scores, and `evals test-draft` returns its `score` and `passed` as `null` instead of 0.5 and `false` |
 | `2026-10-28` | An `if_else` or `switch` step's `output` is the result of the arm it took instead of a `{"branch": ...}` marker naming the arm. Read the arm from the step's `decision`, which is set on every version |
+| `2026-11-02` | `agents def update`, and `agents update` when it sets `sampling_config`, refuse a definition or sampling rule that references a metadata key no trigger declares, with a 400 and a 422 respectively, where older versions declare the key as optional. Declare it first with `agents triggers metadata-keys set` |
+| `2026-11-04` | `evals results create` rejects `retry_triggered: true`, `agents update` rejects `evaluation_mode` `eval_and_retry`, and `evals criteria create` and `evals criteria update` reject a `step_id` that does not name a `display_result` or `streaming_result` step, each with a 400 |
 
 To find a run's files, read `.attachments` rather than parsing `.output`: it is
 present on every version, and `.output` stops being JSON at `2026-09-30`.
